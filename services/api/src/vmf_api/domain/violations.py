@@ -22,6 +22,47 @@ class ReviewAction(StrEnum):
     OVERRIDE = "override"
 
 
+class ThresholdAction(StrEnum):
+    """A consequence that applies once, when its threshold is first reached."""
+
+    DEPOSIT_FORFEITED = "deposit_forfeited"
+    H2H_TABLE_DEDUCTION = "h2h_table_deduction"
+    PRIZE_CAPPED = "prize_capped"
+    REMOVED_FROM_H2H = "removed_from_h2h"
+    REMOVED_FROM_CUP = "removed_from_cup"
+    REMOVED_FROM_COMPETITION = "removed_from_competition"
+
+
+#: The threshold at which each consequence becomes due, from rulebook 9.3.
+THRESHOLD_FOR_ACTION: dict[ThresholdAction, int] = {
+    ThresholdAction.DEPOSIT_FORFEITED: 1,
+    ThresholdAction.H2H_TABLE_DEDUCTION: 1,
+    ThresholdAction.PRIZE_CAPPED: 2,
+    ThresholdAction.REMOVED_FROM_H2H: 2,
+    ThresholdAction.REMOVED_FROM_CUP: 2,
+    ThresholdAction.REMOVED_FROM_COMPETITION: 3,
+}
+
+
+def due_threshold_actions(cumulative_confirmed_count: int) -> set[ThresholdAction]:
+    """Every consequence a manager's cumulative count has become due for.
+
+    This is a function of the total alone, not of the change that produced it.
+    A single Gameweek that raises two units therefore makes both the first and
+    the second threshold due at once, which is what rulebook 9.3 requires, and
+    an already applied action is filtered out by its ledger row rather than by
+    inspecting the previous total.
+    """
+
+    if cumulative_confirmed_count < 0:
+        raise ValueError("cumulative_confirmed_count must be non-negative")
+    return {
+        action
+        for action, threshold in THRESHOLD_FOR_ACTION.items()
+        if cumulative_confirmed_count >= threshold
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class ViolationEvent:
     detected_count: int

@@ -51,6 +51,15 @@ class ScoringResult(BaseModel):
     detail: dict[str, int] | None = None
 
 
+class DetectionResultResponse(BaseModel):
+    """Violations raised by this tick. Detection never applies a penalty."""
+
+    scanned: int = 0
+    raised: int = 0
+    updated: int = 0
+    cleared: int = 0
+
+
 class CronSyncResponse(BaseModel):
     status: Literal["executed", "skipped"]
     started_at: datetime
@@ -59,3 +68,4 @@ class CronSyncResponse(BaseModel):
     plan: SyncPlanResponse | None = None
     jobs: list[SyncJobResult] = []
     scoring: ScoringResult | None = None
+    detection: DetectionResultResponse | None = None

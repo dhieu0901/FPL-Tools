@@ -10,6 +10,7 @@ from vmf_api.api.deps import CronAuthorizationDep, FPLClientDep, SessionDep, Set
 from vmf_api.integrations.fpl import FPLClientError
 from vmf_api.schemas.cron import (
     CronSyncResponse,
+    DetectionResultResponse,
     FPLProbeResponse,
     ScoringResult,
     SyncJobResult,
@@ -158,6 +159,16 @@ async def _run_sync(
                     unreconciled_manager_ids=list(result.scoring.unreconciled_manager_ids),
                     skipped_reason=result.scoring.skipped_reason,
                     detail=result.scoring.detail or None,
+                )
+            ),
+            detection=(
+                None
+                if result.detection is None
+                else DetectionResultResponse(
+                    scanned=result.detection.scanned,
+                    raised=result.detection.raised,
+                    updated=result.detection.updated,
+                    cleared=result.detection.cleared,
                 )
             ),
         )

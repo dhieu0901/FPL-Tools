@@ -23,6 +23,7 @@ from vmf_api.models.manager import Manager
 from vmf_api.services.ingestion import FplIngestionService, SyncOutcome
 from vmf_api.services.raw_store import naive_utc
 from vmf_api.services.scoring import GameweekScoringService, ScoringOutcome
+from vmf_api.services.violations import DetectionResult, detect_transfer_violations
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,6 +41,7 @@ class ScheduledSyncResult:
     plan: SyncPlan | None
     outcomes: list[SyncOutcome] = field(default_factory=list)
     scoring: ScoringOutcome | None = None
+    detection: DetectionResult | None = None
     skipped_reason: str | None = None
 
 
@@ -74,6 +76,7 @@ async def run_scheduled_sync(
 
     plan = await _build_plan(session, season, clock=clock)
     scoring: ScoringOutcome | None = None
+    detection: DetectionResult | None = None
     if plan.gameweek_number is not None:
         if plan.run_picks:
             outcomes.append(
@@ -95,7 +98,15 @@ async def run_scheduled_sync(
             season_id=season.id,
             clock=clock,
         ).score_gameweek(plan.gameweek_number)
-    return ScheduledSyncResult(plan=plan, outcomes=outcomes, scoring=scoring)
+        # Detection only raises cases for review; no penalty follows from a
+        # synchronisation, so this is safe to repeat on every tick.
+        detection = await detect_transfer_violations(session)
+    return ScheduledSyncResult(
+        plan=plan,
+        outcomes=outcomes,
+        scoring=scoring,
+        detection=detection,
+    )
 
 
 async def _build_plan(
