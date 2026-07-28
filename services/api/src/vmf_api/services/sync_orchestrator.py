@@ -22,6 +22,7 @@ from vmf_api.models.ingestion import FplFixture, ManagerGameweekHistory
 from vmf_api.models.manager import Manager
 from vmf_api.services.ingestion import FplIngestionService, SyncOutcome
 from vmf_api.services.raw_store import naive_utc
+from vmf_api.services.scoring import GameweekScoringService, ScoringOutcome
 
 
 @dataclass(frozen=True, slots=True)
@@ -38,6 +39,7 @@ class SyncPlan:
 class ScheduledSyncResult:
     plan: SyncPlan | None
     outcomes: list[SyncOutcome] = field(default_factory=list)
+    scoring: ScoringOutcome | None = None
     skipped_reason: str | None = None
 
 
@@ -71,6 +73,7 @@ async def run_scheduled_sync(
     outcomes = [await service.sync_bootstrap(), await service.sync_fixtures()]
 
     plan = await _build_plan(session, season, clock=clock)
+    scoring: ScoringOutcome | None = None
     if plan.gameweek_number is not None:
         if plan.run_picks:
             outcomes.append(
@@ -85,7 +88,14 @@ async def run_scheduled_sync(
             outcomes.append(
                 await service.sync_entry_history(manager_limit=settings.sync_manager_batch_size)
             )
-    return ScheduledSyncResult(plan=plan, outcomes=outcomes)
+        # Scoring reads only what the jobs above just wrote, so it runs on the
+        # same transaction and reflects this tick's data rather than the last.
+        scoring = await GameweekScoringService(
+            session,
+            season_id=season.id,
+            clock=clock,
+        ).score_gameweek(plan.gameweek_number)
+    return ScheduledSyncResult(plan=plan, outcomes=outcomes, scoring=scoring)
 
 
 async def _build_plan(

@@ -11,6 +11,7 @@ from vmf_api.integrations.fpl import FPLClientError
 from vmf_api.schemas.cron import (
     CronSyncResponse,
     FPLProbeResponse,
+    ScoringResult,
     SyncJobResult,
     SyncPlanResponse,
 )
@@ -146,6 +147,19 @@ async def _run_sync(
                 )
                 for outcome in result.outcomes
             ],
+            scoring=(
+                None
+                if result.scoring is None
+                else ScoringResult(
+                    gameweek_number=result.scoring.gameweek_number,
+                    state=result.scoring.state,
+                    managers_scored=result.scoring.managers_scored,
+                    totw_manager_ids=list(result.scoring.totw_manager_ids),
+                    unreconciled_manager_ids=list(result.scoring.unreconciled_manager_ids),
+                    skipped_reason=result.scoring.skipped_reason,
+                    detail=result.scoring.detail or None,
+                )
+            ),
         )
 
 
