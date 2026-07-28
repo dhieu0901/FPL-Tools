@@ -21,6 +21,7 @@ dependencies = [
 
 [project.scripts]
 vmf-bootstrap-season = "vmf_api.cli.bootstrap_season:main"
+vmf-import-managers = "vmf_api.cli.import_managers:main"
 
 [project.optional-dependencies]
 dev = [

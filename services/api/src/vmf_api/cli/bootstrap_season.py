@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import sys
 from collections import Counter
 from collections.abc import Sequence
@@ -10,6 +9,8 @@ from dataclasses import dataclass
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from vmf_api.cli.runner import configure_console
+from vmf_api.cli.runner import run as run_async
 from vmf_api.db.session import get_engine, get_session_factory
 from vmf_api.models import CompetitionPhase, Gameweek, Season
 from vmf_api.models.enums import PhaseType, SeasonStatus
@@ -251,10 +252,11 @@ def _print_result(result: BootstrapResult, *, season_code: str) -> None:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
+    configure_console()
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
-        result = asyncio.run(_run(season_code=args.season_code, season_name=args.season_name))
+        result = run_async(_run(season_code=args.season_code, season_name=args.season_name))
     except (BootstrapConflictError, ValueError) as exc:
         print(f"Bootstrap aborted: {exc}", file=sys.stderr)
         return 2

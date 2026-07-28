@@ -234,29 +234,43 @@ Migrations and the season bootstrap never invent a roster. Before going public:
 
 1. Take `season_id` from the **Bootstrap season metadata** step's log and put
    it in the web project's `VMF_SEASON_ID`.
-2. Create all 40 managers with `POST /api/managers` and `X-Admin-Key`. A
-   profile only appears publicly once `registration_status=confirmed`. One
-   record looks like this:
+2. Import the 40 managers with `vmf-import-managers`, run locally against the
+   session pooler. Prepare a CSV with the columns `fpl_entry_id`,
+   `manager_name`, `team_name`, `division`:
 
-   ```bash
-   curl --fail-with-body \
-     -X POST "https://<api-project>.vercel.app/api/managers" \
-     -H "Content-Type: application/json" \
-     -H "X-Admin-Key: <admin-key>" \
-     -H "X-Admin-Actor: preseason-import" \
-     -d '{
-       "fpl_entry_id": 123456,
-       "manager_name": "Manager name",
-       "team_name": "FPL team name",
-       "division": "HIGH",
-       "season_joined": "2026/27",
-       "registration_status": "confirmed"
-     }'
+   ```csv
+   fpl_entry_id,manager_name,team_name,division
+   123456,Manager name,FPL team name,HIGH
    ```
 
-   Never commit a roster file containing phone numbers or Facebook URLs. Send
-   the records one at a time, or use a local import script that reads its
-   secret from the environment.
+   Validate before writing. The dry run performs every check, including the
+   FPL lookup, and writes nothing:
+
+   ```bash
+   cd services/api
+   export VMF_DATABASE_URL='postgresql+psycopg://...:5432/postgres?sslmode=require'
+   .venv/bin/vmf-import-managers --file roster.csv --season-code 2026/27 --dry-run
+   ```
+
+   Drop `--dry-run` to apply it. The command creates each manager as active and
+   confirmed, adds the Classic Season 1 division membership, and stores the
+   manager and team names FPL currently shows so a later rename is visible.
+
+   Each `fpl_entry_id` is confirmed against FPL first, and a single unreadable
+   entry aborts the whole import rather than leaving a half-filled roster. This
+   is the check that matters: a mistyped entry id produces a manager who looks
+   present everywhere while their squad never synchronises.
+
+   The command refuses a roster that is not 40 managers split 20/20 unless
+   `--allow-imbalance` is passed, and re-running it creates nothing. A row whose
+   division disagrees with an already imported manager is reported instead of
+   applied, so promotion and relegation stay an explicit decision.
+
+   Keep `roster.csv` out of the repository, and out of it entirely if it holds
+   phone numbers or Facebook URLs.
+
+   For one-off corrections, `POST /api/managers` with `X-Admin-Key` still
+   creates a single record.
 3. Only once the public API returns exactly 20 HIGH and 20 LOW managers,
    generate the H2H schedule exactly once:
 
