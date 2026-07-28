@@ -43,7 +43,7 @@ export function FixtureCard({ fixture }: { fixture: H2HFixture }) {
       <div className="fixture-card__footer">
         <span>
           <Icon name="clock" size={15} />
-          {formatDateTime(fixture.kickoff)}
+          {fixture.kickoff ? formatDateTime(fixture.kickoff) : "Chưa có giờ thi đấu"}
         </span>
         <span className="fixture-card__open">
           Chi tiết <Icon name="chevron" size={15} />

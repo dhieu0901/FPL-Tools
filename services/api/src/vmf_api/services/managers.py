@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from vmf_api.core.errors import ConflictError, NotFoundError
-from vmf_api.models.enums import Division, ManagerStatus
+from vmf_api.models.enums import Division, ManagerStatus, RegistrationStatus
 from vmf_api.models.manager import Manager
 from vmf_api.repositories.managers import ManagerRepository
 from vmf_api.schemas.managers import ManagerCreate, ManagerUpdate
@@ -20,8 +20,13 @@ class ManagerService:
         *,
         division: Division | None = None,
         status: ManagerStatus | None = None,
+        registration_status: RegistrationStatus | None = None,
     ) -> list[Manager]:
-        return await self.repository.list(division=division, status=status)
+        return await self.repository.list(
+            division=division,
+            status=status,
+            registration_status=registration_status,
+        )
 
     async def get(self, manager_id: int) -> Manager:
         manager = await self.repository.get(manager_id)

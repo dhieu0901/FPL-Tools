@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-vmf}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vmf}
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - vmf_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,26 +22,51 @@ services:
     build:
       context: ./services/api
     env_file:
-      - .env
+      - path: .env
+        required: false
     environment:
-      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-vmf}:${POSTGRES_PASSWORD:-vmf}@postgres:5432/${POSTGRES_DB:-vmf}
+      VMF_DATABASE_URL: ${VMF_COMPOSE_DATABASE_URL:-postgresql+psycopg://vmf:vmf@postgres:5432/vmf}
+      VMF_MIGRATION_DATABASE_URL: ${VMF_COMPOSE_DATABASE_URL:-postgresql+psycopg://vmf:vmf@postgres:5432/vmf}
+      VMF_DATABASE_USE_NULL_POOL: "false"
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
 
+  migrate:
+    build:
+      context: ./services/api
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      VMF_DATABASE_URL: ${VMF_COMPOSE_DATABASE_URL:-postgresql+psycopg://vmf:vmf@postgres:5432/vmf}
+      VMF_MIGRATION_DATABASE_URL: ${VMF_COMPOSE_DATABASE_URL:-postgresql+psycopg://vmf:vmf@postgres:5432/vmf}
+      VMF_DATABASE_USE_NULL_POOL: "true"
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
   web:
     build:
       context: ./apps/web
-      args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000/api}
-      NEXT_PUBLIC_USE_MOCK_DATA: ${NEXT_PUBLIC_USE_MOCK_DATA:-false}
+      VMF_API_URL: http://api:8000/api
+      VMF_USE_MOCK_DATA: ${VMF_USE_MOCK_DATA:-false}
+      VMF_SEASON_ID: ${VMF_SEASON_ID:-1}
+      VMF_H2H_SCHEDULE_ID: ${VMF_H2H_SCHEDULE_ID:-1}
+      VMF_SEASON_LABEL: ${VMF_SEASON_LABEL:-2026/27}
+      VMF_ADMIN_API_KEY: ${VMF_ADMIN_API_KEY:-}
+      VMF_ADMIN_ACTOR: ${VMF_ADMIN_ACTOR:-vmf-web}
+      VMF_ADMIN_UI_USER: ${VMF_ADMIN_UI_USER:-admin}
+      VMF_ADMIN_UI_PASSWORD: ${VMF_ADMIN_UI_PASSWORD:-}
     ports:
-      - "3000:3000"
+      - "127.0.0.1:3000:3000"
     depends_on:
       - api
     restart: unless-stopped

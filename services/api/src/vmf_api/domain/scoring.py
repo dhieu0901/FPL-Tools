@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Iterable
 
 
@@ -22,11 +22,15 @@ def round_half_up(value: Decimal | float | int | str) -> int:
     return int(Decimal(str(value)).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
 
 
-def totw_winners(net_scores: dict[int, int], eligible_manager_ids: Iterable[int] | None = None) -> set[int]:
+def totw_winners(
+    net_scores: dict[int, int], eligible_manager_ids: Iterable[int] | None = None
+) -> set[int]:
     """Return every eligible manager tied for the highest real net score."""
 
     eligible = set(eligible_manager_ids) if eligible_manager_ids is not None else set(net_scores)
-    candidates = {manager_id: score for manager_id, score in net_scores.items() if manager_id in eligible}
+    candidates = {
+        manager_id: score for manager_id, score in net_scores.items() if manager_id in eligible
+    }
     if not candidates:
         return set()
     best = max(candidates.values())

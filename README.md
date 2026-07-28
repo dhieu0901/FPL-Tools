@@ -10,6 +10,7 @@ division Classic, H2H, play-off, hai Cup, vi phạm và các quyết định c�
 apps/web       Next.js public dashboard và admin UI
 services/api   FastAPI, rule engine, đồng bộ FPL và PostgreSQL
 docs           Rulebook, kiến trúc, test matrix và runbook
+supabase       SQL cấu hình cron cho môi trường Supabase
 ```
 
 Các nguyên tắc bắt buộc:
@@ -22,15 +23,19 @@ Các nguyên tắc bắt buộc:
 
 ## Chạy local
 
-Sao chép `.env.example` thành `.env`, thay toàn bộ secret, sau đó:
+Sao chép `.env.example` thành `.env`, thay các secret mẫu, rồi khởi tạo database:
 
 ```powershell
-docker compose up --build
+docker compose up -d postgres
+docker compose run --rm migrate
+docker compose up --build api web
 ```
 
 - Web: `http://localhost:3000`
 - API: `http://localhost:8000`
 - OpenAPI: `http://localhost:8000/docs`
 
-Hướng dẫn chạy riêng từng service và quy trình production sẽ được bổ sung trong
-`docs/`.
+Docker chỉ phục vụ môi trường local. Production miễn phí dùng hai Vercel Project
+(`apps/web` và `services/api`) cùng một Supabase Free project. Xem toàn bộ quy
+trình, biến môi trường, migration, cron, quota và rollback tại
+[DEPLOYMENT.md](DEPLOYMENT.md).

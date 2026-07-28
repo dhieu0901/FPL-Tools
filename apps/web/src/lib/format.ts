@@ -53,7 +53,8 @@ export function gameweekStateLabel(
     open: "Đang mở",
     live: "Đang diễn ra",
     provisional: "Tạm tính",
-    final: "Đã chốt"
+    final: "Đã chốt",
+    walkover: "Xử thắng"
   }[state];
 }
 
@@ -62,6 +63,7 @@ export function matchStatusLabel(status: import("./types").MatchStatus): string 
     scheduled: "Sắp diễn ra",
     live: "Trực tiếp",
     provisional: "Tạm tính",
-    final: "Đã chốt"
+    final: "Đã chốt",
+    walkover: "Xử thắng"
   }[status];
 }

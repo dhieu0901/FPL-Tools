@@ -3,7 +3,7 @@ import Link from "next/link";
 import { FixtureCard } from "@/components/fixture-card";
 import { Icon } from "@/components/icons";
 import { StandingsTable } from "@/components/standings-table";
-import { DataBadge, Pill, SectionHeader } from "@/components/ui";
+import { DataBadge, EmptyState, Pill, SectionHeader } from "@/components/ui";
 import { formatDateTime, gameweekStateLabel } from "@/lib/format";
 import { vmfApi } from "@/lib/api";
 
@@ -76,7 +76,9 @@ export default async function DashboardPage() {
             </span>
             <span>
               <small>Deadline</small>
-              <strong>{formatDateTime(data.gameweek.deadline)}</strong>
+              <strong>
+                {data.gameweek.deadline ? formatDateTime(data.gameweek.deadline) : "Chưa công bố"}
+              </strong>
             </span>
           </div>
           <div className="gameweek-card__grid" aria-hidden="true" />
@@ -101,24 +103,36 @@ export default async function DashboardPage() {
             href="/h2h/fixtures"
             linkLabel="Mọi trận đấu"
           />
-          <FixtureCard fixture={data.featuredFixture} />
+          {data.featuredFixture ? (
+            <FixtureCard fixture={data.featuredFixture} />
+          ) : (
+            <EmptyState
+              icon="calendar"
+              title="Chưa có lịch H2H"
+              description="Lịch thi đấu sẽ xuất hiện sau khi admin tạo schedule."
+            />
+          )}
         </div>
         <aside>
           <SectionHeader eyebrow="Ban tổ chức" title="Thông báo" />
-          <div className="notice-stack">
-            {data.notices.map((notice) => (
-              <article className="notice-card" key={notice.id}>
-                <span className="notice-card__icon" data-priority={notice.priority}>
-                  <Icon name={notice.priority === "important" ? "warning" : "info"} size={19} />
-                </span>
-                <div>
-                  <strong>{notice.title}</strong>
-                  <p>{notice.body}</p>
-                  <time>{formatDateTime(notice.publishedAt)}</time>
-                </div>
-              </article>
-            ))}
-          </div>
+          {data.notices.length > 0 ? (
+            <div className="notice-stack">
+              {data.notices.map((notice) => (
+                <article className="notice-card" key={notice.id}>
+                  <span className="notice-card__icon" data-priority={notice.priority}>
+                    <Icon name={notice.priority === "important" ? "warning" : "info"} size={19} />
+                  </span>
+                  <div>
+                    <strong>{notice.title}</strong>
+                    <p>{notice.body}</p>
+                    <time>{formatDateTime(notice.publishedAt)}</time>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState title="Chưa có thông báo" description="Admin chưa đăng thông báo mới." />
+          )}
         </aside>
       </section>
 
@@ -134,21 +148,29 @@ export default async function DashboardPage() {
 
       <section className="section-space">
         <SectionHeader eyebrow="Khoảnh khắc VMF" title="Highlights mới nhất" href="/highlights" />
-        <div className="highlight-preview-grid">
-          {data.recentHighlights.map((highlight, index) => (
-            <article className="highlight-preview" data-featured={index === 0} key={highlight.id}>
-              <span className="highlight-preview__number">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <div>
-                <p className="eyebrow">{highlight.eyebrow}</p>
-                <h3>{highlight.title}</h3>
-                <p>{highlight.description}</p>
-              </div>
-              {highlight.value && <strong>{highlight.value}</strong>}
-            </article>
-          ))}
-        </div>
+        {data.recentHighlights.length > 0 ? (
+          <div className="highlight-preview-grid">
+            {data.recentHighlights.map((highlight, index) => (
+              <article className="highlight-preview" data-featured={index === 0} key={highlight.id}>
+                <span className="highlight-preview__number">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div>
+                  <p className="eyebrow">{highlight.eyebrow}</p>
+                  <h3>{highlight.title}</h3>
+                  <p>{highlight.description}</p>
+                </div>
+                {highlight.value && <strong>{highlight.value}</strong>}
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon="highlight"
+            title="Highlights đang được hoàn thiện"
+            description="Backend hiện chưa cung cấp nguồn highlights."
+          />
+        )}
       </section>
     </>
   );

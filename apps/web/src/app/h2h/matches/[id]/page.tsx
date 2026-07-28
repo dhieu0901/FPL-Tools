@@ -1,14 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import { Avatar, Callout, DataBadge, Pill } from "@/components/ui";
-import { vmfApi } from "@/lib/api";
+import { ApiRequestError, vmfApi } from "@/lib/api";
 import { matchStatusLabel } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Chi tiết trận H2H" };
 
 export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await vmfApi.h2hMatch(id);
+  const result = await vmfApi.h2hMatch(id).catch((error: unknown) => {
+    if (error instanceof ApiRequestError && error.status === 404) notFound();
+    throw error;
+  });
   const match = result.data;
 
   return (
@@ -57,7 +61,9 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           <span>
             <small>Cầu thủ còn lại</small>
             <strong>
-              {match.home.activePlayers ?? 0} : {match.away.activePlayers ?? 0}
+              {match.home.activePlayers === undefined || match.away.activePlayers === undefined
+                ? "—"
+                : `${match.home.activePlayers} : ${match.away.activePlayers}`}
             </strong>
           </span>
           <span>

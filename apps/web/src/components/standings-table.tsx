@@ -23,6 +23,9 @@ export function StandingsTable({
   entries: StandingEntry[];
   compact?: boolean;
 }) {
+  const showForm = !compact && entries.some((entry) => entry.form.length > 0);
+  const showGameweek = entries.some((entry) => entry.gameweekPoints !== null);
+
   return (
     <div className="table-shell">
       <table className="standings-table">
@@ -30,10 +33,12 @@ export function StandingsTable({
           <tr>
             <th scope="col">Hạng</th>
             <th scope="col">Đội bóng</th>
-            {!compact && <th scope="col">Phong độ</th>}
-            <th scope="col" className="number-cell">
-              GW
-            </th>
+            {showForm && <th scope="col">Phong độ</th>}
+            {showGameweek && (
+              <th scope="col" className="number-cell">
+                GW
+              </th>
+            )}
             <th scope="col" className="number-cell">
               Tổng
             </th>
@@ -46,20 +51,23 @@ export function StandingsTable({
         </thead>
         <tbody>
           {entries.map((entry) => {
-            const delta = rankDelta(entry.rank, entry.previousRank);
+            const delta =
+              entry.previousRank === null ? null : rankDelta(entry.rank, entry.previousRank);
             return (
               <tr key={`${entry.division}-${entry.managerId}`}>
                 <td>
                   <div className="rank-cell">
                     <QualificationMarker value={entry.qualification} />
                     <strong>{entry.rank}</strong>
-                    <span className="rank-delta" data-direction={delta.direction}>
-                      {delta.direction === "up"
-                        ? `↑${delta.value}`
-                        : delta.direction === "down"
-                          ? `↓${delta.value}`
-                          : "—"}
-                    </span>
+                    {delta && (
+                      <span className="rank-delta" data-direction={delta.direction}>
+                        {delta.direction === "up"
+                          ? `↑${delta.value}`
+                          : delta.direction === "down"
+                            ? `↓${delta.value}`
+                            : "—"}
+                      </span>
+                    )}
                   </div>
                 </td>
                 <td>
@@ -69,15 +77,17 @@ export function StandingsTable({
                       <strong>{entry.teamName}</strong>
                       <small>{entry.managerName}</small>
                     </span>
-                    {entry.violations > 0 && <Pill tone="danger">V{entry.violations}</Pill>}
+                    {entry.violations !== null && entry.violations > 0 && (
+                      <Pill tone="danger">V{entry.violations}</Pill>
+                    )}
                   </Link>
                 </td>
-                {!compact && (
+                {showForm && (
                   <td>
                     <FormDots form={entry.form} />
                   </td>
                 )}
-                <td className="number-cell">{entry.gameweekPoints}</td>
+                {showGameweek && <td className="number-cell">{entry.gameweekPoints}</td>}
                 <td className="number-cell total-cell">{formatNumber(entry.totalPoints)}</td>
                 {!compact && <td className="number-cell">{entry.totw}</td>}
               </tr>

@@ -23,8 +23,15 @@ function BracketMatch({ match }: { match: CupMatch }) {
           {matchStatusLabel(match.status)}
         </Pill>
       </div>
-      {[match.home, match.away].map((side) => (
-        <div className="bracket-side" data-winner={side.isWinner} key={side.managerId}>
+      {[
+        { slot: "home", side: match.home },
+        { slot: "away", side: match.away }
+      ].map(({ slot, side }) => (
+        <div
+          className="bracket-side"
+          data-winner={side.isWinner}
+          key={`${match.id}-${slot}-${side.managerId}`}
+        >
           <span>
             <strong>{side.teamName}</strong>
             <small>{side.managerName}</small>

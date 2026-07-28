@@ -100,8 +100,7 @@ class HttpFPLClient:
 
     async def picks(self, entry_id: int, gameweek: int) -> dict[str, Any]:
         return await self._get(
-            f"entry/{_positive_id(entry_id, 'entry_id')}/"
-            f"event/{_gameweek(gameweek)}/picks/"
+            f"entry/{_positive_id(entry_id, 'entry_id')}/event/{_gameweek(gameweek)}/picks/"
         )
 
     async def transfers(self, entry_id: int) -> list[dict[str, Any]]:

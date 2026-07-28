@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from vmf_api.core.errors import NotFoundError, RuleValidationError
 from vmf_api.domain.h2h_schedule import generate_round_robin_schedule
 from vmf_api.domain.rankings import H2HStanding, rank_h2h
-from vmf_api.models.enums import ManagerStatus, MatchStatus
+from vmf_api.models.enums import ManagerStatus, MatchStatus, RegistrationStatus
 from vmf_api.repositories.h2h import H2HRepository
 from vmf_api.repositories.managers import ManagerRepository
 from vmf_api.schemas.h2h import (
@@ -39,7 +39,10 @@ class H2HService:
         self,
         request: H2HScheduleGenerateRequest,
     ) -> H2HScheduleResponse:
-        managers = await self.manager_repository.list(status=ManagerStatus.ACTIVE)
+        managers = await self.manager_repository.list(
+            status=ManagerStatus.ACTIVE,
+            registration_status=RegistrationStatus.CONFIRMED,
+        )
         manager_ids = [manager.id for manager in managers]
         if len(manager_ids) != self.expected_manager_count:
             raise RuleValidationError(
@@ -71,9 +74,7 @@ class H2HService:
             raise NotFoundError(f"H2H schedule {schedule_id} not found")
         matches = await self.repository.list_matches(schedule_id=schedule_id)
         completed = [
-            match
-            for match in matches
-            if match.status in {MatchStatus.FINAL, MatchStatus.WALKOVER}
+            match for match in matches if match.status in {MatchStatus.FINAL, MatchStatus.WALKOVER}
         ]
         manager_ids = {
             manager_id

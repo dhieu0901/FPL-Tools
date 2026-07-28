@@ -18,6 +18,9 @@ export const viewport: Viewport = {
   themeColor: "#0a1020"
 };
 
+// Fetch league data at request-time so Vercel builds never depend on a live API.
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="vi">
@@ -38,7 +41,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="footer-status">
             <span />
-            Hệ thống vận hành
+            Minh bạch nguồn dữ liệu
           </div>
         </footer>
       </body>

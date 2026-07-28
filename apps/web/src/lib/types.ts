@@ -1,6 +1,6 @@
 export type Division = "HIGH" | "LOW";
-export type DataSource = "live" | "mock";
-export type MatchStatus = "scheduled" | "live" | "provisional" | "final";
+export type DataSource = "live" | "mock" | "unavailable";
+export type MatchStatus = "scheduled" | "live" | "provisional" | "final" | "walkover";
 export type ViolationStatus = "pending" | "confirmed" | "waived";
 export type ViolationSeverity = 1 | 2 | 3;
 
@@ -14,7 +14,7 @@ export interface GameweekStatus {
   number: number;
   name: string;
   state: "preseason" | "open" | "live" | "provisional" | "final";
-  deadline: string;
+  deadline: string | null;
   progress: number;
   fixturesComplete: number;
   fixturesTotal: number;
@@ -29,15 +29,15 @@ export interface LeagueMetric {
 
 export interface StandingEntry {
   rank: number;
-  previousRank: number;
+  previousRank: number | null;
   managerId: string;
   managerName: string;
   teamName: string;
   division: Division;
-  gameweekPoints: number;
+  gameweekPoints: number | null;
   totalPoints: number;
   totw: number;
-  violations: number;
+  violations: number | null;
   form: Array<"W" | "D" | "L">;
   qualification?: "title" | "championship" | "cup" | "playoff" | "safe" | "relegation";
 }
@@ -73,8 +73,9 @@ export interface H2HFixture {
   id: string;
   gameweek: number;
   group: string;
-  kickoff: string;
+  kickoff: string | null;
   status: MatchStatus;
+  walkoverReason?: string | null;
   home: FixtureSide;
   away: FixtureSide;
 }
@@ -136,13 +137,13 @@ export interface Manager {
   name: string;
   teamName: string;
   division: Division;
-  rank: number;
-  gameweekPoints: number;
-  totalPoints: number;
-  totw: number;
-  h2hPoints: number;
-  violations: number;
-  status: "active" | "locked" | "removed";
+  rank: number | null;
+  gameweekPoints: number | null;
+  totalPoints: number | null;
+  totw: number | null;
+  h2hPoints: number | null;
+  violations: number | null;
+  status: "active" | "suspended" | "removed" | "locked" | "deleted" | "pending_review";
   joinedAt: string;
 }
 
@@ -154,18 +155,26 @@ export interface Violation {
   division: Division;
   gameweek: number;
   reason: string;
-  transferCost: number;
+  transferCost: number | null;
   severity: ViolationSeverity;
+  occurrences?: number;
+  sourceStatus?:
+    | "detected"
+    | "pending_review"
+    | "approved_exception"
+    | "confirmed"
+    | "rejected"
+    | "overridden";
   status: ViolationStatus;
   impact: string[];
-  createdAt: string;
+  createdAt: string | null;
 }
 
 export interface DashboardData {
   season: string;
   gameweek: GameweekStatus;
   metrics: LeagueMetric[];
-  featuredFixture: H2HFixture;
+  featuredFixture: H2HFixture | null;
   standings: StandingEntry[];
   recentHighlights: Highlight[];
   notices: Array<{
@@ -183,10 +192,10 @@ export interface AdminOverview {
     lastSuccessfulAt: string;
     nextRunAt: string;
     latencySeconds: number;
-  };
+  } | null;
   counts: {
     managers: number;
-    provisionalScores: number;
+    provisionalScores: number | null;
     pendingViolations: number;
     lockedTeams: number;
   };

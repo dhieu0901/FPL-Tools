@@ -1,0 +1,52 @@
+import { type NextRequest, NextResponse } from "next/server";
+
+function constantTimeEqual(left: string, right: string): boolean {
+  const maximumLength = Math.max(left.length, right.length);
+  let difference = left.length ^ right.length;
+  for (let index = 0; index < maximumLength; index += 1) {
+    difference |= (left.charCodeAt(index) || 0) ^ (right.charCodeAt(index) || 0);
+  }
+  return difference === 0;
+}
+
+export function hasValidAdminCredentials(
+  authorization: string | null,
+  expectedUsername: string,
+  expectedPassword: string
+): boolean {
+  if (!authorization?.startsWith("Basic ")) return false;
+  try {
+    const decoded = atob(authorization.slice("Basic ".length));
+    return constantTimeEqual(decoded, `${expectedUsername}:${expectedPassword}`);
+  } catch {
+    return false;
+  }
+}
+
+export function proxy(request: NextRequest): NextResponse {
+  const username = process.env.VMF_ADMIN_UI_USER?.trim();
+  const password = process.env.VMF_ADMIN_UI_PASSWORD;
+
+  if (!username || !password || password.length < 16) {
+    return new NextResponse("Admin UI is not configured.", {
+      status: 503,
+      headers: { "Cache-Control": "no-store" }
+    });
+  }
+
+  if (!hasValidAdminCredentials(request.headers.get("authorization"), username, password)) {
+    return new NextResponse("Authentication required.", {
+      status: 401,
+      headers: {
+        "Cache-Control": "no-store",
+        "WWW-Authenticate": 'Basic realm="VMF Admin", charset="UTF-8"'
+      }
+    });
+  }
+
+  return NextResponse.next();
+}
+
+export const config = {
+  matcher: ["/admin/:path*"]
+};

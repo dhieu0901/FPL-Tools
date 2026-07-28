@@ -5,6 +5,15 @@ import { vmfApi } from "@/lib/api";
 
 export const metadata: Metadata = { title: "Managers" };
 
+const statusPresentation = {
+  active: { label: "Active", tone: "lime" },
+  locked: { label: "Locked", tone: "warning" },
+  suspended: { label: "Suspended", tone: "warning" },
+  pending_review: { label: "Pending", tone: "warning" },
+  removed: { label: "Removed", tone: "danger" },
+  deleted: { label: "Deleted", tone: "danger" }
+} as const;
+
 export default async function ManagersPage({
   searchParams
 }: {
@@ -22,7 +31,7 @@ export default async function ManagersPage({
     <>
       <PageHeader
         eyebrow="Cộng đồng"
-        title="32 managers. Một mùa giải."
+        title={`${result.data.length} managers. Một mùa giải.`}
         description="Hồ sơ thi đấu công khai chỉ hiển thị dữ liệu giải; thông tin cá nhân được giới hạn cho ban tổ chức."
         actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
       />
@@ -54,42 +63,32 @@ export default async function ManagersPage({
                 <h2>{manager.teamName}</h2>
                 <p>{manager.name}</p>
               </div>
-              <Pill
-                tone={
-                  manager.status === "active"
-                    ? "lime"
-                    : manager.status === "locked"
-                      ? "warning"
-                      : "danger"
-                }
-              >
-                {manager.status === "active"
-                  ? "Active"
-                  : manager.status === "locked"
-                    ? "Locked"
-                    : "Removed"}
+              <Pill tone={statusPresentation[manager.status].tone}>
+                {statusPresentation[manager.status].label}
               </Pill>
             </header>
             <div className="manager-card__stats">
               <span>
                 <small>Hạng</small>
-                <strong>#{manager.rank}</strong>
+                <strong>{manager.rank === null ? "—" : `#${manager.rank}`}</strong>
               </span>
               <span>
                 <small>Tổng điểm</small>
-                <strong>{formatNumber(manager.totalPoints)}</strong>
+                <strong>
+                  {manager.totalPoints === null ? "—" : formatNumber(manager.totalPoints)}
+                </strong>
               </span>
               <span>
                 <small>TotW</small>
-                <strong>{manager.totw}</strong>
+                <strong>{manager.totw ?? "—"}</strong>
               </span>
             </div>
             <footer>
               <span>
-                GW gần nhất <strong>{manager.gameweekPoints}</strong>
+                GW gần nhất <strong>{manager.gameweekPoints ?? "—"}</strong>
               </span>
               <span>
-                Violation <strong>{manager.violations}</strong>
+                Violation <strong>{manager.violations ?? "—"}</strong>
               </span>
             </footer>
           </article>

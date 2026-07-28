@@ -41,7 +41,9 @@ def test_fpl_client_uses_expected_public_json_paths() -> None:
         "/api/event/4/live/",
         "/api/leagues-classic/456/standings/?page_standings=2",
     ]
-    assert all(url.endswith(suffix) for url, suffix in zip(seen_paths, expected_suffixes, strict=True))
+    assert all(
+        url.endswith(suffix) for url, suffix in zip(seen_paths, expected_suffixes, strict=True)
+    )
 
 
 def test_fpl_client_wraps_status_errors_without_leaking_response_body() -> None:

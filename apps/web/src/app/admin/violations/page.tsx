@@ -4,6 +4,8 @@ import { Icon } from "@/components/icons";
 import { Avatar, DataBadge, PageHeader, Pill, SegmentedLinks } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { vmfApi } from "@/lib/api";
+import type { Violation } from "@/lib/types";
+import { reviewViolation } from "./actions";
 
 export const metadata: Metadata = { title: "Quản lý vi phạm" };
 
@@ -12,6 +14,87 @@ const statusLabel = {
   confirmed: "Đã xác nhận",
   waived: "Được miễn"
 };
+
+function ReviewActions({ violation }: { violation: Violation }) {
+  if (violation.status !== "pending") {
+    return (
+      <div className="violation-card__actions">
+        <button
+          className="secondary-button"
+          type="button"
+          disabled
+          title="Audit-log detail chưa có endpoint cho giao diện."
+        >
+          Xem audit log
+        </button>
+      </div>
+    );
+  }
+
+  const actions =
+    violation.sourceStatus === "detected"
+      ? [
+          {
+            value: "request_forgotten_chip_review",
+            label: "Yêu cầu kiểm tra chip",
+            className: "secondary-button"
+          },
+          {
+            value: "confirm",
+            label: "Xác nhận vi phạm",
+            className: "danger-button"
+          }
+        ]
+      : violation.sourceStatus === "pending_review"
+        ? [
+            {
+              value: "approve_exception",
+              label: "Duyệt ngoại lệ",
+              className: "secondary-button"
+            },
+            {
+              value: "reject_exception",
+              label: "Bác ngoại lệ",
+              className: "danger-button"
+            }
+          ]
+        : [];
+
+  if (actions.length === 0) {
+    return (
+      <div className="violation-card__actions">
+        <button className="secondary-button" type="button" disabled>
+          Dữ liệu minh hoạ · không thể review
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form action={reviewViolation} className="violation-card__actions">
+      <input type="hidden" name="violation_id" value={violation.id} />
+      <input
+        type="text"
+        name="note"
+        required
+        maxLength={2000}
+        placeholder="Ghi chú bắt buộc"
+        aria-label={`Ghi chú review violation ${violation.id}`}
+      />
+      {actions.map((action) => (
+        <button
+          className={action.className}
+          type="submit"
+          name="action"
+          value={action.value}
+          key={action.value}
+        >
+          {action.label}
+        </button>
+      ))}
+    </form>
+  );
+}
 
 export default async function AdminViolationsPage({
   searchParams
@@ -81,11 +164,17 @@ export default async function AdminViolationsPage({
             </div>
             <div className="violation-card__reason">
               <span className="severity" data-level={violation.severity}>
-                Cấp {violation.severity}
+                {(violation.occurrences ?? violation.severity) === 0
+                  ? "Không xác nhận"
+                  : `${violation.occurrences ?? violation.severity} lần trong bản ghi`}
               </span>
               <div>
                 <strong>{violation.reason}</strong>
-                <p>Transfer cost ghi nhận: −{violation.transferCost}</p>
+                <p>
+                  {violation.transferCost === null
+                    ? "Backend chưa trả transfer cost"
+                    : `Transfer cost ghi nhận: −${violation.transferCost}`}
+                </p>
               </div>
             </div>
             <div className="impact-list">
@@ -107,24 +196,11 @@ export default async function AdminViolationsPage({
               >
                 {statusLabel[violation.status]}
               </Pill>
-              <time>{formatDateTime(violation.createdAt)}</time>
+              <time>
+                {violation.createdAt ? formatDateTime(violation.createdAt) : "Chưa review"}
+              </time>
             </div>
-            <div className="violation-card__actions">
-              {violation.status === "pending" ? (
-                <>
-                  <button className="secondary-button" type="button">
-                    Yêu cầu bổ sung
-                  </button>
-                  <button className="danger-button" type="button">
-                    Xác nhận vi phạm
-                  </button>
-                </>
-              ) : (
-                <button className="secondary-button" type="button">
-                  Xem audit log
-                </button>
-              )}
-            </div>
+            <ReviewActions violation={violation} />
           </article>
         ))}
       </div>

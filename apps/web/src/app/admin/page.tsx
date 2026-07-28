@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { AdminNav } from "@/components/admin-nav";
 import { Icon } from "@/components/icons";
-import { DataBadge, PageHeader, Pill } from "@/components/ui";
+import { DataBadge, EmptyState, PageHeader, Pill } from "@/components/ui";
 import { formatDateTime } from "@/lib/format";
 import { vmfApi } from "@/lib/api";
 
@@ -25,13 +25,14 @@ export default async function AdminPage() {
         </div>
         <div>
           <span>Tình trạng đồng bộ</span>
-          <h2>Hệ thống hoạt động bình thường</h2>
+          <h2>{data.sync ? "Hệ thống hoạt động bình thường" : "Chưa có telemetry worker"}</h2>
           <p>
-            Thành công lúc {formatDateTime(data.sync.lastSuccessfulAt)} · Độ trễ{" "}
-            {data.sync.latencySeconds} giây
+            {data.sync
+              ? `Thành công lúc ${formatDateTime(data.sync.lastSuccessfulAt)} · Độ trễ ${data.sync.latencySeconds} giây`
+              : "Backend hiện chưa cung cấp endpoint trạng thái đồng bộ."}
           </p>
         </div>
-        <Pill tone="lime">Healthy</Pill>
+        <Pill tone={data.sync ? "lime" : "warning"}>{data.sync ? "Healthy" : "Unknown"}</Pill>
       </section>
       <section className="admin-stat-grid">
         <article>
@@ -41,8 +42,10 @@ export default async function AdminPage() {
         </article>
         <article>
           <span>Điểm tạm tính</span>
-          <strong>{data.counts.provisionalScores}</strong>
-          <small>Chờ finalize</small>
+          <strong>{data.counts.provisionalScores ?? "—"}</strong>
+          <small>
+            {data.counts.provisionalScores === null ? "Chưa có endpoint" : "Chờ finalize"}
+          </small>
         </article>
         <article data-tone="warning">
           <span>Violation chờ xử lý</span>
@@ -59,20 +62,27 @@ export default async function AdminPage() {
         <section className="panel-card">
           <div className="panel-title-row">
             <div>
-              <p className="eyebrow">GW13</p>
+              <p className="eyebrow">Theo gameweek</p>
               <h2>Điểm trung bình division</h2>
             </div>
             <Icon name="standings" size={22} />
           </div>
-          <div className="average-list">
-            {data.divisionAverages.map((item) => (
-              <article key={item.division}>
-                <span>Division {item.division}</span>
-                <strong>{item.average}</strong>
-                <small>{item.eligibleManagers} managers hợp lệ</small>
-              </article>
-            ))}
-          </div>
+          {data.divisionAverages.length > 0 ? (
+            <div className="average-list">
+              {data.divisionAverages.map((item) => (
+                <article key={item.division}>
+                  <span>Division {item.division}</span>
+                  <strong>{item.average}</strong>
+                  <small>{item.eligibleManagers} managers hợp lệ</small>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="Chưa có dữ liệu trung bình"
+              description="Backend chưa cung cấp endpoint division average."
+            />
+          )}
           <p className="panel-note">
             Team locked/removed và điểm replacement không được đưa vào mẫu tính.
           </p>
@@ -83,22 +93,29 @@ export default async function AdminPage() {
               <p className="eyebrow">Worker log</p>
               <h2>Tác vụ gần đây</h2>
             </div>
-            <Pill tone="lime">60s polling</Pill>
+            <Pill tone="warning">Probe 15 phút</Pill>
           </div>
-          <div className="job-list">
-            {data.recentJobs.map((job) => (
-              <article key={job.id}>
-                <span className="job-status" data-status={job.status}>
-                  <Icon name={job.status === "success" ? "check" : "clock"} size={15} />
-                </span>
-                <div>
-                  <strong>{job.name}</strong>
-                  <small>{formatDateTime(job.startedAt)}</small>
-                </div>
-                <span>{job.duration}</span>
-              </article>
-            ))}
-          </div>
+          {data.recentJobs.length > 0 ? (
+            <div className="job-list">
+              {data.recentJobs.map((job) => (
+                <article key={job.id}>
+                  <span className="job-status" data-status={job.status}>
+                    <Icon name={job.status === "success" ? "check" : "clock"} size={15} />
+                  </span>
+                  <div>
+                    <strong>{job.name}</strong>
+                    <small>{formatDateTime(job.startedAt)}</small>
+                  </div>
+                  <span>{job.duration}</span>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <EmptyState
+              title="Chưa có worker log"
+              description="Backend chưa cung cấp endpoint lịch sử tác vụ."
+            />
+          )}
         </section>
       </div>
     </>

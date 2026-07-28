@@ -3,7 +3,8 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from vmf_api.api.deps import AdminActorDep, SessionDep
-from vmf_api.models.enums import Division, ManagerStatus
+from vmf_api.core.errors import NotFoundError
+from vmf_api.models.enums import Division, ManagerStatus, RegistrationStatus
 from vmf_api.schemas.managers import (
     ManagerAdmin,
     ManagerCreate,
@@ -21,13 +22,19 @@ async def list_managers(
     division: Annotated[Division | None, Query()] = None,
     manager_status: Annotated[ManagerStatus | None, Query(alias="status")] = None,
 ) -> list[ManagerPublic]:
-    managers = await ManagerService(session).list(division=division, status=manager_status)
+    managers = await ManagerService(session).list(
+        division=division,
+        status=manager_status,
+        registration_status=RegistrationStatus.CONFIRMED,
+    )
     return [ManagerPublic.model_validate(manager) for manager in managers]
 
 
 @router.get("/{manager_id}", response_model=ManagerPublic)
 async def get_manager(manager_id: int, session: SessionDep) -> ManagerPublic:
     manager = await ManagerService(session).get(manager_id)
+    if manager.registration_status != RegistrationStatus.CONFIRMED:
+        raise NotFoundError(f"manager {manager_id} not found")
     return ManagerPublic.model_validate(manager)
 
 

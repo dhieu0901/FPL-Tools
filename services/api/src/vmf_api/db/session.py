@@ -9,17 +9,37 @@ from sqlalchemy.ext.asyncio import (
     async_sessionmaker,
     create_async_engine,
 )
+from sqlalchemy.pool import NullPool
 
-from vmf_api.core.config import get_settings
+from vmf_api.core.config import Settings, get_settings
+
+
+def create_engine(settings: Settings) -> AsyncEngine:
+    """Create an engine suitable for either local or serverless execution."""
+
+    engine_options: dict[str, object] = {
+        "echo": settings.sql_echo,
+        "pool_pre_ping": True,
+    }
+    if settings.database_use_null_pool:
+        # Supavisor already owns the shared pool. Keeping another process-local
+        # pool in an autoscaling function wastes scarce database connections.
+        engine_options["poolclass"] = NullPool
+
+    if (
+        settings.database_url.startswith("postgresql+psycopg")
+        and settings.database_disable_prepared_statements
+    ):
+        # Supavisor transaction mode cannot retain session-scoped prepared
+        # statements. Psycopg 3 can disable automatic preparation completely.
+        engine_options["connect_args"] = {"prepare_threshold": None}
+
+    return create_async_engine(settings.database_url, **engine_options)
+
 
 @lru_cache(maxsize=1)
 def get_engine() -> AsyncEngine:
-    settings = get_settings()
-    return create_async_engine(
-        settings.database_url,
-        echo=settings.sql_echo,
-        pool_pre_ping=True,
-    )
+    return create_engine(get_settings())
 
 
 @lru_cache(maxsize=1)

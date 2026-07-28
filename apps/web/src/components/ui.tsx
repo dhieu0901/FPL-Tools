@@ -58,11 +58,17 @@ export function SectionHeader({
 
 export function DataBadge({ source, updatedAt }: { source: DataSource; updatedAt: string }) {
   const isMock = source === "mock";
+  const label =
+    source === "mock"
+      ? "Dữ liệu minh hoạ"
+      : source === "unavailable"
+        ? "Chưa có nguồn dữ liệu"
+        : "Đã kết nối API";
   return (
-    <div className="data-badge" data-mock={isMock}>
+    <div className="data-badge" data-mock={isMock} data-unavailable={source === "unavailable"}>
       <span className="data-badge__dot" />
-      <span>{isMock ? "Dữ liệu minh hoạ" : "Dữ liệu trực tiếp"}</span>
-      <span className="data-badge__time">· {formatDateTime(updatedAt)}</span>
+      <span>{label}</span>
+      <span className="data-badge__time">· phản hồi {formatDateTime(updatedAt)}</span>
     </div>
   );
 }

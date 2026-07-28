@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import BigInteger, Boolean, Enum, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, BigInteger, Boolean, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from vmf_api.db.base import Base, TimestampMixin

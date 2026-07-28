@@ -40,9 +40,7 @@ class ClassicRepository:
             select(
                 ManagerGameweekScore.manager_id.label("manager_id"),
                 func.count(ManagerGameweekScore.id).label("gameweeks_scored"),
-                func.coalesce(func.sum(ManagerGameweekScore.net_points), 0).label(
-                    "season_points"
-                ),
+                func.coalesce(func.sum(ManagerGameweekScore.net_points), 0).label("season_points"),
                 func.coalesce(
                     func.sum(case((ManagerGameweekScore.is_totw.is_(True), 1), else_=0)),
                     0,

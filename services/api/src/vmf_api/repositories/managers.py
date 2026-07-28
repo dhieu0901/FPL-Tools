@@ -3,7 +3,7 @@ from __future__ import annotations
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from vmf_api.models.enums import Division, ManagerStatus
+from vmf_api.models.enums import Division, ManagerStatus, RegistrationStatus
 from vmf_api.models.manager import Manager
 
 
@@ -16,12 +16,15 @@ class ManagerRepository:
         *,
         division: Division | None = None,
         status: ManagerStatus | None = None,
+        registration_status: RegistrationStatus | None = None,
     ) -> list[Manager]:
         statement = select(Manager).order_by(Manager.division, Manager.team_name, Manager.id)
         if division is not None:
             statement = statement.where(Manager.division == division)
         if status is not None:
             statement = statement.where(Manager.active_status == status)
+        if registration_status is not None:
+            statement = statement.where(Manager.registration_status == registration_status)
         return list((await self.session.scalars(statement)).all())
 
     async def get(self, manager_id: int) -> Manager | None:

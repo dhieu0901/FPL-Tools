@@ -366,6 +366,11 @@ h1 {
   border-color: rgba(255, 196, 91, 0.2);
 }
 
+.data-badge[data-unavailable="true"] {
+  background: rgba(148, 163, 184, 0.06);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
 .data-badge__dot {
   width: 6px;
   height: 6px;
@@ -376,6 +381,11 @@ h1 {
 
 .data-badge[data-mock="true"] .data-badge__dot {
   background: var(--warning);
+  box-shadow: none;
+}
+
+.data-badge[data-unavailable="true"] .data-badge__dot {
+  background: var(--ink-3);
   box-shadow: none;
 }
 
@@ -1394,9 +1404,14 @@ h1 {
   gap: 9px;
 }
 
-.compact-select span {
+.compact-select span,
+.compact-select label {
   color: var(--ink-3);
   font-size: 11px;
+}
+
+.compact-select .secondary-button {
+  min-height: 38px;
 }
 
 .compact-select select {
@@ -2295,8 +2310,21 @@ h1 {
   grid-column: 1 / -1;
   padding-top: 12px;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   border-top: 1px solid var(--line);
+}
+
+.violation-card__actions input {
+  min-width: min(260px, 100%);
+  min-height: 34px;
+  padding: 0 11px;
+  flex: 1;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+  font: inherit;
 }
 
 .violation-card__actions button {

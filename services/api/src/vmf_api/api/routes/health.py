@@ -5,6 +5,7 @@ from sqlalchemy import text
 
 from vmf_api import __version__
 from vmf_api.api.deps import SessionDep, SettingsDep
+from vmf_api.db.schema import SCHEMA_REVISION
 from vmf_api.schemas.common import HealthResponse
 
 router = APIRouter(tags=["health"])
@@ -28,7 +29,9 @@ async def readiness(
     response: Response,
 ) -> HealthResponse:
     try:
-        await session.execute(text("SELECT 1"))
+        revision = await session.scalar(text("SELECT version_num FROM alembic_version"))
+        if revision != SCHEMA_REVISION:
+            raise RuntimeError("database schema is not at repository head")
         database = "ok"
         health_status = "ok"
     except Exception:  # The response deliberately hides driver/credential details.
