@@ -146,7 +146,20 @@ Import `dhieu0901/FPL-Tools` into a Vercel Hobby project:
 - Project name: `vmf-api`, or an equivalent free name.
 - Root directory: `services/api`.
 - Production branch: `main`.
-- Framework: let Vercel detect FastAPI from the project entrypoint.
+- Framework preset: **Other**. The project ships its own
+  `services/api/vercel.json`, which rewrites every path to the ASGI
+  application exported from `services/api/api/index.py` and raises the function
+  limit to 60 seconds for the synchronization job.
+- Leave the install command at its default. Vercel installs from
+  `services/api/requirements.txt`, which is generated from `uv.lock`:
+
+  ```bash
+  uv export --format requirements-txt --no-dev --no-emit-project \
+    --no-hashes -o requirements.txt
+  ```
+
+  CI fails if that file drifts from the lock file, so regenerate it whenever a
+  dependency changes.
 - In **Settings → Functions → Function Region**, choose the same region as
   Supabase, for example Singapore. Vercel defaults to `iad1` (Washington,
   D.C.); leaving that default while the database is in Asia adds latency. Hobby

@@ -22,6 +22,21 @@ jobs:
           cache: pip
       - run: python -m pip install uv==0.11.33
       - run: uv sync --locked --extra dev
+      - name: Verify requirements.txt matches the lock file
+        shell: bash
+        run: |
+          # Vercel installs from requirements.txt, so drift against uv.lock
+          # would ship versions to production that CI never tested. Only the
+          # pins are compared, because the header comment and layout differ
+          # between uv releases.
+          strip() { grep -v '^\s*#' "$1" | sed 's/\s*#.*//' | grep -v '^\s*$' | sort; }
+          uv export --format requirements-txt --no-dev --no-emit-project \
+            --no-hashes -o requirements.expected.txt
+          if ! diff -u <(strip requirements.txt) <(strip requirements.expected.txt); then
+            echo "::error::requirements.txt is stale; regenerate it with uv export"
+            exit 1
+          fi
+          rm requirements.expected.txt
       - run: .venv/bin/ruff check src tests
       - run: .venv/bin/ruff format --check src tests
       - run: .venv/bin/python -m pytest
