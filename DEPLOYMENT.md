@@ -1,114 +1,120 @@
-# Triển khai miễn phí: Vercel Hobby + Supabase Free
+# Free deployment: Vercel Hobby + Supabase Free
 
-Cập nhật: 28/07/2026.
+Updated: 28 July 2026.
 
-Stack production đề xuất cho 40 HLV là:
+The recommended production stack for 40 managers is:
 
 ```text
-Trình duyệt
-  -> Vercel Project vmf-web (Next.js, root apps/web)
-  -> Vercel Project vmf-api (FastAPI Function, root services/api)
+Browser
+  -> Vercel project vmf-web (Next.js, root apps/web)
+  -> Vercel project vmf-api (FastAPI Function, root services/api)
   -> Supabase Free (PostgreSQL + Vault + Cron)
-  -> FPL public API
+  -> the public FPL API
 ```
 
-Không cần Docker trên production. `compose.yaml` chỉ dùng để phát triển và kiểm
-thử local.
+Docker is not needed in production. `compose.yaml` exists for local development
+and testing only.
 
-## Điều kiện để giữ chi phí 0 đồng
+## Conditions for keeping the cost at zero
 
-- Dùng Vercel Hobby cho dự án cá nhân, phi thương mại và tuân thủ
-  [Fair Use](https://vercel.com/docs/plans/hobby). Nếu vận hành dịch vụ thu phí
-  hoặc vì lợi nhuận, cần kiểm tra lại điều khoản trước khi đưa giải lên thật.
-- Repository thuộc tài khoản GitHub cá nhân. Vercel Hobby không kết nối private
-  repository thuộc GitHub Organization.
-- Không thêm thẻ/nâng plan trên Supabase; theo dõi Usage để luôn ở trong quota.
-- Chấp nhận không có SLA, Supabase có thể pause khi ít hoạt động và log Vercel
-  Hobby chỉ giữ trong thời gian ngắn.
-- Tự sao lưu database ra ngoài Supabase. Free plan không bao gồm automatic
-  backups có thể phục hồi từ Dashboard.
+- Vercel Hobby is for personal, non-commercial projects under
+  [Fair Use](https://vercel.com/docs/plans/hobby). If the league becomes a paid
+  or for-profit service, re-read the terms before going live.
+- The repository belongs to a personal GitHub account. Vercel Hobby cannot
+  connect a private repository owned by a GitHub Organization.
+- Do not add a card or upgrade the Supabase plan; watch Usage to stay inside
+  the quota.
+- Accept that there is no SLA, that Supabase may pause an inactive project, and
+  that Vercel Hobby keeps logs only briefly.
+- Back the database up yourself, outside Supabase. The Free plan has no
+  automatic backups recoverable from the dashboard.
 
-Các giới hạn có thể thay đổi; xem mục [Quota cần theo dõi](#quota-cần-theo-dõi)
-và kiểm tra lại dashboard trước khi mùa giải bắt đầu.
+Limits change. Read [Quotas to watch](#quotas-to-watch) and re-check both
+dashboards before the season starts.
 
-## 1. Tạo Supabase Free project
+## 1. Create the Supabase Free project
 
-1. Tạo một project tại [Supabase Dashboard](https://supabase.com/dashboard),
-   chọn region gần người dùng và lưu database password trong password manager.
-   Với người dùng chủ yếu ở Việt Nam, Singapore thường là lựa chọn gần nhất nếu
-   đang được cung cấp.
-2. Trong **Connect**, lấy hai connection string:
-   - **Transaction pooler**, cổng `6543`: chỉ dùng cho API serverless trên
-     Vercel.
-   - **Session pooler**, cổng `5432`: chỉ dùng cho Alembic migration và
-     `pg_dump` khi máy chạy lệnh không có IPv6.
-3. Tạo hai bản của Session pooler URL:
-   - URL cho SQLAlchemy/Alembic dùng scheme `postgresql+psycopg://`.
-   - URL cho Supabase CLI/`pg_dump` giữ nguyên scheme chuẩn
-     `postgresql://`. Các công cụ libpq không hiểu scheme
+1. Create a project in the
+   [Supabase dashboard](https://supabase.com/dashboard), pick the region
+   closest to your users and store the database password in a password
+   manager. For users in Vietnam, Singapore is usually the nearest region on
+   offer.
+2. In **Connect**, take two connection strings:
+   - the **transaction pooler**, port `6543`: for the serverless API on Vercel
+     only;
+   - the **session pooler**, port `5432`: for Alembic migrations and `pg_dump`
+     when the machine running them has no IPv6.
+3. Produce two variants of the session-pooler URL:
+   - the SQLAlchemy/Alembic variant uses the `postgresql+psycopg://` scheme;
+   - the Supabase CLI and `pg_dump` variant keeps the standard
+     `postgresql://` scheme, because libpq tools do not understand
      `postgresql+psycopg://`.
-   Transaction pooler URL của API cũng đổi sang `postgresql+psycopg://`.
-   Giữ nguyên username, host, port và database do Dashboard cung cấp. Nếu tự
-   ghép URL, database password phải được URL-encode.
+   The API's transaction-pooler URL also uses `postgresql+psycopg://`. Keep the
+   username, host, port and database exactly as the dashboard supplies them. If
+   you assemble a URL by hand, URL-encode the password.
 
-Ví dụ cấu trúc, không phải credential thật:
+Structural example, not a real credential:
 
 ```text
 # Runtime, transaction pooler
 postgresql+psycopg://postgres.<project-ref>:<url-encoded-password>@aws-0-<region>.pooler.supabase.com:6543/postgres?sslmode=require
 
-# Migration bằng SQLAlchemy/Alembic, session pooler
+# Migrations through SQLAlchemy/Alembic, session pooler
 postgresql+psycopg://postgres.<project-ref>:<url-encoded-password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
 
-# Backup bằng Supabase CLI/pg_dump, cùng session pooler nhưng scheme libpq
+# Backups through the Supabase CLI or pg_dump, same pooler, libpq scheme
 postgresql://postgres.<project-ref>:<url-encoded-password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require
 ```
 
-Transaction pooler dành cho workload serverless nhưng không hỗ trợ prepared
-statements. API vì vậy dùng psycopg 3 với `NullPool` và
-`prepare_threshold=None`. Xem [Supabase: kết nối Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres)
-và [SQLAlchemy trên Supabase](https://supabase.com/docs/guides/troubleshooting/using-sqlalchemy-with-supabase-FUqebT).
+The transaction pooler is built for serverless workloads but does not support
+prepared statements. The API therefore uses psycopg 3 with `NullPool` and
+`prepare_threshold=None`. See
+[Supabase: connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres)
+and [SQLAlchemy on Supabase](https://supabase.com/docs/guides/troubleshooting/using-sqlalchemy-with-supabase-FUqebT).
 
-Trong **Database Settings -> SSL Configuration**, bật **Enforce SSL on incoming
-connections**. `sslmode=require` là mức tối thiểu cho Vercel; trước ngày khai
-mạc nên chuyển sang `verify-full` với CA certificate tải từ Dashboard nếu quy
-trình quản lý certificate đã được kiểm thử.
+In **Database Settings → SSL Configuration**, enable **Enforce SSL on incoming
+connections**. `sslmode=require` is the minimum for Vercel; before the opening
+weekend, move to `verify-full` with the CA certificate from the dashboard once
+your certificate handling has been tested.
 
-## 2. Migration an toàn
+## 2. Safe migrations
 
-Không chạy migration trong Vercel Build Command hoặc lúc FastAPI khởi động.
-Hai Vercel project có thể build song song và serverless function có thể chạy
-đồng thời, khiến schema bị cập nhật lặp.
+Never run migrations from the Vercel build command or at FastAPI startup. Two
+Vercel projects can build in parallel and serverless functions can run
+concurrently, which would apply the schema more than once.
 
-### Lần đầu trên database rỗng
+### First run against an empty database
 
-1. Tạo GitHub Actions secret `SUPABASE_MIGRATION_DATABASE_URL` bằng **Session
-   pooler URL cổng 5432**, không phải URL runtime 6543.
-2. Vào **Actions -> Apply database migrations -> Run workflow** trên nhánh
-   `main`.
-3. Đánh dấu đã kiểm tra backup, hoặc xác nhận đây là database mới hoàn toàn
-   rỗng; nhập chính xác `MIGRATE`.
-4. Ở lần đầu, nhập thêm:
+1. Create the GitHub Actions secret `SUPABASE_MIGRATION_DATABASE_URL` from the
+   **session pooler URL on port 5432**, not the runtime URL on 6543.
+2. Open **Actions → Apply database migrations → Run workflow** on `main`.
+3. Confirm that a backup was checked, or that this is a genuinely empty new
+   database, and type `MIGRATE` exactly.
+4. On the first run, also supply:
    - `season_code`: `2026/27`
    - `season_name`: `VMF Fantasy League 2026/27`
-   Để trống cả hai ở các lần migration sau.
-5. Workflow `.github/workflows/migrate.yml` sẽ chạy `alembic upgrade head`, xác
-   nhận revision hiện tại, rồi gọi bootstrap idempotent nếu có hai input mùa
-   giải. Bootstrap tạo Season DRAFT, 38 Gameweek và sáu phase Classic/H2H/Cup;
-   nó dừng an toàn nếu dữ liệu hiện hữu lệch luật thay vì tự ghi đè.
-6. Mở **Security Advisor** và xác nhận toàn bộ bảng VMF đã bật RLS. Migration
-   hardening không tạo policy cho `anon`/`authenticated` và thu hồi quyền Data
-   API; frontend chỉ truy cập dữ liệu qua FastAPI. Trong **API Settings**, bỏ
-   `public` khỏi exposed schemas nếu project không dùng Supabase Data API.
 
-### Các lần nâng schema sau
+   Leave both blank on later migrations.
+5. `.github/workflows/migrate.yml` runs `alembic upgrade head`, confirms the
+   current revision, then calls the idempotent bootstrap when both season
+   inputs are present. The bootstrap creates a DRAFT season, 38 Gameweeks and
+   the six Classic/H2H/Cup phases; it stops safely if existing data disagrees
+   with the rules instead of overwriting it.
+6. Open **Security Advisor** and confirm that every VMF table has row-level
+   security enabled. The hardening migration creates no policy for `anon` or
+   `authenticated` and revokes Data API privileges; the frontend reaches data
+   only through FastAPI. In **API Settings**, remove `public` from the exposed
+   schemas if the project does not use the Supabase Data API.
 
-1. Tạm dừng job `vmf-fpl-probe` trong Supabase Cron nếu migration ảnh hưởng ghi
-   dữ liệu.
-2. Tạo logical backup bằng **URL libpq `postgresql://`**, không dùng URL
-   SQLAlchemy `postgresql+psycopg://`. Phương án không cần Docker là cài
-   PostgreSQL client (`pg_dump`/`pg_restore`) trên máy quản trị; schema được
-   dựng lại từ Alembic, dump chỉ chứa dữ liệu ứng dụng:
+### Later schema upgrades
+
+1. Pause the `vmf-fpl-sync` job in Supabase Cron if the migration affects
+   writes.
+2. Take a logical backup using the **libpq `postgresql://` URL**, not the
+   SQLAlchemy `postgresql+psycopg://` one. The Docker-free option is to install
+   the PostgreSQL client (`pg_dump`/`pg_restore`) on the administrator's
+   machine; the schema is rebuilt by Alembic, so the dump carries application
+   data only:
 
    ```bash
    pg_dump "$SUPABASE_BACKUP_URL" \
@@ -120,48 +126,51 @@ Hai Vercel project có thể build song song và serverless function có thể c
    pg_restore --list vmf-data.dump
    ```
 
-   Lưu file dump cùng commit Git đang chạy và kết quả row count. Nếu chọn
-   Supabase CLI thay thế thì CLI cần Docker trên **máy backup** (production vẫn
-   không cần Docker), và phải tạo đủ `roles.sql`, `schema.sql`, `data.sql` bằng
-   `--role-only`, mặc định, rồi `--data-only --use-copy`; lệnh mặc định một mình
-   không chứa dữ liệu. Xem
+   Store the dump next to the Git commit it came from, together with the row
+   counts. If you prefer the Supabase CLI, it needs Docker **on the backup
+   machine** (production still does not), and you must produce `roles.sql`,
+   `schema.sql` and `data.sql` using `--role-only`, the default, and then
+   `--data-only --use-copy`; the default command alone contains no data. See
    [Supabase CLI `db dump`](https://supabase.com/docs/reference/cli/supabase-db-dump).
-3. Deploy code tương thích cả schema cũ và mới nếu có thể.
-4. Chạy workflow migration thủ công.
-5. Kiểm tra `/health/ready` và các trang chính trước khi bật lại cron.
+3. Deploy code compatible with both the old and the new schema where possible.
+4. Run the migration workflow manually.
+5. Check `/health/ready` and the main pages before re-enabling cron.
 
-Không lưu database URL trong repository, workflow log, ảnh chụp màn hình hay
-biến `NEXT_PUBLIC_*`.
+Never store a database URL in the repository, a workflow log, a screenshot or a
+`NEXT_PUBLIC_*` variable.
 
-## 3. Deploy FastAPI lên Vercel
+## 3. Deploy FastAPI to Vercel
 
-Import `dhieu0901/FPL-Tools` vào một Vercel Hobby project:
+Import `dhieu0901/FPL-Tools` into a Vercel Hobby project:
 
-- Project Name: `vmf-api` hoặc tên còn trống tương đương.
-- Root Directory: `services/api`.
-- Production Branch: `main`.
-- Framework: để Vercel nhận diện FastAPI từ entrypoint của project.
-- Trong **Settings -> Functions -> Function Region**, chọn cùng khu vực với
-  Supabase (ví dụ Singapore). Vercel mặc định chạy function tại `iad1`
-  (Washington, D.C.); để mặc định trong khi database ở châu Á sẽ tăng độ trễ.
-  Hobby được chọn một region, theo
+- Project name: `vmf-api`, or an equivalent free name.
+- Root directory: `services/api`.
+- Production branch: `main`.
+- Framework: let Vercel detect FastAPI from the project entrypoint.
+- In **Settings → Functions → Function Region**, choose the same region as
+  Supabase, for example Singapore. Vercel defaults to `iad1` (Washington,
+  D.C.); leaving that default while the database is in Asia adds latency. Hobby
+  allows one region, per
   [Vercel Function regions](https://vercel.com/docs/functions/configuring-functions/region).
 
-Thêm các biến sau cho **Production**. Preview có thể dùng một Supabase project
-thứ hai; không để Preview ghi vào database production.
+Add the following **Production** variables. Preview may use a second Supabase
+project; never let Preview write to the production database.
 
-| Tên | Giá trị |
+| Name | Value |
 | --- | --- |
 | `VMF_ENVIRONMENT` | `production` |
-| `VMF_DATABASE_URL` | Transaction pooler URL cổng `6543` |
+| `VMF_DATABASE_URL` | Transaction pooler URL, port `6543` |
 | `VMF_DATABASE_USE_NULL_POOL` | `true` |
 | `VMF_DATABASE_DISABLE_PREPARED_STATEMENTS` | `true` |
-| `VMF_ADMIN_API_KEY` | Chuỗi ngẫu nhiên riêng, tối thiểu 32 byte |
-| `CRON_SECRET` | Chuỗi ngẫu nhiên khác, tối thiểu 32 byte |
+| `VMF_ADMIN_API_KEY` | A dedicated random string, at least 32 bytes |
+| `CRON_SECRET` | A different random string, at least 32 bytes |
 | `VMF_CORS_ORIGINS` | `["https://<web-project>.vercel.app"]` |
 | `VMF_FPL_BASE_URL` | `https://fantasy.premierleague.com/api` |
+| `VMF_ACTIVE_SEASON_CODE` | `2026/27` |
+| `VMF_SYNC_MANAGER_BATCH_SIZE` | `10`, raise only after measuring the run time |
 
-Không đặt `VMF_MIGRATION_DATABASE_URL` trên Vercel. Sau lần deploy đầu, kiểm tra:
+Do not set `VMF_MIGRATION_DATABASE_URL` on Vercel. After the first deployment,
+check:
 
 ```text
 https://<api-project>.vercel.app/health/live
@@ -169,50 +178,52 @@ https://<api-project>.vercel.app/health/ready
 https://<api-project>.vercel.app/api/fpl/status
 ```
 
-`live` xác nhận function chạy; `ready` chỉ đạt `200` khi database kết nối được
-và revision Alembic đúng bằng `head` của code đang deploy. `fpl/status` phải
-trả trạng thái GW quan sát trực tiếp từ FPL thay vì suy đoán theo lịch H2H.
-Production cố ý tắt `/docs`.
+`live` confirms the function runs. `ready` returns `200` only when the database
+is reachable and the Alembic revision matches the head of the deployed code.
+`fpl/status` must return a Gameweek state observed directly from FPL rather
+than inferred from the H2H schedule. `/docs` is deliberately disabled in
+production.
 
-## 4. Deploy Next.js lên Vercel
+## 4. Deploy Next.js to Vercel
 
-Import cùng repository lần thứ hai:
+Import the same repository a second time:
 
-- Project Name: `vmf-web` hoặc tên còn trống tương đương.
-- Root Directory: `apps/web`.
-- Production Branch: `main`.
-- Framework Preset: Next.js.
+- Project name: `vmf-web`, or an equivalent free name.
+- Root directory: `apps/web`.
+- Production branch: `main`.
+- Framework preset: Next.js.
 
-Biến môi trường Production:
+Production environment variables:
 
-| Tên | Giá trị |
+| Name | Value |
 | --- | --- |
 | `VMF_API_URL` | `https://<api-project>.vercel.app/api` |
 | `VMF_USE_MOCK_DATA` | `false` |
-| `VMF_SEASON_ID` | ID season sau khi khởi tạo dữ liệu, ví dụ `1` |
-| `VMF_H2H_SCHEDULE_ID` | ID schedule H2H sau khi admin tạo, ví dụ `1` |
+| `VMF_SEASON_ID` | The season ID after the data is initialized, for example `1` |
+| `VMF_H2H_SCHEDULE_ID` | The H2H schedule ID after an administrator creates it, for example `1` |
 | `VMF_SEASON_LABEL` | `2026/27` |
-| `VMF_ADMIN_API_KEY` | Cùng giá trị với API project |
+| `VMF_ADMIN_API_KEY` | The same value as in the API project |
 | `VMF_ADMIN_ACTOR` | `vmf-web` |
-| `VMF_ADMIN_UI_USER` | Username riêng cho khu vực `/admin` |
-| `VMF_ADMIN_UI_PASSWORD` | Mật khẩu dài, khác mọi secret còn lại |
+| `VMF_ADMIN_UI_USER` | A dedicated username for `/admin` |
+| `VMF_ADMIN_UI_PASSWORD` | A long password, different from every other secret |
 
-Các biến trên được frontend đọc ở server runtime; không đổi tên secret sang
-prefix `NEXT_PUBLIC_` vì prefix đó làm giá trị xuất hiện trong browser bundle.
-Sau khi biết URL web thật, cập nhật `VMF_CORS_ORIGINS` của API bằng đúng origin
-đó và redeploy API. Không dùng `*` cho production CORS.
+The frontend reads these at server runtime. Never rename a secret to the
+`NEXT_PUBLIC_` prefix, which would place its value in the browser bundle. Once
+the real web URL is known, set the API's `VMF_CORS_ORIGINS` to that exact
+origin and redeploy the API. Never use `*` for production CORS.
 
-Mỗi push lên `main` sẽ tạo deployment cho cả hai project. Vercel Hobby chỉ có
-một concurrent build nên hai build có thể xếp hàng; đây không phải lỗi.
+Every push to `main` creates a deployment for both projects. Vercel Hobby
+allows one concurrent build, so the two may queue; that is not an error.
 
-## 5. Hoàn tất dữ liệu khởi tạo
+## 5. Complete the initial data
 
-Migration và bootstrap mùa không tự bịa roster. Trước khi công bố:
+Migrations and the season bootstrap never invent a roster. Before going public:
 
-1. Lấy `season_id` từ log bước **Bootstrap season metadata**, đặt giá trị đó
-   vào `VMF_SEASON_ID` của web.
-2. Tạo đủ 40 manager bằng `POST /api/managers` với `X-Admin-Key`. Hồ sơ chỉ
-   xuất hiện công khai khi `registration_status=confirmed`. Ví dụ một bản ghi:
+1. Take `season_id` from the **Bootstrap season metadata** step's log and put
+   it in the web project's `VMF_SEASON_ID`.
+2. Create all 40 managers with `POST /api/managers` and `X-Admin-Key`. A
+   profile only appears publicly once `registration_status=confirmed`. One
+   record looks like this:
 
    ```bash
    curl --fail-with-body \
@@ -222,18 +233,19 @@ Migration và bootstrap mùa không tự bịa roster. Trước khi công bố:
      -H "X-Admin-Actor: preseason-import" \
      -d '{
        "fpl_entry_id": 123456,
-       "manager_name": "Tên HLV",
-       "team_name": "Tên đội FPL",
+       "manager_name": "Manager name",
+       "team_name": "FPL team name",
        "division": "HIGH",
        "season_joined": "2026/27",
        "registration_status": "confirmed"
      }'
    ```
 
-   Không commit file roster có số điện thoại/Facebook. Gửi từng record hoặc
-   dùng script import cục bộ lấy secret từ environment.
-3. Chỉ sau khi API công khai trả đúng 20 manager HIGH + 20 manager LOW, tạo
-   lịch H2H đúng một lần:
+   Never commit a roster file containing phone numbers or Facebook URLs. Send
+   the records one at a time, or use a local import script that reads its
+   secret from the environment.
+3. Only once the public API returns exactly 20 HIGH and 20 LOW managers,
+   generate the H2H schedule exactly once:
 
    ```bash
    curl --fail-with-body \
@@ -249,118 +261,137 @@ Migration và bootstrap mùa không tự bịa roster. Trước khi công bố:
      }'
    ```
 
-   Thay `season_id` bằng ID thật. Endpoint chỉ lấy manager vừa **active** vừa
-   **confirmed**, yêu cầu đúng 40 người, tạo 35 GW × 20 trận = 700 trận và trả
-   `schedule_id`.
-4. Đặt `VMF_H2H_SCHEDULE_ID` của web bằng `schedule_id`, redeploy web, rồi đối
-   chiếu GW1 và GW35. Không gọi endpoint generate lần hai cho cùng mùa.
+   Replace `season_id` with the real ID. The endpoint uses only managers that
+   are both **active** and **confirmed**, requires exactly 40 of them, creates
+   35 × 20 = 700 matches and returns a `schedule_id`.
+4. Set the web project's `VMF_H2H_SCHEDULE_ID` to that `schedule_id`, redeploy
+   the web project, then check GW1 and GW35. Never call the generate endpoint a
+   second time for the same season.
 
-Cup chưa cần bracket trước mùa: competition/round/match chỉ được tạo sau khi có
-kết quả xét suất theo các mốc luật. Pipeline persistence đầy đủ vẫn phải được
-hoàn thiện trước khi dùng điểm live để vận hành thật; cron ở mục tiếp theo mới
-chỉ là probe kết nối.
+The Cup needs no bracket before the season: competitions, rounds and matches
+are created only after qualification is settled at the rule cutoffs.
 
-## 6. Bật Supabase Cron
+## 6. Enable Supabase Cron
 
-Không dùng Vercel Cron cho tác vụ 15 phút: Hobby chỉ cho mỗi job chạy tối đa một
-lần/ngày và thời điểm có thể lệch tới 59 phút. Supabase Cron dùng `pg_cron` và
-gọi API bằng `pg_net`.
+Do not use Vercel Cron for frequent work: Hobby allows one run per job per day
+and the firing time can drift by up to 59 minutes. Supabase Cron uses `pg_cron`
+and calls the API through `pg_net`.
 
-1. Trong Supabase, mở **Integrations -> Vault** và tạo đúng hai secret:
-   - `vmf_api_base_url`: `https://<api-project>.vercel.app`, không có `/api` và
-     không có dấu `/` cuối.
-   - `vmf_cron_secret`: cùng giá trị với `CRON_SECRET` trên Vercel API project.
-2. Mở SQL Editor, dán và chạy
-   [`supabase/cron_fpl_probe.sql`](supabase/cron_fpl_probe.sql).
-3. Trong **Integrations -> Cron**, xác nhận hai job active:
-   - `vmf-fpl-probe`: mỗi 15 phút, theo UTC.
-   - `vmf-cron-history-cleanup`: xóa lịch sử chạy cũ hơn 7 ngày.
-4. Kiểm tra History của job và Runtime Logs của `vmf-api`.
+1. In Supabase, open **Integrations → Vault** and create exactly two secrets:
+   - `vmf_api_base_url`: `https://<api-project>.vercel.app`, without `/api` and
+     without a trailing `/`;
+   - `vmf_cron_secret`: the same value as `CRON_SECRET` in the Vercel API
+     project.
+2. Open the SQL Editor and run
+   [`supabase/cron_fpl_sync.sql`](supabase/cron_fpl_sync.sql).
+3. In **Integrations → Cron**, confirm two active jobs:
+   - `vmf-fpl-sync`: every five minutes, in UTC;
+   - `vmf-cron-history-cleanup`: deletes run history older than seven days.
+4. Check the job history and the `vmf-api` runtime logs.
 
-Script có thể chạy lại an toàn: job cùng tên được cập nhật thay vì nhân đôi và
-script dừng ngay nếu thiếu/nhân đôi Vault secret. Secret chỉ được giải mã lúc
-job chạy, không nằm trong câu lệnh cron lưu công khai.
+The script is safe to re-run: a job of the same name is updated rather than
+duplicated, and the script stops immediately if a Vault secret is missing or
+duplicated. Secrets are decrypted only while the job runs and never appear in
+the stored cron statement.
 
-Endpoint `POST /api/cron/fpl-probe` yêu cầu
-`Authorization: Bearer <CRON_SECRET>`, dùng PostgreSQL advisory lock để bỏ qua
-lần gọi chồng nhau và hiện chỉ kiểm tra kết nối tới FPL
-`bootstrap-static`/`fixtures`. Kết quả `persisted=false` nghĩa là chưa phải
-pipeline đồng bộ/snapshot hoàn chỉnh; không được coi probe thành bằng chứng dữ
-liệu giải đã được ghi.
+`POST /api/cron/sync` requires `Authorization: Bearer <CRON_SECRET>`, holds a
+PostgreSQL advisory lock so overlapping calls are skipped, and runs only the
+jobs whose preconditions currently hold:
 
-Để dừng cron mà không ảnh hưởng job khác, chạy
-[`supabase/cron_disable.sql`](supabase/cron_disable.sql). Khi đổi secret, cập
-nhật cả Vercel `CRON_SECRET` và Vault `vmf_cron_secret`, redeploy API, rồi kiểm
-tra một lần gọi thành công.
+- bootstrap and fixtures on every tick;
+- picks once the Gameweek deadline has passed, in batches of
+  `VMF_SYNC_MANAGER_BATCH_SIZE` managers;
+- live player statistics once a fixture of that Gameweek has started;
+- entry history once a fixture has settled, or while a manager still has no
+  history row for the Gameweek.
 
-## 7. Kiểm tra trước khi công bố
+The response lists each job with its status and the number of records written.
+`skipped` with `sealed_until_deadline` is correct behaviour before a deadline,
+not a failure.
 
-- GitHub Actions `CI` xanh và migration workflow kết thúc ở revision `head`.
-- `/health/live` và `/health/ready` trả `200`.
-- `/api/fpl/status` trả GW/trạng thái/deadline hợp lý với trang FPL chính thức.
-- Gọi cron không có token hoặc token sai trả `401`; token đúng trả `200`.
-- Web dùng `VMF_USE_MOCK_DATA=false` và không hiển thị dữ liệu mẫu khi
-  API lỗi.
-- Public managers có đúng 40 hồ sơ confirmed, chia 20 HIGH + 20 LOW; hồ sơ
-  pending/rejected không xuất hiện.
-- H2H có đúng 700 trận vòng bảng, `VMF_SEASON_ID` và
-  `VMF_H2H_SCHEDULE_ID` trỏ đúng record vừa tạo.
-- Origin production của web xuất hiện chính xác trong `VMF_CORS_ORIGINS`.
-- Admin endpoint từ chối request thiếu/sai `X-Admin-Key`.
-- Supabase Cron có history thành công; không có request chồng nhau kéo dài.
-- Vercel và Supabase Usage còn xa ngưỡng, Supabase Database Reports dưới
-  `400 MB` để có vùng an toàn.
-- Đã tạo `vmf-data.dump`, `pg_restore --list` đọc được và đã diễn tập restore
-  vào một project tách biệt. Nếu dùng Supabase CLI thì đã tạo đủ ba file role,
-  schema và data.
+[`supabase/cron_fpl_probe.sql`](supabase/cron_fpl_probe.sql) remains available
+as a read-only connectivity check. Its `persisted=false` result proves only
+that FPL is reachable; it is never evidence that league data was written.
 
-## Quota cần theo dõi
+To stop the schedule without touching other jobs, run
+[`supabase/cron_disable.sql`](supabase/cron_disable.sql). When rotating the
+secret, update both the Vercel `CRON_SECRET` and the Vault `vmf_cron_secret`,
+redeploy the API, then verify one successful call.
 
-Theo tài liệu chính thức tại ngày cập nhật:
+## 7. Checks before going public
 
-| Dịch vụ | Free quota/rủi ro đáng chú ý |
+- GitHub Actions `CI` is green and the migration workflow ended at revision
+  `head`.
+- `/health/live` and `/health/ready` return `200`.
+- `/api/fpl/status` returns a Gameweek, state and deadline consistent with the
+  official FPL site.
+- A cron call without a token, or with the wrong token, returns `401`; the
+  correct token returns `200`.
+- The web project runs with `VMF_USE_MOCK_DATA=false` and shows no sample data
+  when the API fails.
+- The public managers endpoint returns exactly 40 confirmed profiles, 20 HIGH
+  and 20 LOW; pending and rejected profiles do not appear.
+- H2H contains exactly 700 group-stage matches, and `VMF_SEASON_ID` and
+  `VMF_H2H_SCHEDULE_ID` point at the records just created.
+- The web project's production origin appears exactly in `VMF_CORS_ORIGINS`.
+- Admin endpoints reject a request with a missing or wrong `X-Admin-Key`.
+- Supabase Cron shows successful history with no long-running overlapping
+  requests.
+- Vercel and Supabase usage are far from their limits, and the Supabase
+  database report stays under `400 MB` for headroom.
+- `vmf-data.dump` exists, `pg_restore --list` reads it, and a restore has been
+  rehearsed into a separate project. If you use the Supabase CLI, all three
+  role, schema and data files exist.
+
+## Quotas to watch
+
+Per the official documentation on the update date:
+
+| Service | Free quota and notable risk |
 | --- | --- |
-| Vercel Hobby | Chỉ cho mục đích cá nhân, phi thương mại; 1.000.000 function invocation, 4 CPU-hours, 360 GB-hours memory, 100 GB data transfer; runtime log khoảng 1 giờ; vượt quota có thể làm project bị pause |
-| Vercel Cron Hobby | Tối thiểu một lần/ngày cho mỗi job, độ chính xác theo giờ (`±59 phút`); dự án này không dùng nó cho probe 15 phút |
-| Supabase Free | Tối đa 2 active project; 500 MB database, 5 GB egress, 1 GB Storage, 500.000 Edge Function invocation, 50.000 MAU |
-| Supabase pause | Project ít database activity trong khoảng 7 ngày có thể bị pause; có thể resume trong 90 ngày. Theo dõi email cảnh báo, không coi cron là bảo đảm SLA |
-| Supabase backup | Không có automatic backup thuộc Free plan; phải tự xuất logical backup và lưu ngoài project |
+| Vercel Hobby | Personal, non-commercial use only; 1,000,000 function invocations, 4 CPU-hours, 360 GB-hours of memory, 100 GB of data transfer; runtime logs kept about an hour; exceeding the quota can pause the project |
+| Vercel Cron Hobby | At most one run per job per day, accurate only to the hour (`±59 minutes`); this project does not use it for the five-minute sync |
+| Supabase Free | At most 2 active projects; 500 MB database, 5 GB egress, 1 GB storage, 500,000 Edge Function invocations, 50,000 MAU |
+| Supabase pausing | A project with little database activity for about seven days may be paused, and can be resumed within 90 days. Watch the warning emails; never treat cron as an SLA |
+| Supabase backups | The Free plan has no automatic backups; export a logical backup yourself and keep it outside the project |
 
-Nguồn: [Vercel Hobby](https://vercel.com/docs/plans/hobby),
+Sources: [Vercel Hobby](https://vercel.com/docs/plans/hobby),
 [Vercel Cron](https://vercel.com/docs/cron-jobs/usage-and-pricing),
 [Supabase pricing](https://supabase.com/pricing),
 [Supabase billing](https://supabase.com/docs/guides/platform/billing-on-supabase),
 [Supabase project pausing](https://supabase.com/docs/guides/platform/free-project-pausing)
-và [Supabase backups](https://supabase.com/docs/guides/platform/backups).
+and [Supabase backups](https://supabase.com/docs/guides/platform/backups).
 
-Với 40 HLV, quota request thường đủ nếu API trả dữ liệu đã tổng hợp từ database.
-Không lưu toàn bộ `bootstrap-static` lặp lại mỗi 15 phút. Khi pipeline persistence
-được bổ sung, cần upsert dữ liệu chuẩn hóa, nén/xóa raw payload cũ theo retention
-đã thống nhất và cảnh báo từ `400 MB`.
+With 40 managers the request quota is comfortable as long as the API serves
+data already aggregated in the database. Do not store the whole
+`bootstrap-static` payload again on every tick: shared payloads are recorded by
+hash only, while manager-scoped evidence is kept in full. Watch the database
+report from `400 MB` and agree a retention policy for old raw rows before the
+season.
 
-## Rollback và khôi phục
+## Rollback and recovery
 
 ### Code
 
-Trong từng Vercel project, mở **Deployments**, chọn deployment production gần
-nhất đã kiểm thử và Promote/Rollback. Rollback cả API và web nếu contract giữa
-hai bên thay đổi. Git revert commit lỗi trên `main` để lần deploy tiếp theo không
-đưa lỗi quay lại.
+In each Vercel project, open **Deployments**, pick the most recent tested
+production deployment and promote or roll back to it. Roll back both the API
+and the web project when the contract between them changed. Revert the faulty
+commit on `main` so the next deployment does not reintroduce it.
 
 ### Cron
 
-Chạy `supabase/cron_disable.sql`, sau đó xác nhận không còn hai VMF job trong
-`cron.job`. Không `drop extension pg_cron`, vì thao tác đó xóa mọi cron job của
+Run `supabase/cron_disable.sql`, then confirm the two VMF jobs are gone from
+`cron.job`. Never `drop extension pg_cron`: that removes every cron job in the
 project.
 
 ### Database
 
-- Ưu tiên migration sửa tiến (`upgrade`) để giữ dữ liệu.
-- Chỉ chạy `alembic downgrade -1` khi migration có downgrade đã kiểm thử và code
-  đang chạy tương thích schema cũ.
-- Diễn tập restore không-Docker trên project Supabase Free thứ hai: trước hết
-  chạy workflow migration/Alembic đến `head`, sau đó dùng URL
-  `postgresql://...` của project đích:
+- Prefer a forward-fixing migration (`upgrade`) so data is preserved.
+- Run `alembic downgrade -1` only when the migration has a tested downgrade and
+  the running code is compatible with the older schema.
+- Rehearse a Docker-free restore on a second Supabase Free project: first run
+  the migration workflow or Alembic to `head`, then use the target project's
+  `postgresql://` URL:
 
   ```bash
   pg_restore \
@@ -371,15 +402,15 @@ project.
     vmf-data.dump
   ```
 
-  So sánh row count ít nhất cho `managers`, `manager_gameweek_scores`,
-  `h2h_matches`, `cup_matches`, `violations` giữa nguồn và bản restore; kiểm tra
-  `alembic current` đạt `head` trước khi coi backup là dùng được.
-- Vault secret không được giải mã/di chuyển bởi logical dump. Tạo lại
-  `vmf_api_base_url`, `vmf_cron_secret`, rồi chạy lại
-  `supabase/cron_fpl_probe.sql` trên project mới.
-- Sau khi đổi database, redeploy API, kiểm tra readiness, dữ liệu và admin auth,
-  rồi mới bật lại cron.
+  Compare row counts between source and restore for at least `managers`,
+  `manager_gameweek_scores`, `manager_gameweek_history`, `h2h_matches`,
+  `cup_matches` and `violations`, and confirm `alembic current` reaches `head`
+  before treating the backup as usable.
+- A logical dump neither decrypts nor moves Vault secrets. Recreate
+  `vmf_api_base_url` and `vmf_cron_secret`, then re-run
+  `supabase/cron_fpl_sync.sql` on the new project.
+- After switching databases, redeploy the API, check readiness, data and admin
+  authentication, and only then re-enable cron.
 
-Gói miễn phí không có SLA hay point-in-time recovery. Backup ngoài hệ thống và
-diễn tập restore là điều kiện bắt buộc trước ngày khai mạc, không phải bước tùy
-chọn.
+The free plan has no SLA and no point-in-time recovery. An off-platform backup
+and a rehearsed restore are mandatory before the opening weekend, not optional.

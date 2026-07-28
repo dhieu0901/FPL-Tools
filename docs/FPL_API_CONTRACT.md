@@ -1,201 +1,186 @@
 # VMF Fantasy League 2026/27 — FPL API Contract
 
-**Mã tài liệu:** `VMF-FPL-CONTRACT-2026-27`
-**Phiên bản contract:** `1.0.0-draft`
-**Liên quan:** [`RULEBOOK.md`](./RULEBOOK.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+**Document code:** `VMF-FPL-CONTRACT-2026-27`
+**Contract version:** `1.0.0-draft`
+**Related:** [`RULEBOOK.md`](./RULEBOOK.md), [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
-## 1. Tuyên bố quan trọng
+## 1. Important statement
 
-FPL không công bố các JSON endpoint dưới đây như một API dành cho bên thứ ba có versioning, SLA hoặc cam kết tương thích. Chúng là các endpoint web đang quan sát được trên host chính thức của Fantasy Premier League.
+FPL does not publish the JSON endpoints below as a third-party API with
+versioning, an SLA or a compatibility promise. They are web endpoints observed
+on the official Fantasy Premier League host.
 
-Vì vậy:
+Therefore:
 
-- đây là **unofficial/undocumented API contract của phía VMF**, không phải contract do FPL bảo đảm;
-- endpoint, field, kiểu dữ liệu, thời điểm mở dữ liệu và giới hạn truy cập có thể thay đổi không báo trước;
-- việc endpoint trả HTTP `200` hôm nay không tạo SLA cho mùa giải;
-- VMF phải lưu raw payload, version parser và phát hiện schema drift;
-- không được coi một response lỗi/missing là điểm `0`;
-- không được final một GW khi nguồn bắt buộc đang stale hoặc bị quarantine;
-- mọi request phải tuân theo quyền sử dụng dữ liệu mà BTC đã xác nhận, với tần suất có kiểm soát;
-- không tự động đăng nhập, không dùng cookie/token cá nhân và không tìm cách vượt cơ chế che picks trước deadline.
+- this is **VMF's own contract against an unofficial, undocumented API**, not a
+  contract FPL guarantees;
+- endpoints, fields, types, data-release timing and access limits can change
+  without notice;
+- an endpoint returning HTTP `200` today creates no SLA for the season;
+- VMF must store raw payloads, version its parsers and detect schema drift;
+- an error or a missing response must never be read as a score of `0`;
+- a Gameweek must not be finalized while a required source is stale or
+  quarantined;
+- every request follows the data permission the organisers confirmed, at a
+  controlled rate;
+- never log in automatically, never use a personal cookie or token, and never
+  try to bypass the mechanism that hides squads before a deadline.
 
-## 2. Base URL và transport
+## 2. Base URL and transport
 
-Base URL production:
+Production base URL:
 
 ```text
 https://fantasy.premierleague.com/api/
 ```
 
-Ví dụ canonical:
+Canonical example:
 
 ```text
 https://fantasy.premierleague.com/api/bootstrap-static/
 ```
 
-Quy tắc gateway:
+Gateway rules:
 
-- chỉ dùng HTTPS và verify certificate;
-- allowlist host đúng `fantasy.premierleague.com`;
-- path phải bắt đầu bằng `/api/`;
-- ID path parameter phải là số nguyên dương;
-- gửi `Accept: application/json`;
-- dùng một `User-Agent` ổn định, nhận diện ứng dụng VMF;
-- không gửi `Authorization`, FPL session cookie hoặc CSRF token cho các endpoint trong contract này;
-- timeout, retry, concurrency và response-size limit được cấu hình tập trung;
-- chỉ follow redirect cùng host; redirect sang host khác bị từ chối và cảnh báo;
-- giữ dấu `/` cuối path vì đây là dạng canonical đang dùng.
+- HTTPS only, with certificate verification;
+- allowlist exactly the host `fantasy.premierleague.com`;
+- the path must start with `/api/`;
+- ID path parameters must be positive integers;
+- send `Accept: application/json`;
+- use a stable `User-Agent` that identifies the VMF application;
+- never send `Authorization`, an FPL session cookie or a CSRF token to these
+  endpoints;
+- timeouts, retries, concurrency and a response-size limit are configured
+  centrally;
+- follow redirects only within the same host; a cross-host redirect is refused
+  and alerted;
+- keep the trailing `/`, which is the canonical form in use.
 
-Không hard-code base URL ở domain service. Chỉ `FplGateway` được biết URL ngoài.
+Never hard-code the base URL in a domain service. Only the gateway knows the
+external URL.
 
-## 3. Registry endpoint
+## 3. Endpoint registry
 
-### 3.1 Endpoint bắt buộc
+### 3.1 Required endpoints
 
-| Mã | Method và path | Mục đích chính |
+| Code | Method and path | Purpose |
 |---|---|---|
-| `FPL_BOOTSTRAP` | `GET bootstrap-static/` | Danh mục GW, player, Premier League team, position và metadata mùa |
-| `FPL_FIXTURES` | `GET fixtures/` hoặc `GET fixtures/?event={gw}` | Fixture, kickoff, trạng thái, DGW/BGW, trận hoãn |
-| `FPL_EVENT_LIVE` | `GET event/{gw}/live/` | Điểm và stats live theo player/fixture |
-| `FPL_ENTRY` | `GET entry/{entry_id}/` | Validate entry, tên team hiện tại và trạng thái profile |
-| `FPL_ENTRY_HISTORY` | `GET entry/{entry_id}/history/` | Điểm GW, transfer cost, bench points, chip/history |
-| `FPL_ENTRY_PICKS` | `GET entry/{entry_id}/event/{gw}/picks/` | Squad/picks, captain, multiplier, auto-sub, active chip |
-| `FPL_ENTRY_TRANSFERS` | `GET entry/{entry_id}/transfers/` | Lịch sử player in/out phục vụ kiểm tra và highlights |
+| `FPL_BOOTSTRAP` | `GET bootstrap-static/` | Gameweek, player, club and position catalogue plus season metadata |
+| `FPL_FIXTURES` | `GET fixtures/` or `GET fixtures/?event={gw}` | Fixtures, kick-offs, status, Double and Blank Gameweeks, postponements |
+| `FPL_EVENT_LIVE` | `GET event/{gw}/live/` | Live points and statistics per player and fixture |
+| `FPL_ENTRY` | `GET entry/{entry_id}/` | Validate an entry, its current team name and profile state |
+| `FPL_ENTRY_HISTORY` | `GET entry/{entry_id}/history/` | Gameweek points, transfer cost, bench points, chip history |
+| `FPL_ENTRY_PICKS` | `GET entry/{entry_id}/event/{gw}/picks/` | Squad, captain, multipliers, automatic substitutions, active chip |
+| `FPL_ENTRY_TRANSFERS` | `GET entry/{entry_id}/transfers/` | Player in and out history for checks and highlights |
 
-### 3.2 Endpoint hỗ trợ
+### 3.2 Supporting endpoint
 
-| Mã | Method và path | Mục đích |
+| Code | Method and path | Purpose |
 |---|---|---|
-| `FPL_ELEMENT_SUMMARY` | `GET element-summary/{player_id}/` | Backfill/đối chiếu lịch sử player-fixture, fixture sắp tới và debug |
+| `FPL_ELEMENT_SUMMARY` | `GET element-summary/{player_id}/` | Backfill or reconcile player-fixture history, upcoming fixtures, debugging |
 
-Endpoint hỗ trợ không được poll cho toàn bộ player mỗi phút. Live scoring vẫn lấy `event/{gw}/live/` và `fixtures/` làm nguồn chính.
+A supporting endpoint is never polled for every player every minute. Live
+scoring still uses `event/{gw}/live/` and `fixtures/` as its primary sources.
 
-### 3.3 Endpoint league tùy chọn
+### 3.3 Optional league endpoints
 
-| Mã | Method và path quan sát được | Mục đích giới hạn |
+| Code | Observed method and path | Limited purpose |
 |---|---|---|
-| `FPL_CLASSIC_LEAGUE` | `GET leagues-classic/{league_id}/standings/?page_standings={page}&phase={phase}` | Hỗ trợ import/đối chiếu membership Classic |
-| `FPL_H2H_LEAGUE` | `GET leagues-h2h/{league_id}/standings/?page_standings={page}` | Hỗ trợ đối chiếu membership H2H nếu route/schema còn hoạt động |
+| `FPL_CLASSIC_LEAGUE` | `GET leagues-classic/{league_id}/standings/?page_standings={page}&phase={phase}` | Help importing or reconciling Classic membership |
+| `FPL_H2H_LEAGUE` | `GET leagues-h2h/{league_id}/standings/?page_standings={page}` | Help reconciling H2H membership if the route and schema still work |
 
-Hai endpoint league là **optional adapter**:
+Both league endpoints are **optional adapters**:
 
-- VMF tự tính Classic/H2H standings từ 40 manager đã đăng ký;
-- không lấy rank, H2H table points hoặc kết quả trận của FPL league làm nguồn VMF;
-- route H2H phải được smoke-test theo mùa vì schema/route thực tế có thể thay đổi;
-- nếu endpoint league lỗi, thay schema hoặc không public, chỉ tính năng import/đối chiếu bị degraded; scoring VMF vẫn hoạt động;
-- pagination phải chạy đến khi `has_next = false`, không giả định page đầu chứa đủ 40 người;
-- `phase` phải lấy từ dữ liệu mùa/cấu hình đã kiểm tra, không mặc định vĩnh viễn bằng `1`.
+- VMF computes Classic and H2H standings itself from the 40 registered
+  managers;
+- rank, H2H table points and match results from an FPL league are never a VMF
+  source;
+- the H2H route must be smoke-tested each season because its route and schema
+  can change;
+- if a league endpoint fails, changes schema or is not public, only import and
+  reconciliation degrade; VMF scoring keeps working;
+- pagination must run until `has_next = false`; never assume the first page
+  contains all 40 managers;
+- `phase` must come from verified season data or configuration, never
+  permanently defaulted to `1`.
 
-Nếu cần đối chiếu official FPL H2H match list về sau, route đó phải được thêm bằng một contract version mới; không suy ra URL trong domain code.
+If an official FPL H2H match list is ever needed for reconciliation, it must be
+added under a new contract version; domain code never infers a URL.
 
-## 4. Public access và thời điểm dữ liệu
+## 4. Public access and data timing
 
-Các endpoint bắt buộc hiện được thiết kế như nguồn đọc anonymous khi dữ liệu tương ứng đã public. “Public” không có nghĩa là luôn sẵn sàng.
+The required endpoints behave as anonymous reads once the corresponding data is
+public. "Public" does not mean "always available".
 
-| Endpoint | Auth VMF gửi | Thời điểm/điều kiện mong đợi | Cách hiểu khi chưa có |
+| Endpoint | Auth VMF sends | Expected timing | Meaning when absent |
 |---|---|---|---|
-| Bootstrap | Không | Quanh năm/mùa đang mở | Lỗi nguồn; dùng cache còn hạn |
-| Fixtures | Không | Khi lịch đã được FPL công bố; có thể đổi | Fixture chưa gán GW có thể có `event = null` |
-| Event live | Không | Có thể có payload trước GW; có ý nghĩa live khi fixture bắt đầu | Empty/zero không tự chứng minh GW final hoặc player blank |
-| Entry profile | Không | Sau khi entry hợp lệ tồn tại và public | 404/403 đơn lẻ không đủ kết luận team locked/deleted |
-| Entry history | Không | Lịch sử đã public; current GW cập nhật theo FPL | Missing current row là “not available”, không phải zero |
-| Entry picks | Không | Picks của người khác chỉ được dùng sau deadline GW | Trước deadline/đang mở chậm: sealed/not ready; retry theo lịch |
-| Entry transfers | Không | Chỉ ingest phần FPL đã public sau deadline | Không poll để tìm transfer chưa public |
-| Element summary | Không | Thường public khi player catalog tồn tại | Optional; failure không chặn live nếu nguồn chính đủ |
-| League standings | Không | Tùy league/route/schema/quyền public hiện tại | Optional unavailable; không chặn scoring |
+| Bootstrap | None | Year round while the season exists | Source failure; use cache within its lifetime |
+| Fixtures | None | Once FPL publishes the schedule; it can change | A fixture without a Gameweek may have `event = null` |
+| Event live | None | A payload may exist before a Gameweek; it means something once fixtures start | Empty or zero does not prove a final Gameweek or a blank player |
+| Entry profile | None | Once a valid entry exists and is public | A single 404 or 403 does not prove a locked or deleted team |
+| Entry history | None | History is public; the current Gameweek follows FPL | A missing current row means "not available", never zero |
+| Entry picks | None | Another manager's squad may be used only after the deadline | Before the deadline or while opening slowly: sealed or not ready; retry on schedule |
+| Entry transfers | None | Ingest only what FPL made public after the deadline | Never poll for transfers that are not public |
+| Element summary | None | Usually public once the player catalogue exists | Optional; a failure does not block live scoring |
+| League standings | None | Depends on the league, route, schema and current visibility | Optional; never blocks scoring |
 
-VMF không gọi endpoint authenticated để xem picks trước deadline. Nếu FPL đổi endpoint bắt buộc sang yêu cầu authentication:
+VMF never calls an authenticated endpoint to see squads before a deadline. If
+FPL moves a required endpoint behind authentication:
 
-1. circuit breaker dừng request;
-2. hệ thống giữ snapshot gần nhất và báo admin;
-3. BTC đánh giá một phương án được FPL cho phép;
-4. không tự động hóa login hoặc dùng credential của HLV để lách giới hạn.
+1. the circuit breaker stops requests;
+2. the system keeps the latest snapshot and alerts an administrator;
+3. the organisers evaluate an option FPL permits;
+4. logins are never automated and manager credentials are never used to bypass
+   a limit.
 
-## 5. Contract từng endpoint
+## 5. Per-endpoint contract
 
 ### 5.1 `bootstrap-static/`
-
-URL:
 
 ```text
 GET https://fantasy.premierleague.com/api/bootstrap-static/
 ```
 
-Các collection tối thiểu VMF quan tâm:
+Collections VMF relies on:
 
 ```text
 events[]
 teams[]
 elements[]
 element_types[]
-phases[]              # nếu còn tồn tại trong schema
-game_settings         # metadata, không dùng làm nguồn luật VMF
+phases[]              # if still present in the schema
+game_settings         # metadata, never a VMF rule source
 ```
 
-Field normalized tối thiểu:
+Minimum normalized fields:
 
 ```text
-events:
-  id
-  name
-  deadline_time
-  finished
-  data_checked
-  is_previous
-  is_current
-  is_next
-
-teams:
-  id
-  name
-  short_name
-
-elements:
-  id
-  team
-  element_type
-  web_name
-  first_name
-  second_name
-  now_cost
-  status
-
-element_types:
-  id
-  singular_name
-  squad_select
-  squad_min_play
-  squad_max_play
+events:      id, name, deadline_time, finished, data_checked,
+             is_previous, is_current, is_next
+teams:       id, name, short_name
+elements:    id, team, element_type, web_name, first_name, second_name,
+             now_cost, status
+element_types: id, singular_name, squad_select, squad_min_play, squad_max_play
 ```
 
-Module sử dụng:
+Used for the event and deadline catalogue, player, team and position
+dimensions, formation validation, interface metadata, scheduler transitions
+around a deadline, and event-state reconciliation.
 
-- event/deadline catalog;
-- player/team/position dimensions;
-- formation validation;
-- UI metadata;
-- scheduler transition quanh deadline;
-- reconciliation event state.
+Never used for `total_players`, ownership or popularity, overall rank, or any
+field that would override [`RULEBOOK.md`](./RULEBOOK.md).
 
-Không sử dụng:
-
-- `total_players`;
-- player ownership/global popularity để xếp hạng VMF;
-- overall/global rank;
-- bất kỳ field nào để thay luật trong `RULEBOOK.md`.
-
-Field mới được phép bỏ qua. Thiếu `events`, `teams`, `elements`, ID hoặc quan hệ team/position làm payload bị quarantine.
+New fields may be ignored. Missing `events`, `teams`, `elements`, an identity
+field, or a team/position relationship quarantines the payload.
 
 ### 5.2 `fixtures/`
-
-URL:
 
 ```text
 GET https://fantasy.premierleague.com/api/fixtures/
 GET https://fantasy.premierleague.com/api/fixtures/?event={gw}
 ```
 
-Field normalized tối thiểu:
+Minimum normalized fields:
 
 ```text
 id
@@ -212,77 +197,62 @@ minutes nullable
 stats[] nullable
 ```
 
-Module sử dụng:
+Used for the player-fixture grain, fixture status, players remaining and
+effective remaining, Double and Blank Gameweeks, postponed and rescheduled
+fixtures, and the live/provisional gate.
 
-- player-fixture grain;
-- fixture status;
-- player remaining/effective remaining;
-- DGW/BGW;
-- postponed/rescheduled fixture;
-- live/provisional gate.
+`event` and `kickoff_time` must accept `null`. A fixture can move to another
+Gameweek; a new revision must update the mapping with provenance and must never
+edit a finalized history in place.
 
-`event` và `kickoff_time` phải chấp nhận `null`. Fixture có thể chuyển GW; một revision mới phải cập nhật mapping bằng provenance, không update lịch sử final tại chỗ.
-
-Không chỉ dựa vào `finished` của một response để final GW. Finalization còn cần live data, picks, schema health và rule/admin gate.
+Never finalize a Gameweek from the `finished` flag of a single response.
+Finalization also requires live data, picks, schema health and the rule or
+administrator gate.
 
 ### 5.3 `event/{gw}/live/`
-
-URL:
 
 ```text
 GET https://fantasy.premierleague.com/api/event/{gw}/live/
 ```
 
-Shape quan sát cần adapter hỗ trợ:
+Observed shape the adapter must support:
 
 ```text
 elements[]:
   id
   stats:
-    minutes
-    total_points
-    goals_scored
-    yellow_cards
-    red_cards
-    bonus
-    ...
+    minutes, total_points, goals_scored, yellow_cards, red_cards, bonus, ...
   explain[]:
     fixture
     stats[]:
-      identifier
-      points
-      value
+      identifier, points, value
 ```
 
-Module sử dụng:
+Used for live player scores, player-fixture statistics and explanations,
+counted goals and cards, bonus and provisional corrections, live H2H and Cup
+scores, and remaining status combined with fixtures.
 
-- live player score;
-- player-fixture stats/explanation;
-- counted goals/cards;
-- bonus/provisional correction;
-- H2H/Cup live score;
-- remaining status kết hợp fixture.
+`stats` may gain identifiers between seasons. The parser must:
 
-`stats` có thể thêm identifier theo mùa. Parser:
+- keep unknown fields in the raw payload;
+- map the fields it knows;
+- not fail merely because a new field exists;
+- quarantine when `elements[].id` or `stats.total_points` is missing;
+- accept an empty `explain` when a player has no fixture or it has not started;
+- never invent a per-fixture allocation when the player-Gameweek total has
+  points but `explain` is incomplete.
 
-- giữ unknown fields trong raw;
-- map các field biết;
-- không fail chỉ vì có field mới;
-- quarantine nếu thiếu `elements[].id` hoặc `stats.total_points`;
-- cho phép `explain` rỗng khi player chưa có fixture/fixture chưa bắt đầu;
-- không bịa phân bổ theo fixture nếu tổng player-GW có điểm nhưng `explain` chưa đủ.
-
-Nếu `explain` thay shape, live total có thể tiếp tục ở trạng thái provisional nhưng player-fixture tie-break/matchup bị đánh dấu incomplete và không được final.
+If `explain` changes shape, the live total may remain provisional, but
+player-fixture tie-breaks and matchup detail are marked incomplete and must not
+be finalized.
 
 ### 5.4 `entry/{entry_id}/`
-
-URL:
 
 ```text
 GET https://fantasy.premierleague.com/api/entry/{entry_id}/
 ```
 
-Field normalized tối thiểu:
+Minimum normalized fields:
 
 ```text
 id
@@ -295,60 +265,42 @@ summary_overall_points nullable
 leagues nullable
 ```
 
-Module sử dụng:
+Used to validate `fpl_entry_id`, display the current FPL team name next to the
+registered VMF name, detect a team-name change for review, and check entry
+availability.
 
-- validate `fpl_entry_id`;
-- hiển thị current FPL team name bên cạnh registered VMF team name;
-- phát hiện đổi team name để admin review;
-- hỗ trợ kiểm tra entry availability.
+Never overwrite the registered VMF name. Never use
+`summary_overall_rank`, `summary_event_rank` or any global rank.
 
-Không tự ghi đè tên đăng ký VMF. Không dùng `summary_overall_rank`, `summary_event_rank` hoặc rank global.
-
-Một lỗi 404/403/5xx không tự chuyển manager sang locked/deleted. Gateway tạo availability incident; chỉ sau retry, đối chiếu nguồn và admin decision mới đổi trạng thái nghiệp vụ.
+A single 404, 403 or 5xx never moves a manager to locked or deleted. The
+gateway raises an availability incident; only retries, cross-source
+reconciliation and an administrator decision change a business status.
 
 ### 5.5 `entry/{entry_id}/history/`
-
-URL:
 
 ```text
 GET https://fantasy.premierleague.com/api/entry/{entry_id}/history/
 ```
 
-Shape quan sát:
+Observed shape:
 
 ```text
 current[]:
-  event
-  points
-  total_points
-  rank nullable
-  overall_rank nullable
-  bank
-  value
-  event_transfers
-  event_transfers_cost
-  points_on_bench
+  event, points, total_points, rank nullable, overall_rank nullable,
+  bank, value, event_transfers, event_transfers_cost, points_on_bench
 
 chips[]:
-  name
-  time
-  event
+  name, time, event
 
 past[] nullable
 ```
 
-Module sử dụng:
+Used for source event points, transfer cost, total-points reconciliation, bench
+points, chip history, team value and highlights.
 
-- source event points;
-- transfer cost;
-- total-points reconciliation;
-- bench points;
-- chip history;
-- team value/highlights.
+Never ingest `rank` or `overall_rank` into VMF standings.
 
-Không ingest `rank` hoặc `overall_rank` vào VMF standings.
-
-Adapter ban đầu map:
+The initial adapter maps:
 
 ```text
 source_gross_points = current[].points
@@ -356,147 +308,104 @@ transfer_cost       = current[].event_transfers_cost
 official_net_points = source_gross_points - transfer_cost
 ```
 
-Trước khi final, phải kiểm tra semantic invariant trên dữ liệu đủ ổn định:
+Before finalization, check the semantic invariant on sufficiently settled data:
 
 ```text
-delta(total_points) ≈ points - event_transfers_cost
+delta(total_points) ~= points - event_transfers_cost
 ```
 
-Nếu FPL thay đổi ý nghĩa `points` hoặc `total_points`, mismatch tạo semantic schema drift; không âm thầm trừ transfer cost hai lần.
-
-`rank` có thể rất lớn hoặc nullable và không liên quan đến VMF.
+If FPL changes the meaning of `points` or `total_points`, the mismatch is
+semantic schema drift; never silently subtract the transfer cost twice.
 
 ### 5.6 `entry/{entry_id}/event/{gw}/picks/`
-
-URL:
 
 ```text
 GET https://fantasy.premierleague.com/api/entry/{entry_id}/event/{gw}/picks/
 ```
 
-Shape quan sát:
+Observed shape:
 
 ```text
 active_chip nullable
 automatic_subs[] nullable
 entry_history:
-  event
-  points
-  total_points
-  event_transfers
-  event_transfers_cost
+  event, points, total_points, event_transfers, event_transfers_cost,
   points_on_bench
 picks[]:
-  element
-  position
-  multiplier
-  is_captain
-  is_vice_captain
+  element, position, multiplier, is_captain, is_vice_captain
 ```
 
-Module sử dụng:
-
-- deadline squad snapshot;
-- starting XI/bench position;
-- original captain/vice;
-- multiplier và counted picks;
-- active chip;
-- auto-sub reconciliation;
-- transfer-cost cross-check.
+Used for the deadline squad snapshot, starting XI and bench positions, the
+original captain and vice, multipliers and counted picks, the active chip,
+automatic-substitution reconciliation, and a transfer-cost cross-check.
 
 Timing:
 
-- fetch lần đầu sau deadline;
-- retry có backoff nếu response chưa mở;
-- không fetch toàn bộ 40 picks mỗi live tick;
-- refresh ở các phase transition, đặc biệt sau khi fixtures kết thúc, vì multiplier/automatic substitutions có thể được FPL resolve lại;
-- mọi payload khác hash tạo pick snapshot revision mới.
+- fetch first after the deadline;
+- retry with backoff while the response is not open yet;
+- do not fetch all 40 squads on every live tick;
+- refresh at phase transitions, especially once fixtures finish, because FPL can
+  re-resolve multipliers and automatic substitutions;
+- any payload with a different hash creates a new pick snapshot revision.
 
-Không coi `multiplier = 0` ở payload chưa ổn định là final bench/auto-sub decision. Giữ original selection facts và effective resolution có revision riêng.
+Never treat `multiplier = 0` in an unsettled payload as the final bench or
+auto-sub decision. Keep the original selection facts and the effective
+resolution as separate revisions.
 
-Picks của current GW trước deadline là sealed data. VMF không được thử endpoint authenticated hoặc poll dày để truy cập sớm.
+The current Gameweek's picks before its deadline are sealed data. VMF must not
+try an authenticated endpoint or poll aggressively to see them early.
 
 ### 5.7 `entry/{entry_id}/transfers/`
-
-URL:
 
 ```text
 GET https://fantasy.premierleague.com/api/entry/{entry_id}/transfers/
 ```
 
-Field normalized tối thiểu:
+Minimum normalized fields:
 
 ```text
-element_in
-element_out
-element_in_cost
-element_out_cost
-entry
-event
-time
+element_in, element_out, element_in_cost, element_out_cost, entry, event, time
 ```
 
-Module sử dụng:
+Used for the transfer list, best and worst transfer estimates, reconciling the
+transfer count, and violation investigation.
 
-- transfer list;
-- best/worst transfer estimate;
-- audit/reconciliation số transfer;
-- violation investigation.
+`event_transfers_cost` from entry history or the picks entry history remains the
+authoritative transfer cost. Never derive a cost from the number of transfer
+rows: free transfers, chips and FPL rule changes make that inference wrong.
 
-`event_transfers_cost` trong entry history/picks entry history mới là nguồn transfer cost chính. Không tự tính cost từ số row transfer vì free transfer, chip và thay đổi luật FPL có thể làm suy luận sai.
-
-Chỉ ingest transfer đã được FPL công khai sau deadline. Không dùng endpoint này để theo dõi hành vi trước deadline.
+Ingest only transfers FPL published after the deadline. Never use this endpoint
+to observe behaviour before a deadline.
 
 ### 5.8 `element-summary/{player_id}/`
-
-URL:
 
 ```text
 GET https://fantasy.premierleague.com/api/element-summary/{player_id}/
 ```
 
-Shape quan sát:
+Observed shape:
 
 ```text
-fixtures[]:
-  id
-  event nullable
-  kickoff_time nullable
-  is_home
-  difficulty
-
-history[]:
-  element
-  fixture
-  round
-  total_points
-  minutes
-  goals_scored
-  yellow_cards
-  red_cards
-  bonus
-  ...
-
+fixtures[]:     id, event nullable, kickoff_time nullable, is_home, difficulty
+history[]:      element, fixture, round, total_points, minutes, goals_scored,
+                yellow_cards, red_cards, bonus, ...
 history_past[] nullable
 ```
 
-Module sử dụng:
+Used to backfill or repair player-fixture history, reconcile Double Gameweeks
+and postponements, support administrator diagnostics, and power a player detail
+page if one exists.
 
-- backfill/repair player-fixture history;
-- đối chiếu DGW và trận hoãn;
-- admin diagnostics;
-- trang player detail nếu có.
+Never use it as the primary live polling source. Fetch it only on demand, when
+contract reconciliation finds a missing player-fixture, after finalization for
+backfill, or during replay and testing.
 
-Không dùng làm nguồn poll live chính. Chỉ fetch:
+If element summary and event live disagree while a Gameweek is unfinalized,
+keep both revisions and mark reconciliation pending. After finalization, the
+source chosen as authoritative must be recorded by the adapter or rule version;
+never update silently.
 
-- on demand;
-- khi contract reconciliation phát hiện player-fixture thiếu;
-- sau final để backfill;
-- trong replay/testing.
-
-Nếu element summary và event live mâu thuẫn khi GW chưa final, giữ cả hai revisions và đánh dấu reconciliation pending. Sau final, nguồn chọn làm authoritative phải được adapter/rule version ghi rõ; không update im lặng.
-
-### 5.9 League standings optional
+### 5.9 Optional league standings
 
 Classic URL template:
 
@@ -504,38 +413,29 @@ Classic URL template:
 GET https://fantasy.premierleague.com/api/leagues-classic/{league_id}/standings/?page_standings={page}&phase={phase}
 ```
 
-Shape tối thiểu nếu adapter bật:
+Minimum shape when the adapter is enabled:
 
 ```text
 league:
-  id
-  name
+  id, name
 
 standings:
-  page
-  has_next
+  page, has_next
   results[]:
-    entry
-    entry_name
-    player_name
-    rank nullable
-    total nullable
+    entry, entry_name, player_name, rank nullable, total nullable
 ```
 
-H2H URL template cần smoke-test:
+The H2H URL template that needs a smoke test:
 
 ```text
 GET https://fantasy.premierleague.com/api/leagues-h2h/{league_id}/standings/?page_standings={page}
 ```
 
-H2H adapter chỉ được bật khi runtime contract test xác nhận:
+The H2H adapter may be enabled only once a runtime contract test confirms that
+the route returns JSON, carries league identity, exposes paginated standings
+with entry IDs, and matches the parser version.
 
-- route trả JSON;
-- có league identity;
-- có paginated standings/results với entry ID;
-- parser version hỗ trợ shape thực tế.
-
-Hai adapter chỉ xuất:
+Both adapters emit only:
 
 ```text
 league_id
@@ -545,60 +445,71 @@ observed_at
 source_revision
 ```
 
-Rank/total của league nguồn không đi vào Classic/H2H VMF. Nếu cần kiểm tra Season 2 join, membership observation chỉ tạo candidate; admin/rule workflow quyết định violation.
+League rank and totals never enter VMF Classic or H2H. If a Season 2 join needs
+checking, a membership observation only creates a candidate; the administrative
+or rule workflow decides the violation.
 
-## 6. Mapping endpoint sang module
+## 6. Endpoint to module mapping
 
-| Module | Nguồn chính | Nguồn đối chiếu |
+| Module | Primary source | Cross-check |
 |---|---|---|
-| Manager registration | Entry profile | Classic/H2H league optional |
+| Manager registration | Entry profile | Optional Classic/H2H league |
 | Event scheduler | Bootstrap events | Fixtures |
-| Player/team catalog | Bootstrap | Element summary on demand |
-| Deadline squad/chip/captain | Entry picks | Entry history/chips |
-| Transfer cost | Entry history + picks entry history | Transfer list |
+| Player and team catalogue | Bootstrap | Element summary on demand |
+| Deadline squad, chip, captain | Entry picks | Entry history and chips |
+| Transfer cost | Entry history and picks entry history | Transfer list |
 | Live player score | Event live | Fixtures, element summary on demand |
-| DGW/BGW/postponed | Fixtures + live explain | Element summary |
-| Classic score | Derived picks/live + history cost | History total reconciliation |
-| H2H/Cup score | VMF derived effective score | Không dùng FPL league rank/result |
-| Goals/cards tie-break | Counted picks + live player-fixture | Element summary after final |
-| Locked/deleted detection | Availability incident + admin decision | Entry/history/picks responses |
-| Season 2 membership | VMF admin registry | League standings optional |
-| Transfer highlights | Transfers + player-fixture stats | History event transfer count |
+| Double/Blank/postponed | Fixtures and live explain | Element summary |
+| Classic score | Derived picks and live plus history cost | History total reconciliation |
+| H2H and Cup score | VMF derived effective score | Never an FPL league rank or result |
+| Goals and cards tie-break | Counted picks and live player-fixture | Element summary after finalization |
+| Locked or deleted detection | Availability incident plus administrator decision | Entry, history and picks responses |
+| Season 2 membership | VMF administrative registry | Optional league standings |
+| Transfer highlights | Transfers and player-fixture stats | History transfer count |
 
-Không endpoint nào cung cấp “VMF score” trực tiếp. Competition engine luôn áp [`RULEBOOK.md`](./RULEBOOK.md) trên source facts.
+No endpoint provides a "VMF score". The competition engine always applies
+[`RULEBOOK.md`](./RULEBOOK.md) to source facts.
 
-## 7. Cache và cadence
+## 7. Caching and cadence
 
-Mọi giá trị dưới đây là default có thể cấu hình. Scheduler thêm jitter để không tạo request burst.
+Every value below is a configurable default. The scheduler adds jitter so
+requests do not arrive in a burst.
 
-| Endpoint | Ngoài live | Gần deadline/transition | Khi fixture live | Sau fixture đến final |
+| Endpoint | Outside live | Near a deadline or transition | While fixtures are live | After fixtures until final |
 |---|---:|---:|---:|---:|
-| Bootstrap | 30 phút | 5 phút | 5 phút | 5–15 phút |
-| Fixtures theo GW | 15 phút | 5 phút | 60 giây | 2–5 phút |
-| Event live | Không poll future GW | 5 phút để readiness check | 60 giây | 2–5 phút rồi giảm còn 15 phút |
-| Entry profile | 6 giờ | 1 lần validate | 6 giờ | 1 lần/ngày |
-| Entry history | 6 giờ | Sau deadline | 10–15 phút | 5 phút khi reconcile |
-| Entry picks | Không fetch sealed GW | Retry sau deadline 30–120 giây | Không poll mỗi tick; 10–15 phút | 2–5 phút đến khi auto-sub ổn định |
-| Entry transfers | Không poll pre-deadline | 1 lần sau picks mở | 30–60 phút | 1 lần reconcile |
-| Element summary | 6 giờ/on demand | On demand | Chỉ khi repair | Backfill/on demand |
-| League standings | 30–60 phút | 5–15 phút khi kiểm tra join | Không cần | On demand |
+| Bootstrap | 30 min | 5 min | 5 min | 5–15 min |
+| Fixtures for a Gameweek | 15 min | 5 min | 60 s | 2–5 min |
+| Event live | Do not poll a future Gameweek | 5 min readiness check | 60 s | 2–5 min, then 15 min |
+| Entry profile | 6 h | Validate once | 6 h | Once a day |
+| Entry history | 6 h | After the deadline | 10–15 min | 5 min while reconciling |
+| Entry picks | Do not fetch a sealed Gameweek | Retry 30–120 s after the deadline | Not every tick; 10–15 min | 2–5 min until auto-subs settle |
+| Entry transfers | Do not poll pre-deadline | Once after picks open | 30–60 min | Once to reconcile |
+| Element summary | 6 h or on demand | On demand | Only to repair | Backfill or on demand |
+| League standings | 30–60 min | 5–15 min while checking a join | Not needed | On demand |
 
-Tối ưu bắt buộc:
+Mandatory optimizations:
 
-- bootstrap, fixtures và event live là shared cache cho cả 40 manager;
-- một tick chỉ fetch mỗi shared URL một lần;
-- cache key gồm endpoint/path/query;
-- parser output cache key thêm raw payload hash + parser version;
-- calculation chỉ chạy khi source revision hoặc decision revision thay đổi;
-- ETag/`If-None-Match` được dùng nếu server cung cấp, nhưng hệ thống không phụ thuộc việc có ETag.
+- bootstrap, fixtures and event live are a shared cache for all 40 managers;
+- each shared URL is fetched once per tick;
+- the cache key covers endpoint, path and query;
+- the parser output cache key adds the raw payload hash and the parser version;
+- a calculation runs only when a source revision or a decision revision
+  changes;
+- use ETag and `If-None-Match` when the server offers them, without depending
+  on their presence.
 
-Không poll player element summary theo kiểu `tổng số player × mỗi phút`.
+Never poll element summary as "every player, every minute".
 
-## 8. Raw payload, version và schema drift
+Free-tier note: the schedule that ships in `supabase/cron_fpl_sync.sql` runs
+every five minutes rather than every 60 seconds, because each tick costs a
+serverless invocation. Raise the frequency for live Gameweeks only after
+checking the hosting quota.
+
+## 8. Raw payloads, versions and schema drift
 
 ### 8.1 Raw record
 
-Mỗi request attempt lưu metadata:
+Every request attempt stores metadata:
 
 ```text
 endpoint_code
@@ -618,74 +529,79 @@ correlation_id
 error_class nullable
 ```
 
-Không lưu cookie, auth header hoặc response header không cần thiết. Với non-JSON/error body, chỉ lưu phần body đã giới hạn kích thước và sanitize.
+Never store cookies, auth headers or unnecessary response headers. For a
+non-JSON or error body, store only a size-limited, sanitized excerpt.
 
-Raw success payload là append-only:
+A successful raw payload is append-only:
 
-- cùng endpoint/request key/hash có thể deduplicate body nhưng vẫn ghi observation;
-- payload khác hash tạo source revision mới;
-- không sửa raw khi parser hoặc rule thay đổi;
-- giữ raw ít nhất toàn bộ mùa 2026/27 và qua cửa sổ audit/đối soát do BTC quy định.
+- the same endpoint, request key and hash may deduplicate the body while still
+  recording the observation;
+- a payload with a different hash creates a new source revision;
+- raw data is never edited when a parser or a rule changes;
+- keep raw data for the whole 2026/27 season and through whatever audit window
+  the organisers require.
 
-### 8.2 Version
+### 8.2 Versions
 
-Ba version độc lập:
+Three independent versions:
 
 ```text
-contract_version   # endpoint/field/timing contract
+contract_version   # endpoint, field and timing contract
 parser_version     # JSON -> normalized source facts
 ruleset_version    # source facts -> VMF result
 ```
 
-Mọi calculation run phải lưu cả ba. Thay parser không được ngụy trang thành thay luật.
+Every calculation run stores all three. Changing a parser must never be
+disguised as changing a rule.
 
 ### 8.3 Drift policy
 
-Drift được phân loại:
-
-| Loại | Ví dụ | Xử lý |
+| Type | Example | Handling |
 |---|---|---|
-| Additive | FPL thêm field stats | Giữ raw, parser bỏ qua/map sau; không chặn |
-| Nullable | Field từng bắt buộc thành `null` | Chỉ chấp nhận nếu contract cho nullable; nếu không quarantine |
-| Missing required | Mất `elements[].id` | Quarantine endpoint revision |
-| Type change | ID từ number thành object | Quarantine và alert |
-| Enum expansion | Status mới | Lưu unknown, không map thành status cũ |
-| Semantic | `points` đã bao gồm transfer cost | Invariant fail; chặn final và nâng parser/contract |
-| Route/status | 404/HTML thay JSON | Circuit breaker, stale mode, alert |
+| Additive | FPL adds a stats field | Keep raw, map later; do not block |
+| Nullable | A required field becomes `null` | Accept only if the contract allows null; otherwise quarantine |
+| Missing required | `elements[].id` disappears | Quarantine that endpoint revision |
+| Type change | An ID becomes an object | Quarantine and alert |
+| Enum expansion | A new status value | Store the unknown value; never map it onto an old one |
+| Semantic | `points` starts including the transfer cost | Invariant fails; block finalization and raise the parser or contract version |
+| Route/status | 404 or HTML instead of JSON | Circuit breaker, stale mode, alert |
 
-Parser dùng “tolerant reader” với field mới nhưng strict cho invariant/identity. Không được dùng kiểu “catch all rồi mặc định `0`”.
+The parser is a tolerant reader for new fields and strict about identity and
+invariants. "Catch everything and default to `0`" is never acceptable.
 
-Contract test tự động:
+Automated contract tests:
 
-- chạy fixture raw đã version-control;
-- smoke-test production endpoint read-only;
-- so required field/type/nullability;
-- chạy semantic invariants;
-- báo diff trước khi deploy parser mới.
+- run against version-controlled raw fixtures;
+- smoke-test the production endpoints read-only;
+- compare required fields, types and nullability;
+- run the semantic invariants;
+- report the difference before a new parser is deployed.
 
-## 9. Retry, circuit breaker và stale strategy
+## 9. Retries, circuit breaker and staleness
 
-### 9.1 Phân loại response
+### 9.1 Response classification
 
-| Tình huống | Retry trong tick | Hành động |
+| Situation | Retry within the tick | Action |
 |---|---|---|
-| Network timeout/reset | Có, tối đa 3 attempt | Exponential backoff + jitter |
-| HTTP 429 | Theo `Retry-After`; không spam | Mở endpoint throttle/circuit |
-| HTTP 500/502/503/504 | Có, tối đa 3 attempt | Sau đó giữ stale và chờ tick kế |
-| HTTP 401/403 | Không retry dày | Cảnh báo access contract thay đổi |
-| HTTP 404 picks quanh deadline | Retry theo readiness schedule | Phân loại `sealed_or_not_ready`, không zero |
-| HTTP 404 entry đã từng hợp lệ | Retry có giới hạn + availability incident | Không tự khóa/xóa manager |
-| HTTP 404 ID chưa từng hợp lệ | Không retry liên tục | Validation error/admin review |
-| HTTP 200 nhưng HTML/non-JSON | Không parse | Quarantine + circuit breaker |
-| HTTP 200 JSON sai schema | Không publish normalized revision | Quarantine + alert |
+| Network timeout or reset | Yes, up to 3 attempts | Exponential backoff with jitter |
+| HTTP 429 | Follow `Retry-After`; never spam | Throttle or open the circuit for that endpoint |
+| HTTP 500/502/503/504 | Yes, up to 3 attempts | Then hold stale data and wait for the next tick |
+| HTTP 401/403 | No aggressive retry | Alert that the access contract changed |
+| HTTP 404 on picks around a deadline | Retry on the readiness schedule | Classify as `sealed_or_not_ready`, never zero |
+| HTTP 404 on an entry that used to be valid | Limited retries plus an availability incident | Never lock or delete the manager automatically |
+| HTTP 404 on an ID that was never valid | Do not retry repeatedly | Validation error or administrator review |
+| HTTP 200 with HTML or non-JSON | Do not parse | Quarantine plus circuit breaker |
+| HTTP 200 JSON with the wrong schema | Do not publish a normalized revision | Quarantine and alert |
 
-Backoff default cho retry ngắn có thể là `1s, 3s, 9s` cộng jitter. Sau ba attempt, trả quyền điều phối cho scheduler; không busy-loop.
+A reasonable default backoff is `1s, 3s, 9s` plus jitter. After three attempts,
+hand control back to the scheduler; never busy-loop.
 
-Circuit breaker tách theo endpoint code. Lỗi optional league/element summary không mở circuit cho live endpoint.
+The circuit breaker is per endpoint code. A failure in an optional league or
+element-summary endpoint must not open the circuit for the live endpoint.
 
 ### 9.2 Staleness
 
-Snapshot/API response public phải có:
+Every snapshot and public response must carry:
 
 ```text
 source_observed_at
@@ -696,75 +612,86 @@ stale_reason
 snapshot_revision
 ```
 
-Default cảnh báo:
+Default warnings:
 
-- live/fixtures: stale sau hơn 3 chu kỳ 60 giây;
-- bootstrap transition: stale sau 15 phút;
-- picks của current GW: missing sau deadline + grace window cấu hình;
-- manager history: stale nếu chưa reconcile khi chuẩn bị provisional/final.
+- live and fixtures: stale after more than three refresh cycles;
+- bootstrap transitions: stale after 15 minutes;
+- current-Gameweek picks: missing after the deadline plus a configured grace
+  window;
+- manager history: stale if not reconciled while preparing provisional or final.
 
-Khi stale:
+While stale:
 
-- tiếp tục hiển thị snapshot thành công gần nhất;
-- UI gắn nhãn “dữ liệu chậm cập nhật” và thời gian cuối;
-- không đổi missing player/manager thành `0`;
-- không phát sinh winner, TotW, penalty hoặc next-round bracket từ partial revision;
-- không final GW;
-- admin dashboard hiển thị endpoint/manager bị ảnh hưởng.
+- keep showing the last successful snapshot;
+- label the interface as slow to update and show the last update time;
+- never turn a missing player or manager into `0`;
+- never derive a winner, TotW, penalty or next-round bracket from a partial
+  revision;
+- never finalize the Gameweek;
+- show the affected endpoints and managers on the admin dashboard.
 
 ### 9.3 Finalization gate
 
-Một GW chỉ eligible để final khi:
+A Gameweek is eligible for finalization only when:
 
-1. fixtures thuộc GW đã được resolve theo revision hiện tại;
-2. event live payload required schema hợp lệ;
-3. picks/history của tất cả manager active đã có, hoặc manager có quyết định replacement/status hợp lệ;
-4. transfer cost đã reconcile;
-5. auto-sub/effective captain đủ dữ liệu;
-6. không có source revision required đang quarantine/stale;
-7. violation candidate cần thiết đã được review hoặc được finalization policy cho phép pending rõ ràng;
-8. calculation run dùng một input revision set nhất quán.
+1. its fixtures are resolved in the current revision;
+2. the event live payload matches the required schema;
+3. picks and history exist for every active manager, or the manager has a valid
+   replacement or status decision;
+4. transfer costs are reconciled;
+5. automatic substitutions and the effective captain have enough data;
+6. no required source revision is quarantined or stale;
+7. the necessary violation candidates have been reviewed, or the finalization
+   policy explicitly allows them to stay pending;
+8. the calculation run used one consistent input revision set.
 
-Không coi một field `finished`/`data_checked` duy nhất là toàn bộ finalization contract. Admin/rule finalization tạo snapshot final bất biến theo kiến trúc.
+A single `finished` or `data_checked` field is not the whole finalization
+contract. Administrator or rule finalization creates the immutable final
+snapshot described in the architecture.
 
-## 10. Data quality và reconciliation
+## 10. Data quality and reconciliation
 
-Các invariant tối thiểu:
+Minimum invariants:
 
 ```text
-entry response id == requested entry_id
-pick elements tồn tại trong bootstrap elements
-fixture team_h/team_a tồn tại trong bootstrap teams
-live element id tồn tại trong player catalog
-fixture explain.fixture tồn tại trong fixtures hoặc được đánh dấu unresolved
-GW nằm trong 1..38
-position của picks là duy nhất trong squad snapshot
-chỉ một original captain và một original vice-captain
-transfer event map được sang GW
-history transfer cost == picks entry_history transfer cost khi cả hai đã ổn định
+the entry response id equals the requested entry_id
+pick elements exist in the bootstrap elements
+fixture team_h and team_a exist in the bootstrap teams
+a live element id exists in the player catalogue
+explain.fixture exists in fixtures, or is marked unresolved
+the Gameweek is within 1..38
+pick positions are unique inside a squad snapshot
+there is exactly one original captain and one original vice-captain
+a transfer event maps to a Gameweek
+history transfer cost equals the picks entry_history transfer cost once both
+    have settled
 ```
 
-Mismatch không tự chọn nguồn một cách im lặng:
+A mismatch never picks a source silently:
 
-- lưu cả hai raw revisions;
-- tạo reconciliation issue;
-- quy định source precedence theo parser/contract version;
-- chặn phần kết quả bị ảnh hưởng khỏi final.
+- keep both raw revisions;
+- create a reconciliation issue;
+- define source precedence by parser and contract version;
+- block the affected results from finalization.
 
-Một mismatch optional không liên quan có thể không chặn toàn GW, nhưng lý do phải được ghi machine-readable.
+An unrelated optional mismatch may leave the rest of the Gameweek unblocked,
+but the reason must be recorded machine-readably.
 
-## 11. Security và privacy
+## 11. Security and privacy
 
-- Endpoint gateway không nhận URL tùy ý từ request user; chỉ nhận endpoint code + typed params.
-- Validate numeric range để tránh path traversal/SSRF.
-- Response size limit ngăn payload bất thường làm cạn memory.
-- Không proxy raw FPL payload thẳng ra public API.
-- Public API dùng DTO VMF và loại mọi phone/Facebook/admin note.
-- Không log full manager contact record cùng source payload.
-- Không dùng global rank dù payload có field đó.
-- League member list chỉ dùng trong admin workflow nếu BTC cho phép; không tự công bố thêm dữ liệu ngoài phạm vi giải.
+- The gateway never accepts an arbitrary URL from a user request; only an
+  endpoint code and typed parameters.
+- Validate numeric ranges to prevent path traversal and SSRF.
+- A response size limit prevents an abnormal payload from exhausting memory.
+- Never proxy a raw FPL payload straight to a public API.
+- Public APIs use VMF DTOs and strip every phone number, Facebook URL and
+  administrator note.
+- Never log a full manager contact record alongside a source payload.
+- Never use global rank, even though the payload contains it.
+- A league member list is used only inside an administrative workflow the
+  organisers allow; nothing beyond the competition scope is published.
 
-## 12. Cấu hình đề xuất
+## 12. Suggested configuration
 
 ```text
 FPL_API_BASE_URL=https://fantasy.premierleague.com/api/
@@ -774,46 +701,51 @@ FPL_HTTP_MAX_ATTEMPTS=3
 FPL_HTTP_MAX_CONCURRENCY=4
 FPL_LIVE_REFRESH_SECONDS=60
 FPL_LIVE_STALE_AFTER_SECONDS=180
-FPL_RESPONSE_MAX_BYTES=<giới hạn đã benchmark>
+FPL_RESPONSE_MAX_BYTES=<benchmarked limit>
 FPL_CONTRACT_VERSION=1.0.0-draft
 FPL_ENABLE_CLASSIC_LEAGUE_ADAPTER=false
 FPL_ENABLE_H2H_LEAGUE_ADAPTER=false
 ```
 
-Không lưu secret trong file cấu hình repo. Hai league adapter bật theo season sau smoke-test; core scoring không phụ thuộc chúng.
+Secrets never live in a configuration file in the repository. The two league
+adapters are enabled per season after a smoke test; core scoring never depends
+on them.
 
-## 13. Acceptance criteria cho gateway
+## 13. Gateway acceptance criteria
 
-1. Mọi endpoint bắt buộc đi qua cùng `FplGateway`.
-2. Không request nào gửi FPL credential/cookie.
-3. Picks không được truy cập trước deadline.
-4. Shared live endpoint chỉ fetch một lần mỗi tick.
-5. Raw payload và hash được giữ trước khi parse.
-6. Rerun cùng raw + parser cho cùng normalized output.
-7. Field mới không làm parser hỏng nếu invariant không đổi.
-8. Missing/type/semantic drift bắt buộc quarantine và alert.
-9. 404/timeout không biến score thành `0`.
-10. Stale required source chặn finalization.
-11. Optional league endpoint lỗi không chặn Classic/H2H VMF.
-12. VMF standings không dùng rank/points từ FPL league endpoint.
-13. DGW có provenance đến `player_id + fixture_id`.
-14. Transfer cost được cross-check giữa history và picks.
-15. Locked/deleted chỉ hình thành sau workflow admin, không từ một HTTP error.
-16. Contract/parser/ruleset version xuất hiện trong calculation provenance.
+1. Every required endpoint goes through the same gateway.
+2. No request carries an FPL credential or cookie.
+3. Picks are never accessed before a deadline.
+4. A shared live endpoint is fetched once per tick.
+5. The raw payload and its hash are stored before parsing.
+6. Rerunning the same raw payload and parser produces the same normalized
+   output.
+7. A new field does not break the parser while the invariants hold.
+8. A missing, type or semantic drift forces quarantine and an alert.
+9. A 404 or a timeout never turns a score into `0`.
+10. A stale required source blocks finalization.
+11. An optional league failure does not block VMF Classic or H2H.
+12. VMF standings never use a rank or total from an FPL league endpoint.
+13. A Double Gameweek keeps provenance down to `player_id + fixture_id`.
+14. Transfer cost is cross-checked between history and picks.
+15. Locked or deleted status only ever results from an administrative workflow,
+    never from an HTTP error.
+16. Contract, parser and ruleset versions appear in the calculation provenance.
 
-## 14. Runbook khi endpoint thay đổi
+## 14. Runbook when an endpoint changes
 
-Khi alert schema/route/access xuất hiện:
+When a schema, route or access alert appears:
 
-1. dừng publish normalized revision của endpoint bị ảnh hưởng;
-2. giữ last-known-good snapshot và bật stale banner;
-3. lưu response/error đã sanitize;
-4. chạy contract diff trên staging;
-5. xác định additive, breaking hay semantic drift;
-6. cập nhật fixture test và parser với version mới;
-7. replay ít nhất một GW normal, DGW, captain/auto-sub và transfer-cost case;
-8. deploy parser;
-9. backfill từ raw payload nếu cần;
-10. chỉ mở finalization sau khi reconciliation pass.
+1. stop publishing normalized revisions for the affected endpoint;
+2. keep the last known good snapshot and show the stale banner;
+3. store the sanitized response or error;
+4. run the contract difference on staging;
+5. decide whether the drift is additive, breaking or semantic;
+6. update the fixture tests and the parser under a new version;
+7. replay at least an ordinary Gameweek, a Double Gameweek, a captaincy and
+   auto-sub case, and a transfer-cost case;
+8. deploy the parser;
+9. backfill from raw payloads if needed;
+10. reopen finalization only after reconciliation passes.
 
-Không hot-fix bằng cách sửa raw row hoặc đặt missing field về `0`.
+Never hot-fix by editing a raw row or defaulting a missing field to `0`.
