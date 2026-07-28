@@ -1,25 +1,26 @@
 # VMF Fantasy League 2026/27 — Architecture
 
-**Mã tài liệu:** `VMF-ARCH-2026-27`
-**Trạng thái:** Kiến trúc triển khai production
-**Nguồn luật:** [`RULEBOOK.md`](./RULEBOOK.md)
+**Document code:** `VMF-ARCH-2026-27`
+**Status:** Production architecture
+**Rule source:** [`RULEBOOK.md`](./RULEBOOK.md)
 
-## 1. Mục tiêu kiến trúc
+## 1. Architectural goals
 
-Hệ thống là một competition engine đặt trên dữ liệu FPL. Thiết kế phải:
+The system is a competition engine sitting on top of FPL data. The design must:
 
-- đồng bộ dữ liệu FPL có thể thay đổi mà không làm mất dấu dữ liệu nguồn;
-- tính live đủ nhanh cho 40 manager;
-- tái hiện chính xác một kết quả cũ;
-- giữ penalty, replacement và override tách khỏi điểm chính thức;
-- hỗ trợ DGW, BGW, trận hoãn, auto-sub và sửa điểm muộn;
-- khóa được kết quả nhưng vẫn cho admin reopen có audit;
-- không làm lộ phone/Facebook qua public API hoặc log;
-- tiếp tục hiển thị snapshot gần nhất khi FPL API tạm lỗi.
+- synchronize changing FPL data without losing the trail back to the source;
+- compute live results fast enough for 40 managers;
+- reproduce an old result exactly;
+- keep penalties, replacements and overrides separate from official points;
+- handle Double and Blank Gameweeks, postponements, automatic substitutions and
+  late point corrections;
+- lock results while still allowing an audited administrator reopen;
+- never leak phone numbers or Facebook URLs through a public API or a log;
+- keep showing the most recent snapshot while the FPL API is failing.
 
-## 2. Kiểu triển khai
+## 2. Deployment shape
 
-Khuyến nghị dùng **modular monolith** cho mùa đầu:
+A **modular monolith** is recommended for the first season:
 
 ```text
 Browser
@@ -32,22 +33,23 @@ Browser
         +-- FPL gateway
         +-- scheduler/worker
         +-- PostgreSQL
-        +-- object storage hoặc PostgreSQL JSONB cho raw payload
+        +-- object storage or PostgreSQL JSONB for raw payloads
 ```
 
 Stack:
 
 ```text
-Frontend: Next.js + TypeScript + Tailwind + TanStack Query
+Frontend: Next.js + TypeScript + Tailwind
 Backend:  Python + FastAPI + Pydantic + SQLAlchemy + Alembic
 Database: PostgreSQL
-Jobs:     APScheduler trong process worker riêng ở quy mô ban đầu
-Cache:    PostgreSQL/shared HTTP cache; Redis chỉ thêm khi có nhu cầu
+Jobs:     an external scheduler calling an authenticated endpoint
+Cache:    PostgreSQL and shared HTTP caching; add Redis only when needed
 ```
 
-Không chạy scheduler trong từng web replica. Chỉ một worker giữ distributed lock; mọi job vẫn phải idempotent.
+Do not run a scheduler inside every web replica. Exactly one worker holds the
+distributed lock, and every job must still be idempotent.
 
-Các module nghiệp vụ:
+Business modules:
 
 ```text
 identity
@@ -63,13 +65,14 @@ admin
 audit
 ```
 
-Module không gọi chéo table tùy tiện. Mỗi calculation chạy qua service/application command có input revision và ruleset rõ ràng.
+Modules do not reach into each other's tables at will. Every calculation runs
+through a service command with an explicit input revision and ruleset.
 
-## 3. Ba lớp dữ liệu bắt buộc
+## 3. The three mandatory data layers
 
-### 3.1 Raw/source layer
+### 3.1 Raw source layer
 
-Raw layer là bằng chứng dữ liệu đã nhận từ FPL, append-only.
+The raw layer is append-only evidence of what FPL returned.
 
 `raw_fpl_responses`:
 
@@ -78,43 +81,49 @@ id
 endpoint_name
 request_key
 season_code
-gameweek
+gameweek_number
 fpl_entry_id nullable
-fixture_id nullable
-fetched_at
 http_status
-etag nullable
 payload_hash
-payload_json
-schema_version
+payload_bytes
+payload_json nullable
+contract_version
 parser_version
 correlation_id
+first_seen_at
+last_seen_at
+seen_count
 ```
 
-Quy tắc:
+Rules:
 
-- cùng `request_key + payload_hash` không tạo nhiều bản payload logic;
-- payload mới khác hash tạo revision mới;
-- lỗi parse không xóa payload; lưu lỗi và cảnh báo schema drift;
-- raw payload không chứa VMF penalty/override;
-- secret, cookie hoặc authorization header không được lưu.
+- the same `request_key + payload_hash` does not create a second logical
+  payload; it updates the observation counters;
+- a payload with a different hash creates a new revision;
+- a parse failure never deletes the payload: store the error and raise a schema
+  drift alert;
+- raw payloads never contain VMF penalties or overrides;
+- secrets, cookies and authorization headers are never stored;
+- large shared payloads may be kept by hash only, while small manager-scoped
+  evidence is kept in full.
 
-### 3.2 Normalized và derived layer
+### 3.2 Normalized and derived layers
 
-Normalized source facts là dữ liệu FPL đã parse nhưng chưa áp luật VMF:
+Normalized source facts are parsed FPL data before any VMF rule applies:
 
 ```text
+fpl_teams
 fpl_players
 fpl_fixtures
 fpl_player_fixture_stats
-manager_deadline_pick_snapshots
+manager_pick_snapshots
 manager_pick_items
 manager_gameweek_history
 manager_transfers
 manager_chip_events
 ```
 
-Derived layer được tạo bởi calculation run:
+The derived layer is produced by calculation runs:
 
 ```text
 calculation_runs
@@ -130,7 +139,7 @@ replacement_average_calculations
 highlight_calculations
 ```
 
-Mỗi derived row phải truy được:
+Every derived row must be traceable to:
 
 ```text
 calculation_run_id
@@ -140,11 +149,13 @@ input_revision_set/hash
 calculated_at
 ```
 
-Không cập nhật derived final row tại chỗ. Live materialization có thể được upsert để phục vụ UI, nhưng snapshot/revision nguồn phải giữ lại để debug.
+A finalized derived row is never updated in place. A live materialization may
+be upserted for the interface, but the source snapshot and revision must be
+kept for debugging.
 
-### 3.3 Decision/override layer
+### 3.3 Decision and override layer
 
-Quyết định VMF nằm riêng:
+VMF decisions live on their own:
 
 ```text
 violations
@@ -159,7 +170,7 @@ gameweek_finalization_events
 audit_events
 ```
 
-Override là overlay, không sửa raw hoặc derived base:
+An override is an overlay; it never edits the raw or derived base:
 
 ```text
 effective_value =
@@ -168,11 +179,13 @@ effective_value =
     ?? calculated_official_value
 ```
 
-Mỗi override có `reason`, `actor`, `created_at`, `supersedes_id`, phạm vi và revision bắt đầu có hiệu lực. Hủy override bằng một event mới; không xóa record cũ.
+Every override carries `reason`, `actor`, `created_at`, `supersedes_id`, a scope
+and the revision from which it takes effect. Cancelling an override means
+adding a new event, never deleting the old record.
 
-## 4. Mô hình dữ liệu cốt lõi
+## 4. Core data model
 
-### 4.1 Cấu hình và membership
+### 4.1 Configuration and membership
 
 ```text
 seasons
@@ -185,7 +198,7 @@ managers
 manager_external_profiles
 ```
 
-`division_memberships` dùng khoảng GW:
+`division_memberships` uses Gameweek ranges:
 
 ```text
 manager_id
@@ -196,16 +209,17 @@ end_gameweek
 source_decision_id
 ```
 
-Database constraint phải ngăn hai membership chồng lấn của cùng manager trong cùng competition scope.
+A database constraint must prevent two overlapping memberships for the same
+manager in the same competition scope.
 
-PII nên tách khỏi row public:
+Personal data belongs outside the public row:
 
 ```text
-managers                  # tên đăng ký, team, trạng thái public-safe
+managers                  # registered name, team, public-safe status
 manager_private_contacts  # phone, Facebook URL, encrypted at rest
 ```
 
-### 4.2 Schedule và bracket
+### 4.2 Schedules and brackets
 
 ```text
 h2h_schedule_versions
@@ -217,17 +231,18 @@ cup_bracket_versions
 cup_matches
 ```
 
-Schedule/bracket có trạng thái:
+A schedule or bracket has a state:
 
 ```text
 draft -> locked -> superseded
 ```
 
-Chỉnh schedule đã locked phải tạo version mới và admin decision, không update im lặng.
+Editing a locked schedule requires a new version and an administrative
+decision, never a silent update.
 
-### 4.3 Ledger thay vì sửa tổng
+### 4.3 Ledgers instead of mutable totals
 
-Các tổng quan trọng phải dựng từ ledger:
+Important totals are built from ledgers:
 
 ```text
 h2h_table_points =
@@ -238,71 +253,67 @@ cup_qualification_points =
     sum(cup_qualification_ledger.contribution)
 ```
 
-Threshold action có unique key:
+A threshold action has a unique key:
 
 ```text
 (manager_id, season_id, threshold_number)
 ```
 
-Nhờ đó retry job không trừ H2H `-6` hai lần hoặc áp lại removal.
+so a retried job cannot deduct the same `-6` twice or apply a removal again.
 
-## 5. Mô hình player–fixture cho DGW
+## 5. The player–fixture model for Double Gameweeks
 
-Không lưu một điểm player duy nhất rồi ghi đè theo fixture. Grain nguồn phải là:
+Never store a single player score and overwrite it per fixture. The source
+grain must be:
 
 ```text
-(season_id, gameweek_id, player_id, fixture_id)
+(season_id, gameweek_number, element_id, fixture_fpl_id)
 ```
 
 `fpl_player_fixture_stats`:
 
 ```text
-player_id
-fixture_id
-gameweek_id
-fixture_revision
+element_id
+fixture_fpl_id
+gameweek_number
 minutes
 total_points
 goals_scored
+assists
 yellow_cards
 red_cards
 bonus
-fixture_status
 source_raw_id
 ```
 
-Aggregate player-GW:
+Aggregating to player-Gameweek:
 
 ```text
-player_gw_base_points =
-    sum(total_points của mọi fixture gắn với GW)
-
-player_gw_goals =
-    sum(goals_scored của mọi fixture gắn với GW)
-
-player_gw_cards =
-    sum(yellow_cards + red_cards của mọi fixture gắn với GW)
+player_gw_base_points = sum(total_points across every fixture in that GW)
+player_gw_goals       = sum(goals_scored across every fixture in that GW)
+player_gw_cards       = sum(yellow_cards + red_cards across those fixtures)
 ```
 
-Multiplier thuộc pick của manager, không thuộc fixture:
+The multiplier belongs to the manager's pick, not to the fixture:
 
 ```text
-manager_player_contribution =
-    player_gw_base_points * effective_multiplier
+manager_player_contribution = player_gw_base_points * effective_multiplier
 ```
 
-Điều này tránh nhân captain riêng từng row rồi cộng sai khi dữ liệu fixture được cập nhật từng phần.
+This avoids multiplying the captain per fixture row and then summing wrongly
+when fixture data arrives piecemeal.
 
-Trạng thái một player trong matchup:
+Player status inside a matchup:
 
-- `yet_to_play`: còn fixture chưa bắt đầu;
-- `playing`: ít nhất một fixture đang đá;
-- `finished`: toàn bộ fixture trong GW đã kết thúc;
-- `postponed`: fixture chưa được gán lại/được FPL đánh dấu hoãn;
-- `blank`: không có fixture trong GW;
-- `unknown`: dữ liệu không đủ.
+- `yet_to_play`: a fixture has not started;
+- `playing`: at least one fixture is in progress;
+- `finished`: every fixture in the Gameweek has ended;
+- `postponed`: a fixture is unscheduled or marked postponed by FPL;
+- `blank`: no fixture in that Gameweek;
+- `unknown`: insufficient data.
 
-Trong DGW, player có thể đã xong trận một nhưng vẫn `remaining` vì còn trận hai. Lưu thêm:
+In a Double Gameweek a player may have finished the first match yet still count
+as remaining because of the second. Store as well:
 
 ```text
 fixtures_total
@@ -310,26 +321,32 @@ fixtures_finished
 fixtures_remaining
 ```
 
-`players_remaining` đếm player duy nhất còn fixture unresolved; `effective_players_remaining` cộng multiplier một lần cho mỗi player đó. UI hiển thị fixture count riêng.
+`players_remaining` counts distinct players with an unresolved fixture;
+`effective_players_remaining` adds each such player's multiplier once. The
+interface displays the fixture count separately.
 
-Không tự coi trận hoãn là đã kết thúc GW. Mapping fixture sang event/GW phải lấy từ revision FPL; nếu fixture chuyển GW, calculation run mới phải gỡ nó khỏi aggregate GW cũ.
+Never treat a postponed fixture as a finished Gameweek. Fixture-to-event
+mapping comes from the FPL revision; if a fixture moves to another Gameweek, a
+new calculation run must remove it from the previous aggregate.
 
-## 6. Deadline picks, auto-sub và chip
+## 6. Deadline picks, automatic substitutions and chips
 
-Sau deadline, lấy picks cho từng manager và tạo snapshot bất biến:
+After the deadline, fetch each manager's picks and create an immutable
+snapshot:
 
 ```text
 manager_id
-gameweek_id
-snapshot_revision
-deadline_time
-raw_response_id
+gameweek_number
+revision
+payload_hash
+captured_at
+source_raw_id
 active_chip
-entry_history_transfer_cost
+transfer_cost
 pick_items
 ```
 
-Giữ cả:
+Keep both:
 
 ```text
 original_captain_player_id
@@ -340,39 +357,47 @@ effective_multiplier
 auto_sub_resolution_source
 ```
 
-Trong live:
+While live:
 
-- dùng snapshot picks, không fetch lại toàn bộ 40 squad mỗi 60 giây;
-- tính live contribution từ player-fixture facts;
-- auto-sub/captain resolution được đánh dấu provisional;
-- khi FPL công bố resolution cuối, đối chiếu và tạo revision nếu khác.
+- use the snapshot picks; do not refetch all 40 squads every 60 seconds;
+- compute live contributions from player-fixture facts;
+- mark automatic substitution and captain resolution as provisional;
+- when FPL publishes the final resolution, compare and create a new revision if
+  it differs.
 
-Bench Boost làm toàn bộ bench picks có multiplier `1`. Triple Captain chỉ đổi multiplier của effective captain thành `3`. Wildcard/Free Hit ảnh hưởng transfers/squad source nhưng không được tự xóa transfer cost do FPL công bố.
+Bench Boost gives every bench pick multiplier `1`. Triple Captain changes only
+the effective captain's multiplier to `3`. Wildcard and Free Hit affect
+transfers and the squad source but never erase the transfer cost published by
+FPL.
 
 ## 7. Calculation pipeline
 
-Một calculation run đi theo thứ tự:
+A calculation run proceeds in this order:
 
 ```text
-1. Chọn input raw/normalized revisions và ruleset
-2. Aggregate player-fixture -> player-GW
-3. Resolve counted picks, auto-subs, captain, chip
-4. Tính official gross/net và matchup exposure
+1. Select the input raw/normalized revisions and the ruleset
+2. Aggregate player-fixture -> player-Gameweek
+3. Resolve counted picks, automatic substitutions, captain and chip
+4. Compute official gross/net and matchup exposure
 5. Detect violation candidates
-6. Áp decision/override/replacement overlay
-7. Ghi Classic contribution
-8. Ghi Cup qualification ledger
-9. Tính H2H/Cup match
-10. Tính TotW và highlights
-11. Tính standings
-12. Publish snapshot revision
+6. Apply the decision, override and replacement overlay
+7. Write Classic contributions
+8. Write the Cup qualification ledger
+9. Compute H2H and Cup matches
+10. Compute TotW and highlights
+11. Compute standings
+12. Publish a snapshot revision
 ```
 
-Các bước phải deterministic với cùng input revision, rule version và override set. Run ghi `input_hash` và `output_hash`; rerun cùng input phải cho cùng output.
+Each step must be deterministic given the same input revision, rule version and
+override set. A run records `input_hash` and `output_hash`; rerunning the same
+input must produce the same output.
 
-Replacement average được tính trước khi resolve competition scores nhưng sau khi biết điểm net của sample. Mọi locked manager cùng division/GW dùng cùng một sample snapshot để không có vòng lặp.
+Replacement averages are computed before competition scores are resolved but
+after the sample's net scores are known. Every locked manager in the same
+division and Gameweek uses the same sample snapshot, so no recursion occurs.
 
-## 8. Snapshot và versioning
+## 8. Snapshots and versioning
 
 ### 8.1 Snapshot model
 
@@ -395,34 +420,36 @@ finalized_at nullable
 snapshot_hash
 ```
 
-Một snapshot set liên kết đồng bộ:
+One snapshot set ties together:
 
 - manager scores;
 - Classic standings;
-- H2H results/standings;
-- Cup qualification/matches;
-- TotW/highlights;
+- H2H results and standings;
+- Cup qualification and matches;
+- TotW and highlights;
 - matchup details.
 
-API không được trộn rows từ hai snapshot revisions khác nhau trong một response.
+An API response must never mix rows from two snapshot revisions.
 
 ### 8.2 State machine
 
 ```text
 upcoming -> live -> provisional -> final
-final --admin reopen--> provisional (revision mới) -> final (revision mới)
+final --admin reopen--> provisional (new revision) -> final (new revision)
 ```
 
-- Live revision có thể publish nhiều lần.
-- Chuyển final phải dùng transaction và advisory lock theo GW.
-- Final snapshot không update/delete.
-- Late source revision sau final tạo `source_diff_alert`.
-- Chỉ admin command có lý do mới tạo reopen revision.
-- Bracket vòng sau lưu `source_final_snapshot_id`; nếu refinal thay đổi winner, hệ thống cảnh báo impact và yêu cầu admin xác nhận migration bracket.
+- A live revision may be published repeatedly.
+- Moving to final uses a transaction and an advisory lock per Gameweek.
+- A final snapshot is never updated or deleted.
+- A late source revision after finalization creates a `source_diff_alert`.
+- Only an administrator command with a reason creates a reopen revision.
+- A next-round bracket stores `source_final_snapshot_id`; if a re-finalization
+  changes a winner, the system raises an impact warning and asks the
+  administrator to confirm the bracket migration.
 
-### 8.3 Audit và reproducibility
+### 8.3 Audit and reproducibility
 
-Mỗi public kết quả final phải trả được:
+Every public final result must be able to return:
 
 ```text
 snapshot_id
@@ -432,87 +459,92 @@ calculated_at
 finalized_at
 ```
 
-Audit payload dùng before/after JSON đã redact PII/secret. Audit append-only; database role của application không có quyền hard-delete audit row.
+Audit payloads use before/after JSON with personal data and secrets redacted.
+The audit log is append-only, and the application's database role has no
+hard-delete permission on it.
 
-## 9. Đồng bộ FPL
+## 9. FPL synchronization
 
 ### 9.1 Gateway
 
-Mọi HTTP call đi qua `FplGateway`:
+Every HTTP call goes through the FPL gateway:
 
-- base URL và endpoint mapping cấu hình được;
-- timeout ngắn, retry exponential backoff + jitter;
-- giới hạn concurrency;
+- configurable base URL and endpoint mapping;
+- short timeouts, retries with exponential backoff and jitter;
+- a concurrency limit;
 - schema validation;
-- conditional request/cache khi endpoint hỗ trợ;
-- circuit breaker;
-- metric latency/status/schema error;
-- user agent rõ ràng theo quyền sử dụng đã được BTC xác nhận.
+- conditional requests and caching where the endpoint supports them;
+- a circuit breaker;
+- latency, status and schema-error metrics;
+- an identifiable user agent, used within the data permission the organisers
+  confirmed.
 
-Không để domain service phụ thuộc trực tiếp JSON shape của FPL. Parser/adapter có version riêng.
+No domain service depends directly on FPL's JSON shape. The parser and adapter
+carry their own version.
 
-### 9.2 Lịch job
+### 9.2 Job schedule
 
-Trước mùa:
+Before the season:
 
 ```text
-- sync bootstrap/player/teams/fixtures
-- validate 40 entry IDs
-- import manager và division membership
-- generate + lock H2H schedule
-- create Cup config
+- sync bootstrap, players, teams and fixtures
+- validate the 40 entry IDs
+- import managers and division memberships
+- generate and lock the H2H schedule
+- create the Cup configuration
 ```
 
-Sau deadline mỗi GW:
+After each Gameweek deadline:
 
 ```text
-- fetch picks/entry history/chip/transfer data cho 40 manager
-- retry manager endpoint chưa mở với backoff
+- fetch picks, entry history, chips and transfers for all 40 managers
+- retry manager endpoints that are not open yet, with backoff
 - persist immutable deadline snapshots
 - detect transfer-cost candidates
 ```
 
-Trong live:
+While live:
 
 ```text
-- mỗi 60 giây theo cấu hình: sync shared live-player data + fixtures
-- chỉ fetch payload shared một lần mỗi tick
-- recalculate khi payload hash/revision thay đổi
-- publish live snapshot
+- on the configured interval: sync shared live player data and fixtures
+- fetch each shared payload once per tick
+- recalculate when the payload hash or revision changes
+- publish a live snapshot
 ```
 
-Không refetch 40 picks mỗi phút nếu deadline snapshot không đổi.
+Do not refetch 40 squads every minute while the deadline snapshot is unchanged.
 
-Sau fixtures:
+After fixtures:
 
 ```text
-- chuyển provisional
-- đối chiếu auto-sub/effective captain
-- tính tie-break, TotW, standings
-- chờ finalization gate/admin
+- move to provisional
+- reconcile automatic substitutions and the effective captain
+- compute tie-breaks, TotW and standings
+- wait for the finalization gate or an administrator
 ```
 
-### 9.3 Idempotency và concurrency
+### 9.3 Idempotency and concurrency
 
 - Job key: `(job_type, season, gameweek, logical_tick/input_hash)`.
-- Distributed advisory lock ngăn hai worker chạy cùng GW.
-- Insert raw/decision dùng unique constraints.
-- Calculation publish theo compare-and-swap current revision.
-- Retry không được tạo duplicate violation, threshold action, match result hoặc audit event.
+- A distributed advisory lock prevents two workers running the same Gameweek.
+- Raw and decision inserts rely on unique constraints.
+- Publishing a calculation uses compare-and-swap on the current revision.
+- A retry must never duplicate a violation, a threshold action, a match result
+  or an audit event.
 
 ### 9.4 Degraded mode
 
-Khi FPL lỗi:
+When FPL fails:
 
-- giữ snapshot thành công gần nhất;
-- hiển thị `last_updated_at` và cảnh báo stale;
-- không đổi snapshot sang final;
-- không thay missing data bằng `0`;
-- queue retry và cảnh báo admin sau ngưỡng cấu hình.
+- keep the last successful snapshot;
+- show `last_updated_at` and a stale warning;
+- do not move a snapshot to final;
+- do not replace missing data with `0`;
+- queue a retry and alert an administrator past the configured threshold.
 
 ## 10. API boundary
 
-Tách router/schema:
+Separate routers and schemas:
 
 ```text
 /api/public/*
@@ -520,9 +552,10 @@ Tách router/schema:
 /api/internal/jobs/*
 ```
 
-Public response dùng DTO allowlist, không serialize ORM manager trực tiếp.
+Public responses use allowlisted DTOs; ORM manager rows are never serialized
+directly.
 
-Ví dụ:
+Examples:
 
 ```text
 GET /api/public/gameweeks/{gw}/snapshot
@@ -540,57 +573,63 @@ POST /api/admin/random-draws
 POST /api/admin/schedules/{id}/lock
 ```
 
-Mutation yêu cầu:
+A mutation requires:
 
 - authentication;
 - authorization;
-- CSRF protection nếu dùng cookie;
-- `Idempotency-Key`;
-- reason cho action nhạy cảm;
+- CSRF protection when cookies are used;
+- an `Idempotency-Key`;
+- a reason for sensitive actions;
 - optimistic concurrency (`expected_revision`);
-- audit trong cùng transaction.
+- an audit entry inside the same transaction.
 
-## 11. Authentication và security
+## 11. Authentication and security
 
-### 11.1 Quyền
+### 11.1 Roles
 
-RBAC tối thiểu:
+Minimum RBAC:
 
 ```text
-public          # chỉ public read
-admin_viewer    # xem admin, bao gồm PII nếu được cấp
-competition_admin # rule decisions, finalize, bracket
-super_admin     # quản lý account/quyền, export PII
+public            # public reads only
+admin_viewer      # admin views, including personal data when granted
+competition_admin # rule decisions, finalization, brackets
+super_admin       # account and permission management, personal data export
 ```
 
-Không suy ra quyền PII chỉ từ quyền xem standings.
+Permission to view standings never implies permission to view personal data.
 
-### 11.2 Session
+### 11.2 Sessions
 
-- Dùng identity provider/OIDC đáng tin cậy hoặc auth library production-ready.
-- Bắt buộc MFA cho competition admin/super admin nếu provider hỗ trợ.
-- Session cookie: `HttpOnly`, `Secure`, `SameSite=Lax/Strict`.
-- Session ngắn hạn; revoke được.
-- Password tự triển khai, nếu buộc phải dùng, phải hash bằng Argon2id/bcrypt và có rate limit/lockout.
+- Use a trusted identity provider or a production-ready auth library.
+- Require multi-factor authentication for competition and super administrators
+  where the provider supports it.
+- Session cookies: `HttpOnly`, `Secure`, `SameSite=Lax` or stricter.
+- Sessions are short-lived and revocable.
+- If passwords must be implemented directly, hash with Argon2id or bcrypt and
+  apply rate limiting and lockout.
 
-### 11.3 App security
+### 11.3 Application security
 
-- TLS toàn tuyến.
-- CORS allowlist chính xác.
-- CSRF token cho cookie-authenticated mutations.
-- Rate limit login, admin mutation và public endpoint tốn tài nguyên.
-- Validate ID/enum/range bằng schema; parameterized SQL qua ORM.
+- TLS end to end.
+- An exact CORS allowlist.
+- CSRF tokens for cookie-authenticated mutations.
+- Rate limits on login, admin mutations and expensive public endpoints.
+- Validate IDs, enums and ranges with schemas; parameterized SQL through the
+  ORM.
 - Security headers: CSP, HSTS, frame-ancestors, nosniff.
-- Secret lấy từ secret manager/environment; không commit.
-- PII mã hóa at rest ở application/KMS hoặc database encryption phù hợp.
-- Backup mã hóa; export PII có watermark/audit và thời hạn.
-- Log redact phone, Facebook URL, token, cookie và raw contact payload.
+- Secrets come from a secret manager or the environment and are never
+  committed.
+- Personal data encrypted at rest, in the application, a KMS or the database.
+- Encrypted backups; personal data exports watermarked, audited and expiring.
+- Logs redact phone numbers, Facebook URLs, tokens, cookies and raw contact
+  payloads.
 
-Public cache key và CDN response không bao giờ chứa admin DTO/PII.
+Public cache keys and CDN responses must never contain admin DTOs or personal
+data.
 
-## 12. Observability và vận hành
+## 12. Observability and operations
 
-Structured log:
+Structured logs:
 
 ```text
 request_id
@@ -604,59 +643,66 @@ duration_ms
 result
 ```
 
-Metric/alert tối thiểu:
+Minimum metrics and alerts:
 
-- FPL sync success/error và payload age;
+- FPL sync success, errors and payload age;
 - schema drift;
-- calculation duration/failure;
-- snapshot publish/finalization;
+- calculation duration and failures;
+- snapshot publication and finalization;
 - stale live data;
 - worker lock contention;
-- pending violation/admin review;
-- audit write failure;
-- backup success và restore drill.
+- pending violations and admin reviews;
+- audit write failures;
+- backup success and restore drills.
 
-Audit write hoặc final snapshot transaction thất bại phải làm toàn bộ admin command rollback.
+A failed audit write or a failed final-snapshot transaction must roll back the
+entire administrative command.
 
-Backup PostgreSQL tự động; kiểm thử restore trước mùa và định kỳ. Tạo runbook cho:
+Back up PostgreSQL automatically and test the restore before the season and
+periodically. Write runbooks for:
 
-- FPL outage;
-- sai parser/schema;
-- final nhầm GW;
-- late point correction;
-- admin account compromise;
-- database restore.
+- an FPL outage;
+- a bad parser or schema change;
+- finalizing the wrong Gameweek;
+- a late point correction;
+- a compromised administrator account;
+- a database restore.
 
-## 13. Biên triển khai và migration
+## 13. Release and migration boundaries
 
-Mỗi release gồm:
+Every release contains:
 
 ```text
-frontend image/version
-backend image/version
+frontend version
+backend version
 database migration version
 ruleset/algorithm version
 ```
 
-Migration production theo nguyên tắc expand/contract; không drop cột/dữ liệu cùng release đang còn code đọc. Seed cấu hình 2026/27 bằng migration/command idempotent, không chỉnh tay database.
+Production migrations follow expand/contract: never drop a column or data in
+the same release whose running code still reads it. Seed the 2026/27
+configuration through an idempotent migration or command, never by editing the
+database by hand.
 
-Các environment:
+Environments:
 
 ```text
 local
-staging (dữ liệu giả lập/replay đã ẩn PII)
+staging (replayed or synthetic data with personal data removed)
 production
 ```
 
-Không copy phone/Facebook production sang staging. Trước GW1 phải replay ít nhất một mùa/GW fixture có captain, auto-sub, chip, DGW, violation, Cup/H2H và finalization.
+Never copy production phone numbers or Facebook URLs into staging. Before GW1,
+replay at least one Gameweek covering captaincy, automatic substitutions,
+chips, a Double Gameweek, a violation, Cup and H2H, and finalization.
 
-## 14. Quyết định kiến trúc không được phá
+## 14. Architectural decisions that must not be broken
 
-1. Raw, derived và override là ba lớp riêng.
-2. Final là revision bất biến, không phải boolean trên một row mutable.
-3. Player-fixture là grain nguồn cho live/DGW.
-4. Deadline picks là snapshot, không phải dữ liệu fetch lại mỗi tick.
-5. Penalty và Cup qualification là ledger.
-6. Public API dùng DTO allowlist và không chạm bảng private contact.
-7. Job nền idempotent và có distributed lock.
-8. Một response standings/matchup dùng một snapshot revision nhất quán.
+1. Raw, derived and override are three separate layers.
+2. Final is an immutable revision, not a boolean on a mutable row.
+3. Player-fixture is the source grain for live scoring and Double Gameweeks.
+4. Deadline picks are snapshots, not data refetched every tick.
+5. Penalties and Cup qualification are ledgers.
+6. Public APIs use allowlisted DTOs and never touch the private contact table.
+7. Background jobs are idempotent and hold a distributed lock.
+8. One standings or matchup response uses one consistent snapshot revision.

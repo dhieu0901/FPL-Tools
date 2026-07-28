@@ -1,19 +1,19 @@
 # VMF Fantasy League 2026/27 — Test Matrix
 
-**Mã tài liệu:** `VMF-TEST-2026-27`
-**Nguồn luật:** [`RULEBOOK.md`](./RULEBOOK.md)
-**Kiến trúc:** [`ARCHITECTURE.md`](./ARCHITECTURE.md)
+**Document code:** `VMF-TEST-2026-27`
+**Rule source:** [`RULEBOOK.md`](./RULEBOOK.md)
+**Architecture:** [`ARCHITECTURE.md`](./ARCHITECTURE.md)
 
-## 1. Chiến lược kiểm thử
+## 1. Testing strategy
 
-Các mức:
+Levels:
 
-- **U — Unit:** hàm luật thuần, deterministic, không network/database thật.
-- **I — Integration:** PostgreSQL, parser, transaction, ledger và API.
-- **E — End-to-end:** frontend/API/worker với dữ liệu replay.
-- **S — Security/operational:** quyền, tải, backup, failure mode.
+- **U — Unit:** pure rule functions, deterministic, no real network or database.
+- **I — Integration:** PostgreSQL, parsers, transactions, ledgers and the API.
+- **E — End-to-end:** frontend, API and worker against replayed data.
+- **S — Security/operational:** permissions, load, backups, failure modes.
 
-Mỗi scenario final phải khẳng định cả giá trị và provenance:
+Every finalized scenario must assert both the value and its provenance:
 
 ```text
 snapshot_id
@@ -23,290 +23,292 @@ input_hash
 score_source
 ```
 
-Không mock domain rule bằng chính hàm production khi xây expected result. Expected fixture phải khai báo độc lập.
+Never build an expected result by calling the production rule function itself.
+Expected fixtures are declared independently.
 
-## 2. Bộ fixture chuẩn
+## 2. Standard fixtures
 
-Tạo các dataset tái sử dụng:
+Build these reusable datasets:
 
-| Fixture | Nội dung |
+| Fixture | Content |
 |---|---|
-| `GW_NORMAL` | Một GW đủ 10 fixture, captain/vice bình thường |
-| `GW_AUTOSUB` | Starter không chơi, bench thay hợp lệ theo formation |
+| `GW_NORMAL` | A full Gameweek of 10 fixtures, ordinary captain and vice |
+| `GW_AUTOSUB` | A starter does not play; a bench player replaces them legally |
 | `GW_CHIPS` | Bench Boost, Triple Captain, Wildcard, Free Hit |
-| `GW_DGW` | Một player có hai fixture, một fixture update trước |
-| `GW_BGW` | Player/team không có fixture |
-| `GW_POSTPONED` | Fixture hoãn rồi chuyển event |
-| `GW_NEGATIVE` | Counted player và captain có điểm âm |
-| `LEAGUE_40` | 20 HIGH, 20 LOW với score có tie boundary |
-| `LOCKED_BOTH_DIVS` | Nhiều locked teams ở cả HIGH và LOW |
-| `VIOLATION_SEASON` | Cost 8/12/20/28, exception và join trễ |
-| `LATE_CORRECTION` | FPL payload đổi sau provisional/final |
+| `GW_DGW` | A player with two fixtures, one updated first |
+| `GW_BGW` | A player or team without a fixture |
+| `GW_POSTPONED` | A fixture postponed and later moved to another event |
+| `GW_NEGATIVE` | A counted player and a captain on negative points |
+| `LEAGUE_40` | 20 HIGH and 20 LOW with scores that tie on a boundary |
+| `LOCKED_BOTH_DIVS` | Several locked teams in both HIGH and LOW |
+| `VIOLATION_SEASON` | Costs of 8/12/20/28, an exception and a late join |
+| `LATE_CORRECTION` | An FPL payload that changes after provisional or final |
 
-## 3. Đồng bộ và provenance
+## 3. Synchronization and provenance
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| SYNC-001 | I | Nhận lại cùng request key và payload hash | Không tạo source revision logic mới; job thành công idempotent |
-| SYNC-002 | I | Cùng request key, payload khác hash | Tạo raw revision mới, giữ revision cũ |
-| SYNC-003 | I | Payload không đúng schema | Raw vẫn được lưu; parser báo schema drift; không publish score sai |
-| SYNC-004 | I | FPL timeout rồi hồi phục | Retry có backoff; không duplicate snapshot/violation |
-| SYNC-005 | E | Live endpoint lỗi trong ba tick | Giữ snapshot cuối, hiển thị stale/last update, không điền điểm `0` |
-| SYNC-006 | I | Hai worker chạy cùng một GW | Advisory lock/CAS chỉ publish một revision hợp lệ |
-| SYNC-007 | I | Fetch live shared data cho 40 manager | Mỗi tick chỉ gọi shared player/fixture endpoint một lần |
-| SYNC-008 | I | Deadline picks đã snapshot, live tick tiếp theo | Không refetch 40 picks nếu source không đổi |
-| SYNC-009 | I | Parser version mới chạy lại raw cũ | Derived row mang parser/algorithm version mới; raw không đổi |
-| SYNC-010 | S | Log request thất bại có contact payload | Phone, Facebook URL, auth header/cookie bị redact |
+| SYNC-001 | I | The same request key and payload hash arrive again | No new logical source revision; the job succeeds idempotently |
+| SYNC-002 | I | Same request key, different payload hash | A new raw revision is created and the old one kept |
+| SYNC-003 | I | A payload that breaks the schema | The raw payload is still stored; the parser reports drift; no wrong score is published |
+| SYNC-004 | I | FPL times out and then recovers | Retries with backoff; no duplicate snapshot or violation |
+| SYNC-005 | E | The live endpoint fails for three ticks | The last snapshot is kept, staleness and last update are shown, no score becomes `0` |
+| SYNC-006 | I | Two workers run the same Gameweek | The advisory lock or CAS publishes only one valid revision |
+| SYNC-007 | I | Fetch live shared data for 40 managers | Each shared player/fixture endpoint is called once per tick |
+| SYNC-008 | I | Deadline picks already captured, next live tick | The 40 picks are not refetched while the source is unchanged |
+| SYNC-009 | I | A new parser version reruns old raw data | Derived rows carry the new parser and algorithm version; raw is unchanged |
+| SYNC-010 | S | A failed request log contains a contact payload | Phone, Facebook URL, auth header and cookie are redacted |
 
-## 4. Điểm, picks, captain và chip
+## 4. Points, picks, captain and chips
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
 | SCORE-001 | U | Gross 72, transfer cost 4 | Official net = 68 |
-| SCORE-002 | U | Counted player điểm âm | Điểm âm được cộng đúng, không clamp về 0 |
+| SCORE-002 | U | A counted player on negative points | The negative value is added, never clamped to 0 |
 | SCORE-003 | U | Captain base 8 | Contribution = 16 |
 | SCORE-004 | U | Triple Captain base 8 | Contribution = 24 |
-| SCORE-005 | U | Captain 0 phút, vice base 7 | Effective captain là vice; contribution = 14 |
-| SCORE-006 | U | Captain và vice đều không có hiệu lực | Captain contribution = 0 |
-| SCORE-007 | U | Starter không chơi, bench thay đúng formation | Auto-sub in/out và effective multiplier đúng |
-| SCORE-008 | U | Bench có điểm, không Bench Boost | Không vào gross; được tính wasted bench points |
-| SCORE-009 | U | Bench Boost active | Bench multiplier = 1; điểm vào gross; không tính wasted bench |
-| SCORE-010 | U | Wildcard/Free Hit active và FPL cost = 0 | Dùng cost FPL = 0, không tự suy diễn cost |
-| SCORE-011 | U | Chip claim nhưng FPL cost vẫn 12 | Net vẫn trừ 12 trừ khi có score override riêng |
-| SCORE-012 | U | Captain ghi 2 bàn | Goals tie-break = 2, không nhân thành 4 |
-| SCORE-013 | U | Bench không counted ghi bàn/thẻ | Goals/cards đóng góp 0 |
-| SCORE-014 | U | Bench Boost player ghi 1 bàn, 1 vàng | Goals = 1, cards = 1 |
-| SCORE-015 | U | Player nhận 1 vàng + 1 đỏ | Total cards = 2 |
-| SCORE-016 | I | Score override active | Raw/official/derived base không đổi; effective score lấy override và có audit provenance |
+| SCORE-005 | U | Captain plays 0 minutes, vice base 7 | The vice is the effective captain; contribution = 14 |
+| SCORE-006 | U | Neither captain nor vice is effective | Captain contribution = 0 |
+| SCORE-007 | U | A starter does not play, a legal bench replacement exists | Auto-sub in/out and the effective multiplier are correct |
+| SCORE-008 | U | Bench players score without Bench Boost | Not added to gross; counted as wasted bench points |
+| SCORE-009 | U | Bench Boost active | Bench multiplier = 1; points enter gross; no wasted bench |
+| SCORE-010 | U | Wildcard or Free Hit active and FPL cost = 0 | Use the FPL cost of 0; never infer a cost |
+| SCORE-011 | U | A chip is claimed but FPL cost is still 12 | Net still subtracts 12 unless a separate score override exists |
+| SCORE-012 | U | The captain scores 2 goals | Goals tie-break = 2, not multiplied to 4 |
+| SCORE-013 | U | An uncounted bench player scores a goal or card | Goals and cards contribute 0 |
+| SCORE-014 | U | A Bench Boost player scores 1 goal and 1 yellow | Goals = 1, cards = 1 |
+| SCORE-015 | U | A player receives 1 yellow and 1 red | Total cards = 2 |
+| SCORE-016 | I | A score override is active | Raw, official and derived bases are unchanged; the effective score uses the override and records provenance |
 
-## 5. DGW, BGW và fixture
+## 5. Double Gameweeks, Blank Gameweeks and fixtures
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| FIX-001 | U | Player DGW có 5 và 8 điểm | Player-GW base = 13 |
-| FIX-002 | U | Player DGW là captain multiplier 2 | Contribution = 26, không mất/double count fixture |
-| FIX-003 | U | Player DGW ghi 1 và 2 bàn | Goals tie-break = 3 |
-| FIX-004 | U | Trận một xong, trận hai chưa đá | Player vẫn remaining; fixtures remaining = 1 |
-| FIX-005 | U | Captain DGW còn trận hai | Players remaining +1, effective remaining +2, không +4 |
-| FIX-006 | U | Player BGW | Fixture status blank; contribution = 0 nếu không được auto-sub thay |
-| FIX-007 | I | Fixture postponed chưa gán lại | Không đánh dấu finished/final do thiếu dữ liệu; status postponed |
-| FIX-008 | I | Fixture chuyển từ GW25 sang GW26 | Revision mới gỡ stats khỏi aggregate GW25 và đưa đúng GW26 |
-| FIX-009 | I | Live fixture revision sửa bonus | Snapshot mới phản ánh diff, không duplicate stats row grain |
-| FIX-010 | E | DGW update từng fixture qua nhiều tick | Live score tăng đúng theo từng revision và final aggregate đúng |
+| FIX-001 | U | A Double Gameweek player scores 5 and 8 | Player-Gameweek base = 13 |
+| FIX-002 | U | That player is the captain, multiplier 2 | Contribution = 26, with no lost or double-counted fixture |
+| FIX-003 | U | The player scores 1 and 2 goals | Goals tie-break = 3 |
+| FIX-004 | U | The first match is over, the second has not started | The player still counts as remaining; fixtures remaining = 1 |
+| FIX-005 | U | A captain still has a second fixture | Players remaining +1, effective remaining +2, never +4 |
+| FIX-006 | U | A Blank Gameweek player | Fixture status blank; contribution 0 unless replaced by an auto-sub |
+| FIX-007 | I | A postponed fixture is not rescheduled | Not marked finished or final because of missing data; status postponed |
+| FIX-008 | I | A fixture moves from GW25 to GW26 | A new revision removes the stats from the GW25 aggregate and adds them to GW26 |
+| FIX-009 | I | A live fixture revision changes bonus points | The new snapshot reflects the difference without duplicating a stats row |
+| FIX-010 | E | A Double Gameweek updates fixture by fixture over several ticks | The live score grows correctly per revision and the final aggregate is right |
 
-## 6. Classic, membership và boundary
+## 6. Classic, membership and boundaries
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| CLA-001 | U | 20 HIGH + 20 LOW | Rank chỉ partition theo division |
-| CLA-002 | U | Hai HLV bằng điểm | Hiển thị rank dạng `1,2,2,4` |
-| CLA-003 | U | FPL overall rank khác VMF score | Overall rank không ảnh hưởng VMF rank |
-| CLA-004 | I | Final GW19 | Bottom 6 HIGH/Top 6 LOW được xác định; membership mới bắt đầu GW20 |
-| CLA-005 | I | Truy vấn lại GW19 sau promotion | Vẫn thấy membership cũ, lịch sử không bị đổi |
-| CLA-006 | U | Bắt đầu GW20 | Season 2 points = 0; full-season points giữ nguyên |
-| CLA-007 | U | Tie tại top 6, khác cumulative TotW | Người nhiều TotW thắng boundary |
-| CLA-008 | U | Tie điểm và TotW, khác highest GW | Người có highest eligible single-GW score thắng |
-| CLA-009 | I | Tie mọi bước | Không tự random; tạo pending admin draw |
-| CLA-010 | I | Hai membership overlap cùng manager/GW | Database từ chối |
-| CLA-011 | U | Không tie tại boundary | Không chạy/admin draw dù các vị trí ngoài boundary đồng điểm |
+| CLA-001 | U | 20 HIGH and 20 LOW | Ranking partitions by division only |
+| CLA-002 | U | Two managers on equal points | Displayed as `1,2,2,4` |
+| CLA-003 | U | FPL overall rank disagrees with the VMF score | Overall rank does not affect the VMF rank |
+| CLA-004 | I | GW19 is finalized | The bottom 6 of HIGH and top 6 of LOW are identified; the new membership starts at GW20 |
+| CLA-005 | I | Query GW19 again after promotion | The old membership is still visible; history is unchanged |
+| CLA-006 | U | GW20 begins | Season 2 points = 0; full-season points unchanged |
+| CLA-007 | U | A tie at the top 6 boundary with different cumulative TotW | The manager with more TotW takes the place |
+| CLA-008 | U | Points and TotW tie, highest Gameweek differs | The higher eligible single-Gameweek score wins |
+| CLA-009 | I | Every step ties | No silent randomness; a pending administrator draw is created |
+| CLA-010 | I | Two overlapping memberships for one manager and Gameweek | The database rejects it |
+| CLA-011 | U | No tie at the boundary | No draw runs, even if positions outside the boundary are level |
 
-## 7. TotW và highlights
+## 7. TotW and highlights
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| TOTW-001 | U | Một score cao nhất | Một winner, cumulative +1 |
-| TOTW-002 | U | Ba score đồng cao nhất | Cả ba nhận TotW và mỗi người +1 |
-| TOTW-003 | U | Bench Boost gross 96, cost 4; đối thủ net 90 | Net 92 thắng TotW |
-| TOTW-004 | U | Replacement score cao nhất | Manager replacement không nhận TotW |
-| TOTW-005 | U | Manager vi phạm chuyển nhượng nhưng có net cao nhất | Vẫn xét TotW theo điểm net; Cup qualification là ledger riêng |
-| TOTW-006 | I | Rerun cùng snapshot | Không cộng cumulative TotW lần hai |
-| TOTW-007 | U | Bench Boost active | Counted bench không được ghi là wasted bench |
-| TOTW-008 | U | Replacement score | Không nhận individual GW highlight/award |
+| TOTW-001 | U | One highest score | One winner, cumulative +1 |
+| TOTW-002 | U | Three equal highest scores | All three receive TotW and each gains +1 |
+| TOTW-003 | U | Bench Boost gross 96 cost 4 against a net of 90 | Net 92 wins TotW |
+| TOTW-004 | U | A replacement score is the highest | The manager on a replacement does not receive TotW |
+| TOTW-005 | U | A manager with a transfer violation has the highest net | TotW still follows net points; Cup qualification is a separate ledger |
+| TOTW-006 | I | Rerun the same snapshot | Cumulative TotW is not incremented twice |
+| TOTW-007 | U | Bench Boost active | Counted bench points are not recorded as wasted bench |
+| TOTW-008 | U | A replacement score | No individual Gameweek highlight or award |
 
-## 8. H2H vòng bảng và play-off
+## 8. H2H group stage and play-offs
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| H2H-001 | I | Generate 35 rounds cho 40 HLV | Mỗi GW có 20 trận; mỗi manager đúng một trận; không self-match |
-| H2H-002 | I | Lock schedule rồi sửa trực tiếp | Bị từ chối; chỉ version/admin action mới được phép |
-| H2H-003 | U | Net 68 vs 67 | Bên 68 nhận 3, bên 67 nhận 0 |
-| H2H-004 | U | Net 68 vs 68 | Mỗi bên nhận 1 |
-| H2H-005 | U | Kết quả nhiều trận | Played/W/D/L/PF/PA/PD/table points đúng |
-| H2H-006 | U | Penalty làm table points dưới 0 | Giữ giá trị âm |
-| H2H-007 | U | Tie top 8 table points, khác TotW | TotW phân định boundary; PD không đứng trước rule đã chốt |
-| H2H-008 | U | Tie table points/TotW, khác highest GW1–35 | Highest GW phân định |
-| H2H-009 | I | Tie hết top 8 | Pending audited admin draw, không random nền |
-| H2H-010 | I | Seed top 8 | Cặp 1–8, 4–5, 2–7, 3–6 đúng |
-| H2H-011 | E | GW36–38 | Tứ kết, bán kết, chung kết; không tạo third-place match |
-| H2H-012 | I | Hai đội thua bán kết | Cùng trạng thái đồng hạng ba |
-| H2H-013 | U | Play-off hòa | Chạy đúng Cup tie-break chain |
-| H2H-014 | I | Manager bị loại trước cutoff | Không nằm trong eligible top 8; suất đi xuống manager kế tiếp theo boundary rule |
+| H2H-001 | I | Generate 35 rounds for 40 managers | 20 matches per Gameweek, one per manager, no self-match |
+| H2H-002 | I | Edit a locked schedule directly | Rejected; only a new version or an administrative action is allowed |
+| H2H-003 | U | Net 68 against 67 | 68 receives 3 points, 67 receives 0 |
+| H2H-004 | U | Net 68 against 68 | Each receives 1 |
+| H2H-005 | U | A series of results | Played/W/D/L/PF/PA/PD and table points are correct |
+| H2H-006 | U | A penalty pushes table points below zero | The negative value is preserved |
+| H2H-007 | U | A top-8 tie on table points with different TotW | TotW decides the boundary; point difference does not override the fixed rule |
+| H2H-008 | U | Table points and TotW tie, highest GW1–35 differs | The highest Gameweek decides |
+| H2H-009 | I | Everything ties at the top-8 boundary | A pending, audited administrator draw; no background randomness |
+| H2H-010 | I | Seed the top 8 | Pairs 1–8, 4–5, 2–7, 3–6 |
+| H2H-011 | E | GW36–38 | Quarter-finals, semi-finals and final; no third-place match is created |
+| H2H-012 | I | Two losing semi-finalists | Both hold shared third place |
+| H2H-013 | U | A play-off draw on points | The Cup tie-break chain runs |
+| H2H-014 | I | A manager is removed before the cutoff | Not in the eligible top 8; the place passes to the next manager by the boundary rule |
 
-## 9. Cup qualification và bracket
+## 9. Cup qualification and brackets
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| CUPQ-001 | U | Cup 1 không vi phạm | Qualification total = sum GW1–14 effective net |
-| CUPQ-002 | U | Cup 2 không vi phạm | Qualification total = sum GW20–33 effective net |
-| CUPQ-003 | U | Vi phạm xác nhận GW5 | GW5 contribution = 0; các GW khác không đổi |
-| CUPQ-004 | U | Vi phạm xác nhận GW25 | Cup 2 GW25 contribution = 0 |
-| CUPQ-005 | U | GW vi phạm có net âm | Contribution vẫn = 0, không giữ số âm |
-| CUPQ-006 | U | Approved forgotten-chip exception | GW không bị zero vì violation; official net vẫn giữ transfer cost |
-| CUPQ-007 | U | Vi phạm Cup qualification | Classic score và H2H match score không tự đổi |
-| CUPQ-008 | U | Season 2 join ở GW23 | GW20–22 contribution = 0; GW23 bắt đầu tính |
-| CUPQ-009 | I | Mỗi division rank 1–2 | Bốn direct qualifiers |
-| CUPQ-010 | I | Mỗi division rank 3–14 | Hai mươi bốn preliminary participants |
-| CUPQ-011 | I | 12 preliminary winners | Tổng 16 đội vòng 16 |
-| CUPQ-012 | U | Tie boundary rank 2/3 | Points → TotW → highest eligible GW → admin draw |
-| CUPQ-013 | U | Tie boundary rank 14/15 | Cùng chain, chọn đúng người dự sơ loại |
-| CUPQ-014 | I | Cup 1 schedule | GW15 prelim, 16 R16, 17 QF, 18 SF, 19 final + third |
-| CUPQ-015 | I | Cup 2 schedule | GW34 prelim, 35 R16, 36 QF, 37 SF, 38 final + third |
-| CUPQ-016 | U | Manager HIGH ở Season 1, LOW ở Season 2 | Qualification partition theo membership đúng Season |
-| CUPQ-017 | I | Manager threshold 2 trước bracket lock | Không nằm trong eligible draw |
+| CUPQ-001 | U | Cup 1 without violations | Qualification total = sum of GW1–14 effective net |
+| CUPQ-002 | U | Cup 2 without violations | Qualification total = sum of GW20–33 effective net |
+| CUPQ-003 | U | A confirmed violation in GW5 | GW5 contributes 0; other Gameweeks unchanged |
+| CUPQ-004 | U | A confirmed violation in GW25 | Cup 2 GW25 contributes 0 |
+| CUPQ-005 | U | The violating Gameweek has a negative net | The contribution is still 0, not the negative value |
+| CUPQ-006 | U | An approved forgotten-chip exception | The Gameweek is not zeroed for a violation; official net still carries the transfer cost |
+| CUPQ-007 | U | A Cup qualification violation | Classic points and H2H match scores do not change |
+| CUPQ-008 | U | The Season 2 league is joined at GW23 | GW20–22 contribute 0; GW23 starts counting |
+| CUPQ-009 | I | Ranks 1–2 in each division | Four direct qualifiers |
+| CUPQ-010 | I | Ranks 3–14 in each division | Twenty-four preliminary participants |
+| CUPQ-011 | I | Twelve preliminary winners | Sixteen teams in the round of 16 |
+| CUPQ-012 | U | A tie on the rank 2/3 boundary | Points → TotW → highest eligible Gameweek → administrator draw |
+| CUPQ-013 | U | A tie on the rank 14/15 boundary | The same chain selects who plays the preliminary round |
+| CUPQ-014 | I | The Cup 1 schedule | GW15 preliminary, 16 R16, 17 QF, 18 SF, 19 final plus third place |
+| CUPQ-015 | I | The Cup 2 schedule | GW34 preliminary, 35 R16, 36 QF, 37 SF, 38 final plus third place |
+| CUPQ-016 | U | A manager is HIGH in Season 1 and LOW in Season 2 | Qualification partitions by the membership of the relevant Season |
+| CUPQ-017 | I | A manager reaches threshold 2 before the bracket is locked | Not in the eligible draw |
 
-## 10. Cup/H2H knockout tie-break
+## 10. Cup and H2H knockout tie-breaks
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| TB-001 | U | Hòa score, TotW khác | Nhiều TotW thắng; dừng ở step 1 |
-| TB-002 | U | TotW hòa, captain contribution khác | Captain cao hơn thắng; step 2 |
-| TB-003 | U | Captain thường vs Triple Captain cùng base | So contribution sau multiplier |
-| TB-004 | U | Captain không chơi, vice thay | Dùng effective vice contribution |
-| TB-005 | U | TotW/captain hòa, goals khác | Counted goals cao hơn thắng; step 3 |
-| TB-006 | U | Captain ghi bàn | Bàn không nhân multiplier |
-| TB-007 | U | Goals hòa, cards khác | Ít `yellow + red` hơn thắng; step 4 |
-| TB-008 | U | Các bước 1–4 hòa, Classic points khác | Classic Season points đến GW đó phân định; step 5 |
-| TB-009 | I | Mọi automatic step hòa | Pending admin draw; lưu toàn bộ compared inputs |
-| TB-010 | I | Admin draw | Lưu eligible list, actor, time, method, result |
-| TB-011 | U | Điểm hòa; một bên replacement | Bên dùng điểm thật/valid override đi tiếp trước tie-break |
-| TB-012 | I | Cả hai replacement và hòa | Pending admin decision, không random |
-| TB-013 | I | Rerun tie-break | Kết quả và `step_used` deterministic, không tạo draw mới |
+| TB-001 | U | Scores level, TotW differs | More TotW wins; stops at step 1 |
+| TB-002 | U | TotW level, captain contribution differs | The higher contribution wins; step 2 |
+| TB-003 | U | Normal captain against Triple Captain on the same base | Compare the contribution after the multiplier |
+| TB-004 | U | The captain does not play and the vice takes over | Use the effective vice contribution |
+| TB-005 | U | TotW and captain level, goals differ | More counted goals wins; step 3 |
+| TB-006 | U | The captain scores | The goal is not multiplied |
+| TB-007 | U | Goals level, cards differ | Fewer `yellow + red` wins; step 4 |
+| TB-008 | U | Steps 1–4 level, Classic points differ | Classic Season points up to that Gameweek decide; step 5 |
+| TB-009 | I | Every automatic step ties | A pending administrator draw storing every compared input |
+| TB-010 | I | An administrator draw | Store the eligible list, actor, time, method and result |
+| TB-011 | U | Level scores where one side is on a replacement | The side with a genuine score or valid override advances before the chain |
+| TB-012 | I | Both sides on a replacement and level | A pending administrator decision; no randomness |
+| TB-013 | I | Rerun the tie-break | The result and `step_used` are deterministic; no new draw is created |
 
-## 11. Vi phạm và kỷ luật
+## 11. Violations and discipline
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
 | VIO-001 | U | Cost 0/4/8 | Detected count = 0 |
 | VIO-002 | U | Cost 12/16 | Detected count = 1 |
 | VIO-003 | U | Cost 20/24 | Detected count = 2 |
 | VIO-004 | U | Cost 28 | Detected count = 3 |
-| VIO-005 | I | Cost 20 được confirm khi counter 0 | Kích hoạt threshold 1 + 2 ngay; chỉ một ledger H2H `-6` |
-| VIO-006 | I | Cost 28 được confirm khi counter 0 | Kích hoạt threshold 1 + 2 + 3 ngay |
-| VIO-007 | I | Violation GW10 rồi GW22 | Counter cộng dồn, không reset ở GW20 |
-| VIO-008 | I | Retry detection/decision cùng event | Không duplicate violation unit/threshold action/penalty |
-| VIO-009 | I | Forgotten chip claim | Status pending_review; chưa áp irreversible penalty |
-| VIO-010 | I | Admin approve exception | Confirmed count = 0; lưu actor/reason; official net không hoàn transfer cost |
-| VIO-011 | I | Admin reject exception | Confirm theo formula và áp threshold idempotent |
-| VIO-012 | U | Violation đầu trong H2H group | Kết quả net vẫn cho 3/1/0, sau đó ledger riêng `-6` |
-| VIO-013 | I | Threshold 2 sau các trận đã final | Kết quả lịch sử giữ nguyên |
-| VIO-014 | U | Trận H2H tương lai sau removal | Opponent +3; technical 0–0; PF/PA/PD không đổi |
-| VIO-015 | U | Violation trong H2H play-off | Opponent đi tiếp walkover |
-| VIO-016 | U | Violation trong Cup knockout | Score invalid; opponent đi tiếp walkover |
-| VIO-017 | I | Threshold 2 | Removed khỏi H2H/Cup; prize eligibility = 50% |
-| VIO-018 | I | Threshold 3 | Removed khỏi toàn giải |
-| VIO-019 | I | Cả hai bên knockout không đủ điều kiện | Pending admin review; không tự chọn winner |
-| VIO-020 | I | Join league Season 2 trễ | Thêm 1 violation unit; Classic/Cup zero trước join; H2H bình thường |
-| VIO-021 | U | GW join có score hợp lệ | Tính Classic/Cup từ chính GW join; join violation không tự zero GW join |
-| VIO-022 | I | Threshold action chạy lại sau refinal | Unique threshold key ngăn áp lại |
+| VIO-005 | I | Cost 20 confirmed while the counter is 0 | Thresholds 1 and 2 fire immediately; only one `-6` H2H ledger entry |
+| VIO-006 | I | Cost 28 confirmed while the counter is 0 | Thresholds 1, 2 and 3 fire immediately |
+| VIO-007 | I | A violation in GW10 and another in GW22 | The counter accumulates and does not reset at GW20 |
+| VIO-008 | I | Retry detection or the decision for the same event | No duplicate violation unit, threshold action or penalty |
+| VIO-009 | I | A forgotten-chip claim | Status pending_review; no irreversible penalty yet |
+| VIO-010 | I | An administrator approves the exception | Confirmed count = 0; actor and reason stored; official net keeps the transfer cost |
+| VIO-011 | I | An administrator rejects the exception | Confirmed by the formula and the threshold applies idempotently |
+| VIO-012 | U | A first violation during the H2H group stage | The result still awards 3/1/0, then a separate `-6` ledger entry |
+| VIO-013 | I | Threshold 2 after matches were finalized | Historical results are unchanged |
+| VIO-014 | U | A future H2H match after removal | Opponent +3; technical 0–0; PF/PA/PD unchanged |
+| VIO-015 | U | A violation during an H2H play-off | The opponent advances by walkover |
+| VIO-016 | U | A violation during a Cup knockout tie | The score is invalid; the opponent advances by walkover |
+| VIO-017 | I | Threshold 2 | Removed from H2H and the Cup; prize eligibility 50% |
+| VIO-018 | I | Threshold 3 | Removed from the whole competition |
+| VIO-019 | I | Both knockout sides ineligible | Pending administrator review; no automatic winner |
+| VIO-020 | I | The Season 2 league is joined late | One violation unit added; Classic and Cup zeroed before the join; H2H normal |
+| VIO-021 | U | The joining Gameweek has a valid score | Classic and Cup count from that Gameweek; the join violation does not zero it |
+| VIO-022 | I | A threshold action reruns after a re-finalization | The unique threshold key prevents reapplication |
 
-## 12. Locked/deleted replacement
+## 12. Locked and deleted replacements
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
 | AVG-001 | U | HIGH average 67.42 | Rounded = 67 |
 | AVG-002 | U | HIGH average 67.50 | Rounded = 68 |
 | AVG-003 | U | HIGH average 67.81 | Rounded = 68 |
-| AVG-004 | U | Average 68.5 | Half-up = 69, không bankers' rounding |
-| AVG-005 | U | HIGH avg 60, LOW avg 80 | Locked HIGH nhận 60; locked LOW nhận 80 |
-| AVG-006 | U | Hai locked HIGH | Cả hai bị loại khỏi sample và nhận cùng average từ active non-replacement sample |
-| AVG-007 | U | Sample chứa previous replacement row | Replacement row bị loại |
-| AVG-008 | U | Manager removed/deleted/locked | Không nằm trong sample |
-| AVG-009 | U | Active manager có valid override | Dùng effective non-replacement value và lưu provenance |
-| AVG-010 | I | Tập mẫu rỗng | Score pending_review; không dùng division khác/không chia 0 |
-| AVG-011 | I | Manager đổi HIGH→LOW tại GW20, locked GW20 | Dùng LOW membership ở GW20 |
-| AVG-012 | U | Replacement score | Dùng cho Classic, H2H và Cup |
-| AVG-013 | U | Replacement cao nhất GW | Không nhận TotW/highlight cá nhân |
-| AVG-014 | I | Calculation record | Lưu raw average, rounded, sample IDs, division, snapshot revision |
+| AVG-004 | U | Average 68.5 | Half-up = 69, not bankers' rounding |
+| AVG-005 | U | HIGH average 60, LOW average 80 | A locked HIGH manager receives 60; a locked LOW manager receives 80 |
+| AVG-006 | U | Two locked HIGH managers | Both are excluded from the sample and receive the same average from the active non-replacement sample |
+| AVG-007 | U | The sample contains an earlier replacement row | That row is excluded |
+| AVG-008 | U | A removed, deleted or locked manager | Not in the sample |
+| AVG-009 | U | An active manager with a valid override | Use the effective non-replacement value and record provenance |
+| AVG-010 | I | An empty sample | The score becomes pending_review; no other division and no division by zero |
+| AVG-011 | I | A manager moves HIGH→LOW at GW20 and is locked at GW20 | The LOW membership applies at GW20 |
+| AVG-012 | U | A replacement score | Used for Classic, H2H and the Cup |
+| AVG-013 | U | The highest score of the Gameweek is a replacement | No TotW and no individual highlight |
+| AVG-014 | I | The calculation record | Stores the raw average, the rounded value, the sample IDs, the division and the snapshot revision |
 
 ## 13. Matchup comparison
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| MAT-001 | U | Cùng player multiplier 1 vs 1 | Net multiplier 0, neutralized |
-| MAT-002 | U | Captain 2 vs normal 1 | Differential +1 cho captain side |
-| MAT-003 | U | Player chỉ có ở A | Differential cho A với multiplier tương ứng |
-| MAT-004 | U | Player đã xong | Nằm trong finished, không remaining |
-| MAT-005 | U | Player đang đá | Nằm trong playing |
-| MAT-006 | U | Hai player chưa đá, một captain | Players remaining = 2; effective remaining = 3 |
-| MAT-007 | U | DGW player còn một fixture | Đếm một player remaining và hiển thị một fixture remaining |
-| MAT-008 | E | Match live | Hiển thị score state, chip, transfer cost, bench, tie-break inputs cùng snapshot revision |
-| MAT-009 | I | Hai API component fetch cạnh lúc publish | Response vẫn dùng cùng snapshot set, không trộn revision |
+| MAT-001 | U | The same player at multiplier 1 against 1 | Net multiplier 0, neutralized |
+| MAT-002 | U | Captain 2 against normal 1 | Differential +1 for the captaining side |
+| MAT-003 | U | A player only in A's squad | A differential for A at the matching multiplier |
+| MAT-004 | U | A player has finished | Listed as finished, not remaining |
+| MAT-005 | U | A player is playing | Listed as playing |
+| MAT-006 | U | Two players yet to play, one captained | Players remaining = 2; effective remaining = 3 |
+| MAT-007 | U | A Double Gameweek player with one fixture left | Counted as one player remaining, showing one fixture remaining |
+| MAT-008 | E | A live match | Shows the score state, chip, transfer cost, bench and tie-break inputs from one snapshot revision |
+| MAT-009 | I | Two API components fetch during a publish | The response still uses one snapshot set, with no mixed revisions |
 
-## 14. Snapshot, finalization và audit
+## 14. Snapshots, finalization and audit
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| FIN-001 | I | Fixture bắt đầu/kết thúc | State đi upcoming → live → provisional |
-| FIN-002 | I | FPL outage khi provisional | Không tự final |
-| FIN-003 | I | Admin finalize | Snapshot/score/matches/standings khóa atomically và có audit |
-| FIN-004 | I | Cố update final row | Database/service từ chối |
-| FIN-005 | I | FPL late correction sau final | Final không đổi; tạo source diff alert |
-| FIN-006 | I | Non-admin reopen | 403, không mutation |
-| FIN-007 | I | Admin reopen không reason | Validation fail |
-| FIN-008 | E | Admin reopen + recalc + refinal | Revision mới supersedes cũ; revision cũ vẫn truy vết được |
-| FIN-009 | I | Reopen làm đổi Cup winner đã sinh vòng sau | Cảnh báo impact; không âm thầm sửa bracket |
-| FIN-010 | U | Cùng input/rules/overrides | Output hash giống nhau |
-| FIN-011 | I | Audit insert thất bại trong admin command | Toàn transaction rollback |
-| FIN-012 | I | Random draw/override/status change | Audit có actor/action/before/after/reason/time/request ID |
-| FIN-013 | I | Final response | Có snapshot ID, revision, ruleset, calculated/finalized time |
+| FIN-001 | I | Fixtures start and end | The state moves upcoming → live → provisional |
+| FIN-002 | I | An FPL outage while provisional | No automatic finalization |
+| FIN-003 | I | An administrator finalizes | The snapshot, scores, matches and standings lock atomically with an audit entry |
+| FIN-004 | I | An attempt to update a finalized row | The database or the service refuses |
+| FIN-005 | I | A late FPL correction after finalization | The final result is unchanged; a source difference alert is raised |
+| FIN-006 | I | A non-administrator attempts a reopen | 403 with no mutation |
+| FIN-007 | I | An administrator reopens without a reason | Validation fails |
+| FIN-008 | E | Reopen, recalculate and re-finalize | A new revision supersedes the old one, which stays traceable |
+| FIN-009 | I | A reopen changes a Cup winner that already produced a next round | An impact warning; the bracket is not silently rewritten |
+| FIN-010 | U | The same inputs, rules and overrides | The output hash matches |
+| FIN-011 | I | The audit insert fails inside an administrative command | The whole transaction rolls back |
+| FIN-012 | I | A random draw, override or status change | The audit holds actor, action, before, after, reason, time and request ID |
+| FIN-013 | I | A finalized response | Contains the snapshot ID, revision, ruleset, calculation and finalization times |
 
-## 15. Authentication, authorization và PII
+## 15. Authentication, authorization and personal data
 
-| ID | Mức | Tình huống | Kết quả mong đợi |
+| ID | Level | Scenario | Expected |
 |---|---|---|---|
-| SEC-001 | S | Anonymous gọi public standings | 200, không phone/Facebook/admin note |
-| SEC-002 | S | Anonymous gọi admin API | 401 |
-| SEC-003 | S | Admin viewer gọi mutation | 403 |
-| SEC-004 | S | Competition admin finalize | Được phép, audit đầy đủ |
-| SEC-005 | S | Role không có quyền PII gọi contact/export | 403 |
-| SEC-006 | S | Public serializer nhận ORM manager có private relation | DTO vẫn không xuất private fields |
-| SEC-007 | S | Public cache/CDN | Cache entry không chứa admin/PII response |
-| SEC-008 | S | Cookie mutation thiếu/sai CSRF | 403 |
-| SEC-009 | S | CORS từ origin không allowlist | Bị chặn |
-| SEC-010 | S | Login brute force | Rate limit/lockout hoạt động |
-| SEC-011 | S | Session cookie | Có HttpOnly, Secure, SameSite |
-| SEC-012 | S | Audit xem/xuất PII | Ghi actor, scope, time; log vẫn redact value nhạy cảm |
-| SEC-013 | S | Backup/staging refresh | Backup mã hóa; staging không có contact production thật |
-| SEC-014 | S | IDOR thử đọc admin target khác | Authorization theo resource/action, không chỉ che UI |
+| SEC-001 | S | An anonymous call to public standings | 200 with no phone, Facebook URL or admin note |
+| SEC-002 | S | An anonymous call to an admin API | 401 |
+| SEC-003 | S | An admin viewer attempts a mutation | 403 |
+| SEC-004 | S | A competition admin finalizes | Allowed, fully audited |
+| SEC-005 | S | A role without personal-data rights calls contact or export | 403 |
+| SEC-006 | S | A public serializer receives an ORM manager with a private relation | The DTO still omits private fields |
+| SEC-007 | S | Public cache and CDN | No cache entry contains an admin or personal-data response |
+| SEC-008 | S | A cookie mutation with a missing or wrong CSRF token | 403 |
+| SEC-009 | S | A request from an origin outside the allowlist | Blocked |
+| SEC-010 | S | Login brute force | Rate limiting and lockout work |
+| SEC-011 | S | Session cookies | Carry HttpOnly, Secure and SameSite |
+| SEC-012 | S | Viewing or exporting personal data | Records actor, scope and time; logs still redact the values |
+| SEC-013 | S | Backup and staging refresh | Backups encrypted; staging holds no real production contacts |
+| SEC-014 | S | An IDOR attempt against another admin target | Authorization is enforced per resource and action, not by hiding the UI |
 
-## 16. Acceptance E2E trước production
+## 16. Pre-production acceptance
 
-| ID | Kịch bản | Điều kiện đạt |
+| ID | Scenario | Pass condition |
 |---|---|---|
-| ACC-001 | Import 40 manager bằng FPL entry ID | Unique validation, 20 HIGH/20 LOW, private contact không public |
-| ACC-002 | Replay một GW bình thường | Gross/net/captain/auto-sub/standings khớp expected fixture |
-| ACC-003 | Replay live DGW | Score và remaining cập nhật đúng từng fixture |
-| ACC-004 | Chạy toàn Classic Season 1 giả lập | Rank division, tie boundary, top/bottom 6 và membership GW20 đúng |
-| ACC-005 | Chạy H2H GW1–35 | Schedule hợp lệ, 3/1/0, penalty, top 8 đúng |
-| ACC-006 | Chạy H2H GW36–38 | Bracket đúng, chỉ final ở GW38, hai semifinal losers đồng hạng ba |
-| ACC-007 | Chạy Cup 1 | Qualification GW1–14, violation zero, GW15–19 bracket và tie-break đúng |
-| ACC-008 | Chạy Cup 2 | Cùng cấu trúc Cup 1 trên GW20–38 |
-| ACC-009 | Violation cost 20/28 | Multi-threshold deterministic, không duplicate khi retry |
-| ACC-010 | Locked teams ở cả hai division | Hai average độc lập, half-up, không recursion |
-| ACC-011 | Final rồi late correction | Final bất biến; reopen tạo revision/audit mới |
-| ACC-012 | Public/admin security pass | PII isolation, RBAC, CSRF, log redaction đạt |
-| ACC-013 | FPL API outage drill | UI giữ last snapshot/stale banner; không zero/final sai |
-| ACC-014 | Backup restore drill | Khôi phục được snapshot final, raw provenance, override và audit |
+| ACC-001 | Import 40 managers by FPL entry ID | Uniqueness validated, 20 HIGH and 20 LOW, private contacts not public |
+| ACC-002 | Replay an ordinary Gameweek | Gross, net, captain, auto-subs and standings match the expected fixture |
+| ACC-003 | Replay a live Double Gameweek | Scores and remaining counts update correctly per fixture |
+| ACC-004 | Simulate all of Classic Season 1 | Division ranks, boundary ties, top and bottom 6 and the GW20 membership are correct |
+| ACC-005 | Run H2H GW1–35 | A valid schedule, 3/1/0 scoring, penalties and the correct top 8 |
+| ACC-006 | Run H2H GW36–38 | The bracket is correct, GW38 holds only the final, and both losing semi-finalists share third |
+| ACC-007 | Run Cup 1 | Qualification over GW1–14, violations zeroed, GW15–19 bracket and tie-breaks correct |
+| ACC-008 | Run Cup 2 | The same structure as Cup 1 over GW20–38 |
+| ACC-009 | Violations at cost 20 and 28 | Multi-threshold behaviour is deterministic with no duplicates on retry |
+| ACC-010 | Locked teams in both divisions | Two independent averages, half-up rounding, no recursion |
+| ACC-011 | Finalize then apply a late correction | The final result is immutable; a reopen creates a new revision and audit entry |
+| ACC-012 | Public and admin security pass | Personal-data isolation, RBAC, CSRF and log redaction all hold |
+| ACC-013 | FPL API outage drill | The interface keeps the last snapshot with a stale banner; nothing is zeroed or wrongly finalized |
+| ACC-014 | Backup restore drill | Final snapshots, raw provenance, overrides and audit entries are recoverable |
 
-## 17. Điều kiện chặn phát hành
+## 17. Release blockers
 
-Không phát hành production nếu còn bất kỳ lỗi nào sau:
+Do not release to production while any of these is true:
 
-- score, violation, Cup/H2H winner hoặc boundary sai;
-- replacement average lẫn division hoặc dùng replacement làm mẫu;
-- final snapshot có thể bị sửa/xóa tại chỗ;
-- retry tạo penalty/threshold action trùng;
-- DGW bị double count/mất điểm;
-- public API/log/cache lộ phone hoặc Facebook URL;
-- admin mutation không có audit hoặc không rollback khi audit fail;
-- không khôi phục được database từ backup gần nhất.
+- a score, violation, Cup or H2H winner, or boundary decision is wrong;
+- a replacement average mixes divisions or uses a replacement in its sample;
+- a final snapshot can be edited or deleted in place;
+- a retry creates a duplicate penalty or threshold action;
+- a Double Gameweek double-counts or loses points;
+- a public API, log or cache exposes a phone number or Facebook URL;
+- an administrative mutation lacks an audit entry, or does not roll back when
+  the audit write fails;
+- the database cannot be restored from the most recent backup.

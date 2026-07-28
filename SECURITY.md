@@ -2,14 +2,16 @@
 
 ## Reporting
 
-Không đăng công khai dữ liệu cá nhân, thông tin đăng nhập, FPL session,
-database dump hoặc chi tiết lỗ hổng. Báo trực tiếp cho quản trị viên VMF.
+Do not publish personal data, credentials, FPL sessions, database dumps or
+vulnerability details. Report them directly to a VMF administrator.
 
 ## Production requirements
 
-- Thay toàn bộ secret và mật khẩu mẫu trước khi deploy.
-- Admin bắt buộc dùng mật khẩu mạnh; hỗ trợ 2FA sẽ được ưu tiên sau MVP.
-- Số điện thoại và Facebook URL chỉ xuất hiện trong admin API có xác thực.
-- Không ghi access token, session cookie hay raw PII vào application log.
-- Backup PostgreSQL phải được mã hóa và kiểm tra khả năng restore.
-- Mọi score override, disciplinary action và Gameweek reopen phải có audit log.
+- Replace every sample secret and password before deploying.
+- Administrators must use strong passwords; two-factor support is the first
+  hardening step after the MVP.
+- Phone numbers and Facebook URLs appear only in authenticated admin APIs.
+- Never write access tokens, session cookies or raw personal data to logs.
+- PostgreSQL backups must be encrypted and their restore path tested.
+- Every score override, disciplinary action and Gameweek reopen must be
+  audited.

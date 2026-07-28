@@ -7,6 +7,11 @@
 **Initial scale:** 40 managers
 **Main objective:** Build a web-based league management system that reads Fantasy Premier League data, calculates internal live standings, manages custom H2H and Cup competitions, and supports administrative rules specific to VMF.
 
+> **Authority note.** This document is the original brief. Where it disagrees
+> with [`docs/RULEBOOK.md`](docs/RULEBOOK.md), the rulebook wins: it records the
+> decisions the organisers confirmed for the 2026/27 season. The clauses that
+> changed have been updated in place and are marked **Amended**.
+
 ---
 
 # 1. Project Overview
@@ -256,13 +261,22 @@ This ranking order should be configurable.
 
 ### H2H play-offs
 
-Top 8 managers after GW35 qualify.
+**Amended.** Top 8 managers after GW35 qualify.
 
 ```text
 GW36: Quarter-finals
 GW37: Semi-finals
-GW38: Final and third-place match
+GW38: Final only
 ```
+
+There is **no third-place match in H2H**. The two losing semi-finalists share
+third place. Only the Cup plays a third-place match, because its prize
+structure separates third from fourth.
+
+The boundary between 8th and 9th is resolved by the boundary rule in
+[`docs/RULEBOOK.md`](docs/RULEBOOK.md) §7 — H2H table points, then cumulative
+TotW, then highest single Gameweek score, then an audited administrator draw —
+rather than by the display ranking order below.
 
 Recommended seeding:
 
@@ -315,7 +329,15 @@ Numbers:
 
 ## Cup Season 2
 
-Qualification ranking is taken after GW33.
+**Amended.** Cup Season 2 uses exactly the same structure as Cup Season 1.
+Qualification ranking is taken after GW33 and is computed over GW20–GW33.
+
+```text
+Rank 1-2 in HIGH: direct entry to Round of 16
+Rank 1-2 in LOW: direct entry to Round of 16
+Rank 3-14 in HIGH: preliminary round
+Rank 3-14 in LOW: preliminary round
+```
 
 ```text
 GW34: Preliminary round
@@ -324,6 +346,24 @@ GW36: Quarter-finals
 GW37: Semi-finals
 GW38: Final and third-place match
 ```
+
+### Cup qualification table
+
+**Amended.** Each Cup has its own qualification ledger, independent of the
+Classic table:
+
+```text
+cup_qualification_points = sum(contribution per Gameweek)
+
+confirmed excessive-transfer violation in that Gameweek -> contribution = 0
+not yet eligible because the Season 2 league was not joined -> contribution = 0
+otherwise -> contribution = effective net points
+```
+
+Every Gameweek carrying a confirmed violation inside GW1–GW14 or GW20–GW33 is
+zeroed in that ledger, not only the Gameweek in which a Cup tie is played. The
+zero affects the Cup qualification table alone: it never changes Classic
+points, raw FPL data, or a played H2H group result.
 
 ### Cup match score
 
@@ -515,6 +555,20 @@ Equivalent examples:
 -28 = 3 violations
 ```
 
+### Cumulative counting
+
+**Amended.** The violation counter accumulates across GW1–GW38 and does not
+reset at GW20. A single Gameweek can cross several thresholds at once:
+
+```text
+transfer cost 20 -> triggers threshold 1 and threshold 2 immediately
+transfer cost 28 -> triggers thresholds 1, 2 and 3 immediately
+```
+
+Each threshold action is applied at most once per manager per season, keyed by
+`(manager_id, season_id, threshold_number)`, so a retried job cannot deduct the
+same 6 H2H points twice.
+
 ### Disciplinary effects
 
 #### First violation
@@ -597,10 +651,17 @@ join_violation_applied
 
 # 12. Locked or Deleted FPL Team
 
-If a manager's FPL team is locked or deleted:
+**Amended.** If a manager's FPL team is locked or deleted:
 
-- From the affected Gameweek onward, replace that manager's Gameweek score with the average net Gameweek score of the remaining active managers.
+- From the affected Gameweek onward, replace that manager's Gameweek score with
+  the average net Gameweek score of the **division that manager belongs to in
+  that Gameweek**. Each Gameweek therefore has two independent averages, one
+  for HIGH and one for LOW; the other division is never used.
 - Do not include the locked or deleted manager in the average.
+- Exclude every replacement score from the sample, so several locked teams in
+  one division all use the same original sample and no recursion occurs.
+- If the sample is empty, do not borrow the other division's average: move the
+  score to `pending_review` for an administrator.
 - Use standard half-up rounding.
 
 Rounding rule:
@@ -1012,28 +1073,33 @@ SQLite may be used only for early local prototyping.
 
 ## Background jobs
 
-Initial version:
+**Amended.** The season runs on free hosting, where no long-lived worker
+process exists. Scheduled work is therefore driven by an external scheduler
+calling an authenticated endpoint:
 
 ```text
-APScheduler
+Supabase Cron (pg_cron + pg_net) -> POST /api/cron/sync
 ```
 
-Possible future version:
-
-```text
-Celery
-Redis
-```
+Every job is idempotent and guarded by a PostgreSQL transaction-scoped
+advisory lock, so overlapping ticks cannot double-write. APScheduler or Celery
+remain options if the deployment later moves to a host with a always-on worker.
 
 ## Deployment
 
-Suggested:
+**Amended.** The 2026/27 season is deployed on free tiers:
 
 ```text
-Frontend: Vercel
-Backend: Railway, Render, Fly.io, or similar
-Database: managed PostgreSQL
+Frontend: Vercel Hobby project, root apps/web
+Backend:  Vercel Hobby project, root services/api (FastAPI as a Function)
+Database: Supabase Free PostgreSQL, transaction pooler for the API and
+          session pooler for migrations
+Schedule: Supabase Cron
 ```
+
+Docker is used for local development only. See
+[`DEPLOYMENT.md`](DEPLOYMENT.md) for the full procedure, environment variables,
+quotas and rollback steps.
 
 ---
 
@@ -1070,6 +1136,15 @@ manager_highlights
 sync_logs
 system_settings
 ```
+
+**Amended.** The implemented schema separates three layers instead of one, as
+described in [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md): raw FPL evidence
+(`raw_fpl_responses`), normalized source facts at their true grain
+(`fpl_player_fixture_stats`, `manager_pick_snapshots`, `manager_pick_items`,
+`manager_gameweek_history`), and VMF decisions (`violations`,
+`admin_decisions`, ledgers). Penalties and Cup qualification are ledgers rather
+than mutable totals, and a finalized result is an immutable revision rather
+than a boolean flag on a mutable row.
 
 ## Suggested table responsibilities
 

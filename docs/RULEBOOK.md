@@ -1,45 +1,51 @@
 # VMF Fantasy League 2026/27 — Rulebook
 
-**Mã tài liệu:** `VMF-RULES-2026-27`
-**Phiên bản:** `1.0.0-draft`
-**Phạm vi:** Mùa Fantasy Premier League 2026/27
-**Trạng thái:** Nguồn luật nghiệp vụ chuẩn để triển khai và kiểm thử
+**Document code:** `VMF-RULES-2026-27`
+**Version:** `1.0.0-draft`
+**Scope:** Fantasy Premier League season 2026/27
+**Status:** Normative source of competition rules for implementation and testing
 
-## 1. Thẩm quyền và cách đọc tài liệu
+## 1. Authority and how to read this document
 
-Tài liệu này chuẩn hóa:
+This document consolidates:
 
-- luật tuyển quân VMF 2025/26;
-- project specification ban đầu;
-- các quyết định đã được BTC xác nhận cho mùa 2026/27.
+- the VMF 2025/26 recruitment rules;
+- the original project specification;
+- the decisions the organisers confirmed for the 2026/27 season.
 
-Khi có mâu thuẫn, thứ tự ưu tiên là:
+Where they conflict, the order of precedence is:
 
-1. quyết định đã được BTC xác nhận cho mùa 2026/27;
-2. tài liệu này;
-3. luật tuyển quân VMF 2025/26;
-4. project specification và các cấu hình kỹ thuật mặc định.
+1. decisions confirmed by the organisers for 2026/27;
+2. this document;
+3. the VMF 2025/26 recruitment rules;
+4. the project specification and default technical configuration.
 
-Mọi thay đổi luật sau khi mùa giải bắt đầu phải tạo một `ruleset_version` mới, ghi rõ thời điểm có hiệu lực và được lưu trong audit log. Không sửa ngược một phiên bản luật đã dùng để chốt kết quả.
+Any rule change made after the season starts must create a new
+`ruleset_version`, state when it takes effect, and be recorded in the audit log.
+A ruleset version already used to settle a result is never edited retroactively.
 
-Các từ khóa:
+Keywords:
 
-- **phải**, **không được**: quy tắc bắt buộc;
-- **có thể**: lựa chọn vận hành của BTC;
-- **BTC/admin**: tài khoản có quyền quản trị VMF;
-- **HLV/manager**: người tham dự giải;
-- **GW**: Gameweek chính thức của FPL.
+- **must**, **must not**: mandatory;
+- **may**: an operational choice for the organisers;
+- **organiser/admin**: an account with VMF administrative rights;
+- **manager**: a competitor;
+- **GW**: an official FPL Gameweek.
 
-## 2. Thành viên và dữ liệu đăng ký
+## 2. Membership and registration data
 
-- Giải có 40 HLV, định danh ngoài hệ thống bằng `fpl_entry_id`.
-- Tên HLV và tên đội đăng ký không được tự thay đổi trong thời gian giải diễn ra.
-- Nếu tên đội trên FPL thay đổi, hệ thống chỉ cảnh báo; không tự ghi đè tên đội VMF.
-- Mỗi HLV thuộc đúng một division tại một GW: `HIGH` hoặc `LOW`.
-- Số điện thoại và liên kết Facebook là dữ liệu riêng tư, chỉ admin được xem.
-- Không có đăng ký công khai trong phiên bản này. Việc thêm, sửa trạng thái hoặc loại HLV là thao tác admin và phải được ghi audit.
+- The league has 40 managers, identified externally by `fpl_entry_id`.
+- Registered manager and team names must not change while the season runs.
+- If the FPL team name changes, the system only raises a warning; it never
+  overwrites the registered VMF team name.
+- A manager belongs to exactly one division in any given Gameweek: `HIGH` or
+  `LOW`.
+- Phone numbers and Facebook links are private and visible to administrators
+  only.
+- There is no public registration in this version. Adding a manager, changing a
+  status or removing a manager is an administrative action and must be audited.
 
-Các trạng thái nghiệp vụ tối thiểu:
+Minimum business statuses:
 
 ```text
 active
@@ -50,53 +56,58 @@ deleted
 pending_review
 ```
 
-## 3. Khái niệm điểm chuẩn
+## 3. Scoring definitions
 
-### 3.1 Điểm GW
+### 3.1 Gameweek points
 
 ```text
-official_gross_points = điểm GW do FPL công bố
-transfer_cost         = điểm trừ chuyển nhượng do FPL công bố
+official_gross_points = the Gameweek points published by FPL
+transfer_cost         = the transfer penalty published by FPL
 official_net_points   = official_gross_points - transfer_cost
 ```
 
-`official_net_points` là điểm cơ sở cho Classic, H2H, Cup, TotW và các tie-break, trừ khi một điều khoản cụ thể quy định điểm thay thế, điểm không hợp lệ hoặc admin override.
+`official_net_points` is the base score for Classic, H2H, Cup, TotW and every
+tie-break, unless a specific clause defines a replacement score, invalidates
+the score, or an administrator override applies.
 
-Hệ thống phải giữ riêng:
+The system must keep these separate:
 
-- dữ liệu FPL gốc;
-- kết quả tính toán theo luật VMF;
-- penalty;
-- replacement;
-- admin override.
+- raw FPL data;
+- results derived under VMF rules;
+- penalties;
+- replacements;
+- administrator overrides.
 
-Không được sửa dữ liệu FPL gốc để biểu diễn một quyết định VMF.
+Raw FPL data must never be edited to express a VMF decision.
 
-### 3.2 Điểm hiệu lực
+### 3.2 Effective points
 
-`effective_net_points` là điểm được giải đấu sử dụng sau khi áp dụng nguồn điểm hợp lệ:
+`effective_net_points` is the value the competition uses, after resolving the
+valid source of the score:
 
-1. admin override đang có hiệu lực;
-2. replacement average hợp lệ;
+1. an active administrator override;
+2. a valid replacement average;
 3. `official_net_points`.
 
-Penalty H2H và việc một GW đóng góp `0` vào bảng xét Cup là các ledger riêng, không sửa `official_net_points` hoặc điểm Classic.
+H2H penalties, and the rule that a Gameweek contributes `0` to a Cup
+qualification table, are separate ledgers. They never modify
+`official_net_points` or Classic points.
 
-### 3.3 Cầu thủ được tính điểm
+### 3.3 Counted players
 
-Cầu thủ được tính gồm:
+Counted players are:
 
-- cầu thủ thuộc đội hình cuối cùng sau auto-sub;
-- cầu thủ dự bị khi Bench Boost có hiệu lực;
-- đội trưởng hoặc đội phó thay thế theo kết quả cuối cùng của FPL.
+- players in the final XI after automatic substitutions;
+- bench players while Bench Boost is active;
+- the captain, or the vice-captain if FPL transferred the armband.
 
-Cầu thủ không được tính gồm:
+Players that do not count:
 
-- cầu thủ còn nằm trên ghế dự bị khi không dùng Bench Boost;
-- cầu thủ bị auto-sub ra;
-- cầu thủ không có trong squad của HLV.
+- bench players when Bench Boost is not active;
+- players substituted out automatically;
+- players not in the manager's squad.
 
-Mỗi pick phải phân biệt tối thiểu:
+Every pick must distinguish at least:
 
 ```text
 selected_in_squad
@@ -109,99 +120,112 @@ original_multiplier
 effective_multiplier
 ```
 
-### 3.4 Đội trưởng
+### 3.4 Captain
 
-Điểm captain dùng trong tie-break là đóng góp cuối cùng sau multiplier:
+The captain points used in tie-breaks are the final contribution after the
+multiplier:
 
 ```text
 captain_contribution_points =
     effective_captain_base_points * effective_captain_multiplier
 ```
 
-- Captain thường có multiplier `2`.
-- Triple Captain có multiplier `3`.
-- Nếu captain không thi đấu và FPL chuyển băng cho vice-captain, dùng đóng góp đã nhân của vice-captain.
-- Nếu cả captain và vice-captain đều không có hiệu lực, captain contribution là `0`.
+- A normal captain has multiplier `2`.
+- Triple Captain has multiplier `3`.
+- If the captain does not play and FPL passes the armband to the vice-captain,
+  use the vice-captain's multiplied contribution.
+- If neither captain nor vice-captain is effective, the captain contribution is
+  `0`.
 
-### 3.5 Bàn thắng và thẻ
+### 3.5 Goals and cards
 
-- Chỉ cộng bàn thắng/thẻ của cầu thủ được tính điểm.
-- Bàn thắng và thẻ là số sự kiện thực, không nhân theo multiplier captain.
-- Một bàn của cầu thủ dự bị không dùng Bench Boost đóng góp `0`.
-- Một bàn của cầu thủ dự bị có Bench Boost đóng góp `1`.
-- Mỗi thẻ vàng hoặc thẻ đỏ được tính là một thẻ:
+- Only counted players contribute goals and cards.
+- Goals and cards are real event counts; they are never multiplied by the
+  captain multiplier.
+- A goal by a bench player without Bench Boost contributes `0`.
+- A goal by a bench player with Bench Boost contributes `1`.
+- Each yellow or red card counts as one card:
 
 ```text
 total_cards = yellow_cards + red_cards
 ```
 
-Nếu một cầu thủ có nhiều trận trong một DGW, cộng sự kiện của tất cả fixture thuộc GW đó.
+If a player has several fixtures in a Double Gameweek, sum the events of every
+fixture attached to that Gameweek.
 
 ## 4. Classic
 
-### 4.1 Cấu trúc
+### 4.1 Structure
 
-| Giai đoạn | Gameweek | HIGH | LOW |
+| Phase | Gameweeks | HIGH | LOW |
 |---|---:|---:|---:|
 | Classic Season 1 | GW1–GW19 | 20 | 20 |
 | Classic Season 2 | GW20–GW38 | 20 | 20 |
 
-Điểm Season 2 reset về `0` tại GW20. Điểm toàn mùa vẫn được giữ cho thống kê.
+Season 2 points reset to `0` at GW20. Full-season points are still kept for
+statistics.
 
-Sau GW19:
+After GW19:
 
-- 6 HLV cuối HIGH xuống LOW;
-- 6 HLV đầu LOW lên HIGH;
-- membership mới có hiệu lực từ GW20.
+- the bottom 6 of HIGH are relegated to LOW;
+- the top 6 of LOW are promoted to HIGH;
+- the new membership takes effect from GW20.
 
-Sau GW38:
+After GW38:
 
-- 6 HLV cuối HIGH xuống LOW cho kỳ tiếp theo;
-- 6 HLV đầu LOW lên HIGH;
-- 6 HLV cuối LOW phải đăng ký xét tuyển lại nếu muốn tiếp tục.
+- the bottom 6 of HIGH are relegated for the next period;
+- the top 6 of LOW are promoted;
+- the bottom 6 of LOW must reapply if they wish to continue.
 
-Membership phải được lưu theo giai đoạn/GW; không được cập nhật một cột division duy nhất làm thay đổi lịch sử.
+Membership must be stored per phase and Gameweek range. Updating a single
+division column, which would rewrite history, is not allowed.
 
-### 4.2 Xếp hạng
+### 4.2 Ranking
 
-- Điểm Classic là tổng `effective_net_points` thuộc phạm vi Season tương ứng.
-- Bảng xếp hạng chỉ so sánh HLV trong cùng division của giai đoạn đó.
-- Không dùng overall rank của FPL.
-- Bảng hiển thị dùng competition ranking, ví dụ `1, 2, 2, 4`.
+- A Classic score is the sum of `effective_net_points` inside the relevant
+  Season.
+- A table compares only the managers in the same division for that phase.
+- FPL overall rank is never used.
+- Displayed tables use competition ranking, for example `1, 2, 2, 4`.
 
-Khi cần chọn người qua một ranh giới có ý nghĩa nghiệp vụ, áp dụng mục 7.
+When a decision must be made across a meaningful boundary, apply section 7.
 
 ## 5. TotW
 
-TotW là HLV có `effective_net_points` cao nhất trong GW khi so với toàn bộ 40 HLV đủ điều kiện.
+TotW is the manager with the highest `effective_net_points` in a Gameweek among
+all 40 eligible managers.
 
-- Chip và transfer cost đã nằm trong điểm dùng để xét.
-- Nếu nhiều HLV đồng điểm cao nhất, tất cả cùng nhận một TotW.
-- Mỗi người đồng hạng được cộng `1` vào cumulative TotW.
-- Điểm `replacement_average` không đủ điều kiện nhận TotW.
-- HLV dùng replacement cũng không đủ điều kiện nhận giải/highlight cá nhân của GW đó.
+- Chips and transfer costs are already inside the score being compared.
+- If several managers tie for the highest score, they all receive a TotW.
+- Each tied manager's cumulative TotW count increases by `1`.
+- A `replacement_average` score is not eligible for TotW.
+- A manager on a replacement score is not eligible for that Gameweek's
+  individual awards or highlights either.
 
-Cumulative TotW tại một cutoff chỉ tính các TotW từ đầu giai đoạn liên quan đến hết cutoff, không dùng dữ liệu của GW tương lai.
+Cumulative TotW at a cutoff counts only the TotW awards from the start of the
+relevant phase up to that cutoff; future Gameweeks are never used.
 
-## 6. H2H
+## 6. Head to head
 
-### 6.1 Vòng bảng
+### 6.1 Group stage
 
-- 40 HLV thi đấu trong một H2H chung từ GW1 đến GW35.
-- Mỗi HLV có đúng một trận mỗi GW.
-- Không tự đấu chính mình.
-- Lịch được tạo trước mùa, admin được sửa trước khi khóa và bất biến sau khi khóa, trừ một quyết định admin có audit.
-- Điểm trận là `effective_net_points`.
+- All 40 managers play one common H2H competition from GW1 to GW35.
+- Every manager plays exactly one match per Gameweek.
+- No manager faces themselves.
+- The schedule is generated before the season. Administrators may edit it
+  before it is locked; afterwards it is immutable except through an audited
+  administrative decision.
+- The match score is `effective_net_points`.
 
-Điểm bảng:
+Table points:
 
 ```text
-thắng = 3
-hòa   = 1
-thua  = 0
+win  = 3
+draw = 1
+loss = 0
 ```
 
-Các chỉ số phải giữ:
+Metrics that must be kept:
 
 ```text
 played
@@ -216,28 +240,30 @@ h2h_penalty_points
 h2h_table_points
 ```
 
-`h2h_table_points` được phép âm.
+`h2h_table_points` may be negative.
 
-### 6.2 Chọn top 8
+### 6.2 Selecting the top 8
 
-Sau khi GW35 được final, tám HLV còn đủ điều kiện có thứ tự cao nhất vào play-off. Việc phân định ranh giới top 8 dùng mục 7 với:
+After GW35 is finalized, the eight highest-placed eligible managers enter the
+play-offs. The boundary is decided with section 7 using:
 
 ```text
 primary_points = h2h_table_points
 period = GW1–GW35
 ```
 
-Các chỉ số point difference, points for và số trận thắng vẫn được hiển thị nhưng không đứng trước chuỗi phân định ranh giới đã chốt tại mục 7.
+Point difference, points for and number of wins are still displayed, but they
+do not take precedence over the boundary chain fixed in section 7.
 
-### 6.3 Play-off
+### 6.3 Play-offs
 
-| GW | Vòng |
+| GW | Round |
 |---:|---|
-| 36 | Tứ kết |
-| 37 | Bán kết |
-| 38 | Chung kết |
+| 36 | Quarter-finals |
+| 37 | Semi-finals |
+| 38 | Final |
 
-Seeding tứ kết:
+Quarter-final seeding:
 
 ```text
 1 vs 8
@@ -246,131 +272,149 @@ Seeding tứ kết:
 3 vs 6
 ```
 
-Bracket bán kết được cố định từ bracket tứ kết.
+The semi-final bracket is fixed by the quarter-final bracket.
 
-**H2H không có trận tranh hạng ba.** Hai HLV thua bán kết đồng hạng ba. GW38 chỉ có trận chung kết.
+**H2H has no third-place match.** The two losing semi-finalists share third
+place. GW38 contains the final only.
 
-Trận play-off hòa điểm dùng chuỗi tie-break của Cup tại mục 8.4.
+A tied play-off match uses the Cup tie-break chain in section 8.4.
 
-## 7. Quy tắc phân định ranh giới
+## 7. Boundary decision rule
 
-Quy tắc này áp dụng khi một nhóm đồng điểm nằm vắt qua:
+This rule applies when a group of managers on equal points straddles:
 
-- ranh giới top 6 thăng hạng/xuống hạng;
-- ranh giới top 8 H2H;
-- ranh giới hạng 2/3 hoặc 14/15 của mỗi bảng xét Cup;
-- một ranh giới chọn suất khác nếu cấu hình giải dẫn chiếu đến quy tắc này.
+- the top 6 promotion or relegation boundary;
+- the H2H top 8 boundary;
+- the rank 2/3 or rank 14/15 boundary of a Cup qualification table;
+- any other qualifying boundary that the league configuration refers here.
 
-Áp dụng lần lượt:
+Apply in order:
 
-1. **Điểm giai đoạn liên quan**, cao hơn đứng trước:
-   - Classic: điểm Classic Season;
+1. **Points for the relevant phase**, higher first:
+   - Classic: Classic Season points;
    - H2H: `h2h_table_points`;
    - Cup: `cup_qualification_points`.
-2. **Cumulative TotW** đến hết cutoff của giai đoạn, nhiều hơn đứng trước.
-3. **Điểm GW cao nhất** trong giai đoạn liên quan, cao hơn đứng trước. Với Cup, chỉ xét điểm đóng góp đủ điều kiện vào bảng xét Cup; GW vi phạm đã bị đưa về `0`.
-4. **Admin bốc thăm** nếu vẫn hòa.
+2. **Cumulative TotW** up to the phase cutoff, more first.
+3. **Highest single Gameweek score** inside the relevant phase, higher first.
+   For a Cup, only scores eligible for that Cup's qualification table count; a
+   Gameweek zeroed by a violation stays at `0`.
+4. **An administrator draw** if still tied.
 
-Việc bốc thăm phải lưu danh sách HLV đủ điều kiện, người thực hiện, thời gian, phương thức và kết quả. Không dùng random âm thầm trong job nền.
+A draw must record the list of eligible managers, who performed it, when, by
+what method, and the result. Silent randomness inside a background job is not
+allowed.
 
-Quy tắc này chỉ phá hòa để chọn phía nào của ranh giới. Bảng hiển thị vẫn có thể giữ đồng hạng nếu không cần một quyết định chọn suất.
+This rule breaks a tie only to decide which side of a boundary a manager falls
+on. Displayed tables may still show shared ranks when no qualifying decision is
+required.
 
 ## 8. VMF Cup
 
 ### 8.1 Cup Season 1
 
-Cutoff xét suất là sau khi GW14 final. Bảng xét Cup tính GW1–GW14.
+The qualification cutoff is the finalization of GW14. The qualification table
+covers GW1–GW14.
 
-| Thứ hạng trong mỗi division | Kết quả |
+| Rank within each division | Outcome |
 |---|---|
-| 1–2 | Vào thẳng vòng 16 đội |
-| 3–14 | Đá sơ loại |
-| Còn lại | Không dự Cup |
+| 1–2 | Straight into the round of 16 |
+| 3–14 | Preliminary round |
+| Others | Not in the Cup |
 
-Lịch:
+Schedule:
 
-| GW | Vòng |
+| GW | Round |
 |---:|---|
-| 15 | Sơ loại |
-| 16 | Vòng 16 đội |
-| 17 | Tứ kết |
-| 18 | Bán kết |
-| 19 | Chung kết và tranh hạng ba |
+| 15 | Preliminary round |
+| 16 | Round of 16 |
+| 17 | Quarter-finals |
+| 18 | Semi-finals |
+| 19 | Final and third-place match |
 
 ### 8.2 Cup Season 2
 
-Cup Season 2 có **cùng cơ cấu** với Cup Season 1. Cutoff xét suất là sau khi GW33 final. Bảng xét Cup tính GW20–GW33.
+Cup Season 2 has the **same structure** as Cup Season 1. The qualification
+cutoff is the finalization of GW33, and the qualification table covers
+GW20–GW33.
 
-| Thứ hạng trong mỗi division | Kết quả |
+| Rank within each division | Outcome |
 |---|---|
-| 1–2 | Vào thẳng vòng 16 đội |
-| 3–14 | Đá sơ loại |
-| Còn lại | Không dự Cup |
+| 1–2 | Straight into the round of 16 |
+| 3–14 | Preliminary round |
+| Others | Not in the Cup |
 
-Lịch:
+Schedule:
 
-| GW | Vòng |
+| GW | Round |
 |---:|---|
-| 34 | Sơ loại |
-| 35 | Vòng 16 đội |
-| 36 | Tứ kết |
-| 37 | Bán kết |
-| 38 | Chung kết và tranh hạng ba |
+| 34 | Preliminary round |
+| 35 | Round of 16 |
+| 36 | Quarter-finals |
+| 37 | Semi-finals |
+| 38 | Final and third-place match |
 
-### 8.3 Bảng xét suất Cup
+### 8.3 Cup qualification table
 
-Mỗi Cup có một ledger độc lập:
+Each Cup has an independent ledger:
 
 ```text
 cup_qualification_points =
     sum(cup_qualification_contribution_by_gw)
 ```
 
-Trong đó:
+where:
 
 ```text
-confirmed excessive-transfer violation ở GW đó -> contribution = 0
-không đủ điều kiện vì chưa join league Season 2 -> contribution = 0
-trường hợp còn lại -> contribution = effective_net_points
+confirmed excessive-transfer violation in that GW -> contribution = 0
+not eligible because the Season 2 league was not joined -> contribution = 0
+otherwise -> contribution = effective_net_points
 ```
 
-Quy tắc `0` chỉ tác động bảng xét suất Cup:
+The `0` rule affects the Cup qualification table only:
 
-- không sửa điểm Classic;
-- không sửa điểm FPL gốc;
-- không tự sửa kết quả H2H vòng bảng.
+- it does not change Classic points;
+- it does not change raw FPL data;
+- it does not by itself change a played H2H group result.
 
-**Toàn bộ GW vi phạm** trong GW1–GW14 hoặc GW20–GW33 bị loại khỏi tổng điểm xét Cup, không chỉ GW đang đá một trận Cup.
+**Every Gameweek carrying a violation** inside GW1–GW14 or GW20–GW33 is removed
+from the Cup total, not only the Gameweek in which a Cup tie is played.
 
-Xếp suất được thực hiện riêng trong HIGH và LOW theo membership của Season tương ứng. Hòa tại ranh giới dùng mục 7.
+Qualification is computed separately inside HIGH and LOW according to the
+membership of the relevant Season. Ties at a boundary use section 7.
 
-### 8.4 Điểm trận và tie-break
+### 8.4 Match score and tie-breaks
 
-Điểm trận Cup là `effective_net_points`, trừ walkover hoặc điểm đã bị vô hiệu theo mục 9.
+A Cup match score is `effective_net_points`, except for a walkover or a score
+invalidated under section 9.
 
-Nếu hai bên hòa điểm và cả hai đều có điểm thật/override hợp lệ, xét lần lượt:
+If both sides are level and both hold a genuine score or a valid override,
+apply in order:
 
-1. cumulative TotW nhiều hơn, tính đến hết GW đang đấu;
-2. captain contribution trong GW cao hơn;
-3. tổng số bàn của counted players trong GW nhiều hơn;
-4. tổng số thẻ của counted players trong GW ít hơn;
-5. điểm Classic Season hiện tại tính đến hết GW đó cao hơn;
-6. admin bốc thăm.
+1. more cumulative TotW, counted up to and including the Gameweek being played;
+2. higher captain contribution in that Gameweek;
+3. more goals by counted players in that Gameweek;
+4. fewer cards by counted players in that Gameweek;
+5. higher current Classic Season points up to that Gameweek;
+6. an administrator draw.
 
-Mỗi bước phải lưu input, kết quả so sánh và bước đã quyết định người thắng.
+Every step must record its inputs, the comparison result, and which step
+decided the winner.
 
-Quy tắc ưu tiên nguồn điểm:
+Score-source precedence:
 
-- nếu hòa và chỉ một bên dùng `replacement_average`, bên có điểm thật/override hợp lệ đi tiếp trước khi chạy tie-break trên;
-- nếu cả hai bên dùng `replacement_average`, không tự chọn; chuyển admin quyết định có audit.
+- if the scores are level and only one side is on a `replacement_average`, the
+  side with a genuine score or valid override advances before the chain above
+  runs;
+- if both sides are on a `replacement_average`, the system decides nothing; the
+  tie goes to an audited administrator decision.
 
-Cup có trận tranh hạng ba ở GW19 và GW38.
+The Cup does play a third-place match, in GW19 and GW38.
 
-## 9. Vi phạm
+## 9. Violations
 
-### 9.1 Vi phạm chuyển nhượng
+### 9.1 Excessive transfer cost
 
-HLV được phép chịu transfer cost tối đa `8` trong một GW.
+A manager may take a transfer cost of at most `8` in one Gameweek.
 
 ```text
 transfer_cost <= 8:
@@ -380,23 +424,24 @@ transfer_cost > 8:
     detected_count = ceil((transfer_cost - 8) / 8)
 ```
 
-Ví dụ chuẩn:
+Reference examples:
 
-| Transfer cost | Số lần vi phạm phát sinh |
+| Transfer cost | Violations raised |
 |---:|---:|
 | 0, 4, 8 | 0 |
 | 12, 16 | 1 |
 | 20, 24 | 2 |
 | 28 | 3 |
 
-Số lần vi phạm được cộng dồn xuyên suốt GW1–GW38, không reset ở GW20. Một GW có thể làm vượt nhiều cấp ngay lập tức:
+The counter accumulates across GW1–GW38 and does not reset at GW20. A single
+Gameweek can cross several thresholds at once:
 
-- cost `20` kích hoạt cấp 1 và cấp 2;
-- cost `28` kích hoạt cấp 1, cấp 2 và cấp 3.
+- a cost of `20` triggers thresholds 1 and 2;
+- a cost of `28` triggers thresholds 1, 2 and 3.
 
-### 9.2 Quy trình xác nhận
+### 9.2 Review workflow
 
-Trạng thái tối thiểu:
+Minimum statuses:
 
 ```text
 detected
@@ -407,83 +452,107 @@ rejected
 overridden
 ```
 
-- Detection là tự động và idempotent.
-- Penalty không thể đảo ngược chỉ có hiệu lực từ một quyết định admin `confirmed` hoặc `overridden`.
-- Trường hợp báo quên bật chip chuyển `pending_review`.
-- Nếu admin duyệt ngoại lệ, số vi phạm xác nhận của event là `0`.
-- Dù ngoại lệ được duyệt, transfer cost chính thức của FPL vẫn nằm trong `official_net_points`. Chỉ một score override riêng, có lý do và audit, mới thay đổi điểm hiệu lực.
-- Nếu admin bác ngoại lệ, event được xác nhận theo công thức.
+- Detection is automatic and idempotent.
+- An irreversible penalty takes effect only from an administrator decision of
+  `confirmed` or `overridden`.
+- A claim of having forgotten to activate a chip moves the case to
+  `pending_review`.
+- If the administrator approves the exception, the confirmed count for that
+  event is `0`.
+- Even with an approved exception, the official FPL transfer cost remains
+  inside `official_net_points`. Only a separate score override, with a reason
+  and an audit entry, changes the effective score.
+- If the administrator rejects the exception, the event is confirmed by the
+  formula.
 
-### 9.3 Hệ quả theo ngưỡng cộng dồn
+### 9.3 Consequences by cumulative threshold
 
-Hệ quả được áp dụng khi tổng số lần vi phạm xác nhận **lần đầu chạm hoặc vượt** ngưỡng:
+A consequence applies when the total confirmed violations **first reach or
+exceed** a threshold:
 
-| Ngưỡng | Hệ quả |
+| Threshold | Consequence |
 |---:|---|
-| 1 | Thu tiền tư cách; trừ một lần `6` điểm bảng H2H; áp dụng luật Cup đối với GW vi phạm |
-| 2 | Chỉ được nhận 50% giá trị giải thưởng nếu có; loại khỏi H2H và Cup |
-| 3 | Loại khỏi toàn bộ giải |
+| 1 | Conduct deposit forfeited; a single `-6` deduction from the H2H table; the Cup rule applies to the offending Gameweek |
+| 2 | Entitled to at most 50% of any prize; removed from H2H and from the Cup |
+| 3 | Removed from the competition |
 
-Không áp lại cùng một threshold action lần thứ hai. Ví dụ cost `20` trong một GW tạo hai violation unit nhưng chỉ tạo một ledger `-6` khi vượt ngưỡng 1, đồng thời áp dụng ngay ngưỡng 2.
+The same threshold action is never applied twice. A cost of `20` in one
+Gameweek raises two violation units but still creates only one `-6` ledger
+entry when threshold 1 is crossed, while also applying threshold 2 immediately.
 
-### 9.4 Tác động lên H2H
+### 9.4 Effect on H2H
 
-Ở vòng bảng, với violation đầu tiên:
+In the group stage, for a first violation:
 
-1. trận vẫn được xét thắng/hòa/thua bằng điểm net;
-2. điểm trận `3/1/0` được ghi bình thường;
-3. ledger penalty `-6` được trừ riêng khỏi bảng H2H.
+1. the match is still won, drawn or lost on net points;
+2. the `3/1/0` match points are recorded normally;
+3. a separate `-6` penalty ledger entry is deducted from the H2H table.
 
-Điểm bảng sau penalty được phép âm.
+The table total after the penalty may be negative.
 
-Khi HLV chạm ngưỡng 2:
+When a manager reaches threshold 2:
 
-- các kết quả H2H lịch sử đã final được giữ nguyên;
-- các trận tương lai của HLV bị xử walkover;
-- đối thủ nhận `3` điểm;
-- tỷ số kỹ thuật lưu `0–0`;
-- trận walkover kỹ thuật không cộng points for/against và không tạo point difference giả.
+- historical finalized H2H results are preserved;
+- the manager's remaining matches are recorded as walkovers;
+- the opponent receives `3` points;
+- the technical score is stored as `0–0`;
+- a technical walkover adds nothing to points for or points against and creates
+  no artificial point difference.
 
-Nếu HLV vi phạm trong trận play-off, đối thủ đi tiếp bằng walkover. Nếu cả hai phía đồng thời không đủ điều kiện, trận chuyển admin review; hệ thống không tự chọn ngẫu nhiên.
+If a manager violates during a play-off match, the opponent advances by
+walkover. If both sides are simultaneously ineligible, the tie goes to
+administrator review; the system never picks a winner at random.
 
-### 9.5 Tác động lên Cup
+### 9.5 Effect on the Cup
 
-- Mỗi excessive-transfer violation đã xác nhận làm contribution của **GW vi phạm** trong bảng xét Cup bằng `0`.
-- Nếu violation xảy ra ở một trận loại trực tiếp, điểm trận của HLV vi phạm không hợp lệ và đối thủ đi tiếp bằng walkover.
-- Khi chạm ngưỡng 2, HLV bị loại khỏi Cup. Kết quả lịch sử đã final được giữ nguyên; trận tương lai xử walkover.
-- Nếu bị loại trước khi bracket được khóa, HLV không nằm trong danh sách eligible để xếp suất/draw.
-- Nếu cả hai phía cùng không đủ điều kiện, trận chuyển admin review.
+- Each confirmed excessive-transfer violation sets the contribution of **the
+  offending Gameweek** in the Cup qualification table to `0`.
+- If the violation falls in a knockout tie, the offending manager's match score
+  is invalid and the opponent advances by walkover.
+- On reaching threshold 2 the manager is removed from the Cup. Historical
+  finalized results stand; remaining ties are walkovers.
+- If the removal happens before the bracket is locked, the manager is not in
+  the eligible list for seeding or the draw.
+- If both sides are ineligible, the tie goes to administrator review.
 
-### 9.6 Không tham gia league mới
+### 9.6 Failing to join the new league
 
-Không tham gia FPL league mới của Season 2 đúng hạn được tính là một violation unit trong cùng bộ đếm GW1–GW38.
+Not joining the new Season 2 FPL league in time counts as one violation unit in
+the same GW1–GW38 counter.
 
-- Classic và Cup từ GW20 đến trước GW HLV join đóng góp `0`.
-- Điểm Classic và Cup bắt đầu tính lại từ chính GW join.
-- H2H vẫn thi đấu và tính điểm bình thường.
-- Sự kiện phải được admin review và ghi rõ `season_2_join_gameweek`.
+- Classic and Cup contributions from GW20 until the Gameweek the manager joins
+  are `0`.
+- Classic and Cup scoring resumes from the joining Gameweek itself.
+- H2H continues to be played and scored normally.
+- The event must be reviewed by an administrator, who records
+  `season_2_join_gameweek`.
 
-Violation do join trễ không biến GW join thành một excessive-transfer violation; từ GW join, điểm được tính bình thường nếu không có vi phạm khác.
+A late-join violation does not turn the joining Gameweek into an
+excessive-transfer violation; from that Gameweek the score counts normally
+unless another violation exists.
 
-## 10. Team FPL bị khóa hoặc xóa
+## 10. Locked or deleted FPL teams
 
-Từ `locked_from_gameweek` trở đi, điểm của HLV được thay bằng average của **division mà HLV thuộc ở GW đó**.
+From `locked_from_gameweek` onward, the manager's score is replaced by the
+average of the **division that manager belongs to in that Gameweek**.
 
-Vì vậy mỗi GW có thể có hai average độc lập:
+Each Gameweek can therefore have two independent averages:
 
 ```text
 HIGH replacement average
 LOW replacement average
 ```
 
-Tập mẫu gồm HLV:
+The sample contains managers who:
 
-- thuộc cùng division tại GW;
-- đang active;
-- không locked, deleted hoặc removed;
-- có điểm net hiệu lực không phải `replacement_average`.
+- belong to the same division in that Gameweek;
+- are active;
+- are not locked, deleted or removed;
+- have an effective net score that is not itself a `replacement_average`.
 
-Không lấy manager của division còn lại. Không đưa bất kỳ replacement score nào vào mẫu; nhiều team bị khóa trong cùng division phải dùng cùng một tập mẫu gốc, không tính vòng lặp.
+Never take managers from the other division. Never place a replacement score in
+the sample; several locked teams in one division must use the same original
+sample, with no recursion.
 
 ```text
 replacement_average_raw =
@@ -493,7 +562,7 @@ replacement_average_rounded =
     ROUND_HALF_UP(replacement_average_raw)
 ```
 
-Ví dụ:
+Examples:
 
 ```text
 67.42 -> 67
@@ -501,38 +570,46 @@ Ví dụ:
 67.81 -> 68
 ```
 
-Không dùng bankers' rounding. Nếu tập mẫu rỗng, hệ thống không lấy average của division khác; score chuyển `pending_review` để admin xử lý.
+Do not use bankers' rounding. If the sample is empty, the system does not
+borrow the other division's average; the score moves to `pending_review` for an
+administrator.
 
-Replacement score:
+A replacement score:
 
-- được dùng cho Classic, H2H và Cup;
-- không đủ điều kiện nhận TotW hoặc giải/highlight thành tích cá nhân;
-- lưu cả raw average, rounded value, sample manager IDs và snapshot revision đã dùng.
+- is used for Classic, H2H and the Cup;
+- is not eligible for TotW or any individual performance award or highlight;
+- must store the raw average, the rounded value, the sample manager IDs and the
+  snapshot revision used.
 
-## 11. Trạng thái điểm và finalization
+## 11. Score states and finalization
 
-Một GW đi theo state machine:
+A Gameweek follows this state machine:
 
 ```text
 upcoming -> live -> provisional -> final
 ```
 
-- `upcoming`: chưa có fixture liên quan bắt đầu;
-- `live`: có fixture đã bắt đầu và chưa kết thúc;
-- `provisional`: các fixture đã kết thúc nhưng FPL/BTC còn có thể điều chỉnh;
-- `final`: BTC hoặc rule finalization đã khóa một revision.
+- `upcoming`: no relevant fixture has started;
+- `live`: a fixture has started and has not finished;
+- `provisional`: fixtures have finished but FPL or the organisers may still
+  adjust;
+- `final`: the organisers or a finalization rule have locked a revision.
 
-Quy tắc:
+Rules:
 
-- UI phải hiển thị rõ live/provisional, không trình bày như kết quả cuối.
-- Một final snapshot là bất biến.
-- Chỉ admin được reopen GW đã final.
-- Reopen phải có lý do, actor, timestamp và audit log.
-- Recalculation sau reopen tạo revision mới và liên kết `supersedes`; không ghi đè hoặc xóa final revision cũ.
-- H2H result, Cup result, TotW, standings và next-round bracket phải tham chiếu đúng final revision đã tạo chúng.
-- Late correction từ FPL không tự thay đổi kết quả đã final. Nó tạo cảnh báo diff để admin quyết định reopen.
+- The interface must mark live and provisional clearly and never present them
+  as a settled result.
+- A final snapshot is immutable.
+- Only an administrator may reopen a finalized Gameweek.
+- A reopen requires a reason, an actor, a timestamp and an audit entry.
+- Recalculation after a reopen creates a new revision linked by `supersedes`;
+  it never overwrites or deletes the previous final revision.
+- H2H results, Cup results, TotW, standings and next-round brackets must
+  reference the exact final revision that produced them.
+- A late correction from FPL never changes a finalized result on its own. It
+  raises a difference alert for an administrator to decide whether to reopen.
 
-Admin override cũng là bản ghi append-only:
+An administrator override is also an append-only record:
 
 ```text
 target
@@ -547,18 +624,18 @@ supersedes_override_id
 
 ## 12. Live matchup
 
-Trang matchup H2H/Cup phải cung cấp:
+An H2H or Cup matchup page must provide:
 
-- điểm live/provisional của hai bên;
-- same players và differentials;
+- the live or provisional score of both sides;
+- shared players and differentials;
 - captain differences;
-- cầu thủ đã xong, đang đá, chưa đá;
+- players finished, playing and yet to play;
 - `players_remaining`;
 - `effective_players_remaining`;
-- bench points, chip, transfer cost;
-- tie-break hiện tại và trạng thái dữ liệu.
+- bench points, chip and transfer cost;
+- the current tie-break position and the state of the data.
 
-Với một player:
+For a single player:
 
 ```text
 net_multiplier =
@@ -566,46 +643,50 @@ net_multiplier =
     - effective_multiplier_manager_b
 ```
 
-- `0`: bị neutralize;
-- dương: differential cho A;
-- âm: differential cho B.
+- `0`: neutralized;
+- positive: a differential for A;
+- negative: a differential for B.
 
-`players_remaining` đếm player duy nhất còn ít nhất một fixture chưa được giải quyết. `effective_players_remaining` cộng effective multiplier của các player đó. Trong DGW, UI nên hiển thị thêm số fixture còn lại để tránh hiểu nhầm một player còn hai trận là hai player.
+`players_remaining` counts distinct players with at least one unresolved
+fixture. `effective_players_remaining` sums the effective multipliers of those
+players. In a Double Gameweek the interface should also show the number of
+remaining fixtures, so that one player with two matches is not mistaken for two
+players.
 
-## 13. Riêng tư, quyền admin và audit
+## 13. Privacy, administrative rights and audit
 
-### 13.1 Dữ liệu public
+### 13.1 Public data
 
-Public có thể xem:
+The public may see:
 
-- tên HLV và tên đội đăng ký;
-- FPL Team ID nếu BTC lựa chọn công khai;
-- division, trạng thái thi đấu không nhạy cảm;
-- điểm, standings, bracket, matchup và quyết định kỷ luật đã công bố.
+- manager names and registered team names;
+- the FPL Team ID, if the organisers choose to publish it;
+- division and non-sensitive competition status;
+- scores, standings, brackets, matchups and published disciplinary decisions.
 
-Public không được nhận:
+The public must never receive:
 
-- số điện thoại;
-- Facebook URL hoặc contact URL riêng;
-- admin note;
-- dữ liệu xác thực;
-- raw payload chứa dữ liệu không cần công khai.
+- phone numbers;
+- Facebook or other private contact URLs;
+- administrator notes;
+- authentication data;
+- raw payloads containing data that does not need to be public.
 
-### 13.2 Audit bắt buộc
+### 13.2 Mandatory audit
 
-Phải audit tối thiểu:
+At minimum, audit:
 
-- thay đổi manager/division/status;
-- khóa hoặc mở lịch H2H;
-- draw/bracket change;
-- violation review và threshold action;
-- replacement calculation và manual replacement;
-- score/penalty override;
-- final, reopen và refinal;
-- random draw;
-- truy cập/xuất PII của admin.
+- manager, division and status changes;
+- locking or unlocking an H2H schedule;
+- a draw or a bracket change;
+- violation reviews and threshold actions;
+- replacement calculations and manual replacements;
+- score and penalty overrides;
+- finalize, reopen and re-finalize;
+- random draws;
+- administrator access to or export of personal data.
 
-Audit record là append-only và phải có:
+An audit record is append-only and must contain:
 
 ```text
 actor
@@ -619,17 +700,20 @@ timestamp
 request_id
 ```
 
-Quyết định cuối cùng thuộc BTC, nhưng hệ thống không được biến quyết định đó thành thay đổi không truy vết.
+The organisers hold the final decision, but the system must never turn that
+decision into an untraceable change.
 
-## 14. Các bất biến bắt buộc
+## 14. Invariants that must hold
 
-1. Không dùng FPL overall rank để xếp VMF.
-2. Một manager chỉ có một division membership hiệu lực tại một GW.
-3. Raw FPL data không bị penalty hoặc override ghi đè.
-4. Violation counter không reset giữa hai Season.
-5. Một threshold action chỉ được áp dụng một lần.
-6. GW vi phạm Cup có contribution `0`, Classic không đổi.
-7. Replacement average chỉ dùng mẫu cùng division và không chứa replacement.
-8. H2H không có trận tranh hạng ba.
-9. Final revision không bị sửa tại chỗ.
-10. PII không xuất hiện trong public API, cache public, log hoặc export public.
+1. FPL overall rank is never used to rank VMF.
+2. A manager has exactly one effective division membership per Gameweek.
+3. Raw FPL data is never overwritten by a penalty or an override.
+4. The violation counter does not reset between the two Seasons.
+5. A threshold action is applied at most once.
+6. A Gameweek zeroed for the Cup contributes `0` there and leaves Classic
+   unchanged.
+7. A replacement average uses only same-division samples and contains no
+   replacement score.
+8. H2H has no third-place match.
+9. A final revision is never edited in place.
+10. Personal data never appears in a public API, public cache, log or export.

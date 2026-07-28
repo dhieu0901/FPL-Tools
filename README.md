@@ -1,29 +1,33 @@
 # VMF Fantasy League Management Tool
 
-Nền tảng quản lý giải Văn Minh Fantasy League 2026/27 dành cho 40 HLV.
-Ứng dụng dùng dữ liệu FPL làm nguồn điểm và áp dụng bộ luật VMF cho hai
-division Classic, H2H, play-off, hai Cup, vi phạm và các quyết định của BTC.
+Competition platform for Văn Minh Fantasy League 2026/27 and its 40 managers.
+The application uses Fantasy Premier League as its scoring source and applies
+the VMF rulebook on top of it: two Classic divisions, a head-to-head league and
+play-offs, two Cups, violations and organiser decisions.
 
-## Kiến trúc
+## Layout
 
 ```text
-apps/web       Next.js public dashboard và admin UI
-services/api   FastAPI, rule engine, đồng bộ FPL và PostgreSQL
-docs           Rulebook, kiến trúc, test matrix và runbook
-supabase       SQL cấu hình cron cho môi trường Supabase
+apps/web       Next.js public dashboard and admin UI
+services/api   FastAPI, rule engine, FPL synchronization and PostgreSQL
+docs           Rulebook, architecture, FPL contract and test matrix
+supabase       SQL that configures scheduled jobs on Supabase
 ```
 
-Các nguyên tắc bắt buộc:
+## Non-negotiable principles
 
-- Dữ liệu FPL thô, dữ liệu VMF suy ra và admin override được lưu tách biệt.
-- Deadline picks và kết quả đã finalize là snapshot có version.
-- Mọi quyết định kỷ luật, bốc thăm và reopen Gameweek đều có audit log.
-- Không dùng overall rank của FPL.
-- Điểm live luôn provisional cho tới khi Gameweek được finalize.
+- Raw FPL data, VMF-derived results and administrator overrides are stored
+  separately; a decision never rewrites the source.
+- Deadline squads and finalized results are versioned snapshots.
+- Every disciplinary decision, random draw and Gameweek reopen is audited.
+- FPL global rank is never used.
+- A live score is provisional until the Gameweek is finalized.
+- A failed or missing source is recorded as such, never as a score of zero.
 
-## Chạy local
+## Running locally
 
-Sao chép `.env.example` thành `.env`, thay các secret mẫu, rồi khởi tạo database:
+Copy `.env.example` to `.env`, replace the placeholder secrets, then start the
+database:
 
 ```powershell
 docker compose up -d postgres
@@ -35,7 +39,13 @@ docker compose up --build api web
 - API: `http://localhost:8000`
 - OpenAPI: `http://localhost:8000/docs`
 
-Docker chỉ phục vụ môi trường local. Production miễn phí dùng hai Vercel Project
-(`apps/web` và `services/api`) cùng một Supabase Free project. Xem toàn bộ quy
-trình, biến môi trường, migration, cron, quota và rollback tại
-[DEPLOYMENT.md](DEPLOYMENT.md).
+Docker is for local development only. Production runs at no cost on two Vercel
+projects (`apps/web` and `services/api`) against one Supabase Free project. The
+full procedure, environment variables, migrations, scheduling, quotas and
+rollback steps are in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+## Language
+
+The interface ships in Vietnamese and English. Readers switch with the two
+flags in the header; the choice is stored in a cookie and pages keep rendering
+on the server in the chosen language. Documentation and code are English.
