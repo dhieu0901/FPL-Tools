@@ -72,6 +72,9 @@ async def get_fpl_client(settings: SettingsDep) -> AsyncIterator[FPLClient]:
         base_url=settings.fpl_base_url,
         timeout_seconds=settings.fpl_timeout_seconds,
         user_agent=settings.fpl_user_agent,
+        max_attempts=settings.fpl_max_attempts,
+        retry_base_delay_seconds=settings.fpl_retry_base_delay_seconds,
+        response_max_bytes=settings.fpl_response_max_bytes,
     ) as client:
         yield client
 

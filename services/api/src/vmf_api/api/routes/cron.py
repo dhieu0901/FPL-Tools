@@ -6,10 +6,16 @@ from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 
-from vmf_api.api.deps import CronAuthorizationDep, FPLClientDep, SessionDep
+from vmf_api.api.deps import CronAuthorizationDep, FPLClientDep, SessionDep, SettingsDep
 from vmf_api.integrations.fpl import FPLClientError
-from vmf_api.schemas.cron import FPLProbeResponse
-from vmf_api.services.cron import fpl_probe_lock
+from vmf_api.schemas.cron import (
+    CronSyncResponse,
+    FPLProbeResponse,
+    SyncJobResult,
+    SyncPlanResponse,
+)
+from vmf_api.services.cron import fpl_probe_lock, fpl_sync_lock
+from vmf_api.services.sync_orchestrator import run_scheduled_sync
 
 router = APIRouter(prefix="/cron", tags=["cron"])
 
@@ -87,6 +93,84 @@ async def probe_fpl_from_vercel_cron(
     """GET variant for Vercel Cron; Supabase Cron should use POST."""
 
     return await _run_fpl_probe(session, client)
+
+
+async def _run_sync(
+    session: SessionDep,
+    client: FPLClientDep,
+    settings: SettingsDep,
+) -> CronSyncResponse:
+    started_at = datetime.now(UTC)
+    async with fpl_sync_lock(session) as acquired:
+        if not acquired:
+            return CronSyncResponse(
+                status="skipped",
+                reason="already_running",
+                started_at=started_at,
+                finished_at=datetime.now(UTC),
+            )
+
+        result = await run_scheduled_sync(session, client, settings)
+        # The advisory lock is transaction-scoped, so committing both persists
+        # the source facts and releases it for the next tick.
+        await session.commit()
+
+        if result.plan is None:
+            return CronSyncResponse(
+                status="skipped",
+                reason="season_not_bootstrapped",
+                started_at=started_at,
+                finished_at=datetime.now(UTC),
+            )
+        return CronSyncResponse(
+            status="executed",
+            started_at=started_at,
+            finished_at=datetime.now(UTC),
+            plan=SyncPlanResponse(
+                season_code=result.plan.season_code,
+                gameweek_number=result.plan.gameweek_number,
+                run_picks=result.plan.run_picks,
+                run_live=result.plan.run_live,
+                run_entry_history=result.plan.run_entry_history,
+                reason=result.plan.reason,
+            ),
+            jobs=[
+                SyncJobResult(
+                    job_type=outcome.job_type,
+                    status=outcome.status,
+                    records_written=outcome.records_written,
+                    payload_changed=outcome.payload_changed,
+                    gameweek_number=outcome.gameweek_number,
+                    detail=outcome.detail or None,
+                    error=outcome.error,
+                )
+                for outcome in result.outcomes
+            ],
+        )
+
+
+@router.post("/sync", response_model=CronSyncResponse)
+async def sync_fpl(
+    _: CronAuthorizationDep,
+    session: SessionDep,
+    client: FPLClientDep,
+    settings: SettingsDep,
+) -> CronSyncResponse:
+    """Run the synchronization jobs whose preconditions currently hold."""
+
+    return await _run_sync(session, client, settings)
+
+
+@router.get("/sync", response_model=CronSyncResponse)
+async def sync_fpl_from_vercel_cron(
+    _: CronAuthorizationDep,
+    session: SessionDep,
+    client: FPLClientDep,
+    settings: SettingsDep,
+) -> CronSyncResponse:
+    """GET variant for Vercel Cron; Supabase Cron should use POST."""
+
+    return await _run_sync(session, client, settings)
 
 
 def _list_field(payload: dict[str, Any], field: str) -> list[Any]:

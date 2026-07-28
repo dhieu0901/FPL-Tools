@@ -127,6 +127,24 @@ def test_cron_probe_observes_metadata_without_persisting(method: str) -> None:
     }
 
 
+@pytest.mark.parametrize("path", ["/api/cron/fpl-probe", "/api/cron/sync"])
+def test_cron_routes_require_the_bearer_secret(path: str) -> None:
+    with _test_client(_settings()) as client:
+        response = client.post(path)
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 401
+
+
+@pytest.mark.parametrize("path", ["/api/cron/fpl-probe", "/api/cron/sync"])
+def test_cron_routes_fail_closed_without_a_configured_secret(path: str) -> None:
+    with _test_client(_settings(None)) as client:
+        response = client.post(path, headers={"Authorization": "Bearer anything"})
+
+    app.dependency_overrides.clear()
+    assert response.status_code == 503
+
+
 def test_local_probe_lock_skips_an_overlapping_invocation() -> None:
     async def exercise() -> tuple[bool, bool]:
         session = _FakeSession()

@@ -51,6 +51,22 @@ class MatchStatus(StrEnum):
     WALKOVER = "walkover"
 
 
+class SyncJobType(StrEnum):
+    BOOTSTRAP = "bootstrap"
+    FIXTURES = "fixtures"
+    LIVE = "live"
+    PICKS = "picks"
+    ENTRY_HISTORY = "entry_history"
+
+
+class SyncStatus(StrEnum):
+    SUCCEEDED = "succeeded"
+    PARTIAL = "partial"
+    SKIPPED = "skipped"
+    QUARANTINED = "quarantined"
+    FAILED = "failed"
+
+
 class ViolationType(StrEnum):
     TRANSFER_HIT = "transfer_hit"
     LATE_SEASON_2_JOIN = "late_season_2_join"

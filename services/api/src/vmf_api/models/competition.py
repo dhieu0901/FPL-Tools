@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Enum, ForeignKey, Integer, String, UniqueConstraint
@@ -42,6 +43,11 @@ class Gameweek(TimestampMixin, Base):
     )
     number: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     is_finalized: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Mirrored from FPL bootstrap events. They gate ingestion and finalization
+    # but never decide a VMF result on their own.
+    deadline_time: Mapped[datetime | None]
+    fpl_finished: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    fpl_data_checked: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     season: Mapped[Season] = relationship(back_populates="gameweeks")
     scores: Mapped[list[ManagerGameweekScore]] = relationship(back_populates="gameweek")

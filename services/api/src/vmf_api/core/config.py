@@ -35,6 +35,15 @@ class Settings(BaseSettings):
     fpl_base_url: str = "https://fantasy.premierleague.com/api"
     fpl_timeout_seconds: float = 15.0
     fpl_user_agent: str = "VMF-Fantasy-League/0.1"
+    fpl_max_attempts: int = 3
+    fpl_retry_base_delay_seconds: float = 1.0
+    fpl_max_concurrency: int = 4
+    fpl_response_max_bytes: int = 16 * 1024 * 1024
+
+    active_season_code: str = "2026/27"
+    #: Managers processed per cron invocation. Keeping the batch small leaves
+    #: headroom under the serverless execution limit of the free plan.
+    sync_manager_batch_size: int = 10
 
     number_of_managers: int = 40
     division_size: int = 20

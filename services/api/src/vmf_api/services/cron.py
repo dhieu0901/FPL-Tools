@@ -9,16 +9,31 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 # ASCII "VMFPROBE" represented as a signed-safe PostgreSQL bigint.
 FPL_PROBE_LOCK_ID = 0x564D4650524F4245
-_local_fpl_probe_lock = Lock()
+# ASCII "VMFSYNC0" for the job that writes source facts.
+FPL_SYNC_LOCK_ID = 0x564D4653594E4330
+
+_local_locks: dict[int, Lock] = {
+    FPL_PROBE_LOCK_ID: Lock(),
+    FPL_SYNC_LOCK_ID: Lock(),
+}
 
 
 @asynccontextmanager
-async def fpl_probe_lock(session: AsyncSession) -> AsyncIterator[bool]:
-    """Prevent overlapping probes without introducing a lock table.
+async def advisory_lock(
+    session: AsyncSession,
+    lock_id: int,
+    *,
+    release_with_rollback: bool,
+) -> AsyncIterator[bool]:
+    """Prevent overlapping cron work without introducing a lock table.
 
     PostgreSQL uses a transaction-scoped advisory lock, which works across
-    concurrent Vercel instances. SQLite uses an in-process lock for local
-    development and tests only.
+    concurrent Vercel instances and is released when the caller commits or
+    rolls back. SQLite uses an in-process lock for local development and tests.
+
+    ``release_with_rollback`` suits read-only jobs, whose transaction can be
+    discarded. A writing job must keep its transaction so its own commit both
+    persists the work and releases the lock.
     """
 
     bind = session.get_bind()
@@ -26,19 +41,18 @@ async def fpl_probe_lock(session: AsyncSession) -> AsyncIterator[bool]:
         acquired = bool(
             await session.scalar(
                 text("SELECT pg_try_advisory_xact_lock(:lock_id)"),
-                {"lock_id": FPL_PROBE_LOCK_ID},
+                {"lock_id": lock_id},
             )
         )
         try:
             yield acquired
         finally:
-            # The endpoint is deliberately read-only. Rolling back closes the
-            # transaction and releases pg_try_advisory_xact_lock.
-            if session.in_transaction():
+            if release_with_rollback and session.in_transaction():
                 await session.rollback()
         return
 
-    acquired = _local_fpl_probe_lock.acquire(blocking=False)
+    local_lock = _local_locks.setdefault(lock_id, Lock())
+    acquired = local_lock.acquire(blocking=False)
     if not acquired:
         yield False
         return
@@ -46,4 +60,28 @@ async def fpl_probe_lock(session: AsyncSession) -> AsyncIterator[bool]:
     try:
         yield True
     finally:
-        _local_fpl_probe_lock.release()
+        local_lock.release()
+
+
+@asynccontextmanager
+async def fpl_probe_lock(session: AsyncSession) -> AsyncIterator[bool]:
+    """Guard the read-only FPL probe endpoint."""
+
+    async with advisory_lock(
+        session,
+        FPL_PROBE_LOCK_ID,
+        release_with_rollback=True,
+    ) as acquired:
+        yield acquired
+
+
+@asynccontextmanager
+async def fpl_sync_lock(session: AsyncSession) -> AsyncIterator[bool]:
+    """Guard the synchronization job, which writes source facts."""
+
+    async with advisory_lock(
+        session,
+        FPL_SYNC_LOCK_ID,
+        release_with_rollback=False,
+    ) as acquired:
+        yield acquired
