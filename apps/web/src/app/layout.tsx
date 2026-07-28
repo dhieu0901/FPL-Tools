@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { LocaleProvider } from "@/components/locale-provider";
 import { SiteHeader } from "@/components/site-header";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,7 +11,7 @@ export const metadata: Metadata = {
     default: "VMF League · Văn Minh Fantasy",
     template: "%s · VMF League"
   },
-  description: "Bảng điều hành và theo dõi giải Văn Minh Fantasy League mùa 2026/27.",
+  description: "Văn Minh Fantasy League 2026/27 standings, head-to-head and Cup dashboard.",
   applicationName: "VMF League",
   robots: { index: true, follow: true }
 };
@@ -21,29 +24,34 @@ export const viewport: Viewport = {
 // Fetch league data at request-time so Vercel builds never depend on a live API.
 export const dynamic = "force-dynamic";
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  const locale = await getLocale();
+  const t = createTranslator(locale);
+
   return (
-    <html lang="vi">
+    <html lang={locale}>
       <body>
-        <a className="skip-link" href="#main-content">
-          Đi tới nội dung chính
-        </a>
-        <SiteHeader />
-        <main id="main-content" className="main-shell">
-          {children}
-        </main>
-        <footer className="site-footer">
-          <div>
-            <p>
-              <strong>VMF League</strong> · Mùa giải 2026/27
-            </p>
-            <p>Dữ liệu điểm số được đồng bộ và kiểm toán theo luật giải.</p>
-          </div>
-          <div className="footer-status">
-            <span />
-            Minh bạch nguồn dữ liệu
-          </div>
-        </footer>
+        <LocaleProvider locale={locale}>
+          <a className="skip-link" href="#main-content">
+            {t("skip.toContent")}
+          </a>
+          <SiteHeader />
+          <main id="main-content" className="main-shell">
+            {children}
+          </main>
+          <footer className="site-footer">
+            <div>
+              <p>
+                <strong>VMF League</strong> · {t("footer.season")}
+              </p>
+              <p>{t("footer.note")}</p>
+            </div>
+            <div className="footer-status">
+              <span />
+              {t("footer.status")}
+            </div>
+          </footer>
+        </LocaleProvider>
       </body>
     </html>
   );

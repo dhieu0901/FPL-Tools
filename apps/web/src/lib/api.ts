@@ -199,12 +199,12 @@ function positiveInteger(
   }
 ): number {
   if (!value?.trim()) {
-    if (required) throw new ApiConfigurationError(`Thiếu ${name} trong môi trường production.`);
+    if (required) throw new ApiConfigurationError(`${name} is required in production.`);
     return fallback;
   }
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) {
-    throw new ApiConfigurationError(`${name} phải là số nguyên dương.`);
+    throw new ApiConfigurationError(`${name} must be a positive integer.`);
   }
   return parsed;
 }
@@ -248,7 +248,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   const configuration = runtimeConfiguration();
   if (!configuration.apiUrl) {
     throw new ApiConfigurationError(
-      "Thiếu VMF_API_URL (hoặc NEXT_PUBLIC_API_URL). Không thể tải dữ liệu thật."
+      "VMF_API_URL (or NEXT_PUBLIC_API_URL) is missing, so live data cannot be loaded."
     );
   }
 
@@ -256,7 +256,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   if (options.admin) {
     if (!configuration.adminApiKey) {
       throw new ApiConfigurationError(
-        "Thiếu VMF_ADMIN_API_KEY. Khóa admin phải là biến server-side trên Vercel."
+        "VMF_ADMIN_API_KEY is missing. The admin key must be a server-side variable on Vercel."
       );
     }
     headers.set("X-Admin-Key", configuration.adminApiKey);
@@ -277,7 +277,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
       signal: AbortSignal.timeout(8_000)
     });
   } catch (error) {
-    throw new ApiRequestError("Không thể kết nối VMF API.", undefined, { cause: error });
+    throw new ApiRequestError("The VMF API could not be reached.", undefined, { cause: error });
   }
 
   if (!response.ok) {
@@ -340,9 +340,8 @@ function fixtureSide(
   const manager = managerId === null ? undefined : managersById.get(managerId);
   return {
     managerId: managerId === null ? "tbd" : String(managerId),
-    managerName:
-      manager?.manager_name ?? (managerId === null ? "Chờ xác định" : `Manager #${managerId}`),
-    teamName: manager?.team_name ?? (managerId === null ? "Chờ xác định" : `Đội #${managerId}`),
+    managerName: manager?.manager_name ?? (managerId === null ? "TBD" : `Manager #${managerId}`),
+    teamName: manager?.team_name ?? (managerId === null ? "TBD" : `Team #${managerId}`),
     score,
     isWinner: managerId !== null && managerId === winnerManagerId
   };
@@ -352,7 +351,7 @@ function toFixture(raw: H2HMatchResponse, managersById: Map<number, ManagerRespo
   return {
     id: String(raw.id),
     gameweek: raw.gameweek_number,
-    group: raw.is_playoff ? (raw.bracket_position ?? "Play-off") : "Vòng bảng",
+    bracketLabel: raw.is_playoff ? (raw.bracket_position ?? "Play-off") : null,
     kickoff: null,
     status: raw.status,
     walkoverReason: raw.walkover_reason,
@@ -371,7 +370,7 @@ function toH2HStanding(
     rank: raw.rank,
     managerId: String(raw.manager_id),
     managerName: manager?.manager_name ?? `Manager #${raw.manager_id}`,
-    teamName: manager?.team_name ?? `Đội #${raw.manager_id}`,
+    teamName: manager?.team_name ?? `Team #${raw.manager_id}`,
     played: raw.played,
     won: raw.wins,
     drawn: raw.draws,
@@ -627,7 +626,7 @@ async function adminViolationsLive(): Promise<ApiResult<Violation[]>> {
       id: String(raw.id),
       managerId: String(raw.manager_id),
       managerName: manager?.manager_name ?? `Manager #${raw.manager_id}`,
-      teamName: manager?.team_name ?? `Đội #${raw.manager_id}`,
+      teamName: manager?.team_name ?? `Team #${raw.manager_id}`,
       division: manager?.division ?? "LOW",
       gameweek: raw.gameweek_number,
       reason: raw.admin_note ?? raw.violation_type.replaceAll("_", " "),
@@ -636,10 +635,7 @@ async function adminViolationsLive(): Promise<ApiResult<Violation[]>> {
       occurrences: effectiveCount,
       sourceStatus: raw.status,
       status,
-      impact:
-        status === "waived"
-          ? ["Không cộng violation"]
-          : ["Áp dụng theo ngưỡng vi phạm tích lũy", "Điểm GW không tính xét suất Cup"],
+      impact: status === "waived" ? ["waived"] : ["threshold", "cupZero"],
       createdAt: raw.reviewed_at
     };
   });
@@ -685,35 +681,35 @@ export const vmfApi = {
   h2hMatch: async (id: string): Promise<ApiResult<MatchDetail>> => {
     if (runtimeConfiguration().useMockData) {
       const fixture = fixtures.find((item) => item.id === id);
-      if (!fixture) throw new ApiRequestError(`Không tìm thấy trận H2H #${id}.`, 404);
+      if (!fixture) throw new ApiRequestError(`H2H match #${id} was not found.`, 404);
       return result(
         {
           ...fixture,
           id,
           scoreBreakdown: [],
           events: [],
-          ruleNote: "Dữ liệu minh họa được bật rõ ràng bằng biến môi trường."
+          ruleNote: { kind: "provisional" }
         },
         "mock"
       );
     }
     const fixtureResult = await h2hFixturesLive();
     const fixture = fixtureResult.data.find((item) => item.id === id);
-    if (!fixture) throw new ApiRequestError(`Không tìm thấy trận H2H #${id}.`, 404);
+    if (!fixture) throw new ApiRequestError(`H2H match #${id} was not found.`, 404);
     return result(
       {
         ...fixture,
         scoreBreakdown:
           fixture.home.score !== null && fixture.away.score !== null
-            ? [{ label: "Điểm net", home: fixture.home.score, away: fixture.away.score }]
+            ? [{ labelKey: "match.netPoints", home: fixture.home.score, away: fixture.away.score }]
             : [],
         events: [],
         ruleNote:
           fixture.status === "walkover" && fixture.walkoverReason
-            ? `Kết quả walkover: ${fixture.walkoverReason}`
+            ? { kind: "walkover", reason: fixture.walkoverReason }
             : fixture.status === "final" || fixture.status === "walkover"
-              ? "Kết quả đã được chốt."
-              : "Kết quả có thể thay đổi cho tới khi gameweek được finalize."
+              ? { kind: "settled" }
+              : { kind: "provisional" }
       },
       "live",
       fixtureResult.updatedAt
@@ -781,7 +777,9 @@ export const vmfApi = {
     overriddenCount?: number
   ): Promise<void> => {
     if (runtimeConfiguration().useMockData) {
-      throw new ApiConfigurationError("Không thể ghi quyết định khi đang dùng dữ liệu minh hoạ.");
+      throw new ApiConfigurationError(
+        "Decisions cannot be recorded while illustrative data is enabled."
+      );
     }
     await requestJson(`/admin/violations/${encodeURIComponent(id)}/review`, {
       admin: true,

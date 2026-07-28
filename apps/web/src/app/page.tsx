@@ -4,14 +4,18 @@ import { FixtureCard } from "@/components/fixture-card";
 import { Icon } from "@/components/icons";
 import { StandingsTable } from "@/components/standings-table";
 import { DataBadge, EmptyState, Pill, SectionHeader } from "@/components/ui";
-import { formatDateTime, gameweekStateLabel } from "@/lib/format";
 import { vmfApi } from "@/lib/api";
+import { formatDateTime, gameweekStateLabel } from "@/lib/format";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
-export const metadata: Metadata = {
-  title: "Tổng quan"
-};
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await getLocale())("dashboard.title") };
+}
 
 export default async function DashboardPage() {
+  const locale = await getLocale();
+  const t = createTranslator(locale);
   const result = await vmfApi.dashboard();
   const { data } = result;
 
@@ -20,25 +24,24 @@ export default async function DashboardPage() {
       <section className="dashboard-hero">
         <div className="dashboard-hero__copy">
           <div className="hero-meta">
-            <Pill tone="lime">Mùa {data.season}</Pill>
+            <Pill tone="lime">
+              {t("common.season")} {data.season}
+            </Pill>
             <DataBadge source={result.source} updatedAt={result.updatedAt} />
           </div>
-          <p className="eyebrow">Văn Minh Fantasy League</p>
+          <p className="eyebrow">{t("dashboard.eyebrow")}</p>
           <h1>
-            Mỗi điểm số.
+            {t("dashboard.headline1")}
             <br />
-            <span>Đều có câu chuyện.</span>
+            <span>{t("dashboard.headline2")}</span>
           </h1>
-          <p>
-            Theo dõi Classic, đối đầu H2H và hành trình Cup trên một bảng điều hành minh bạch, cập
-            nhật xuyên suốt mùa giải.
-          </p>
+          <p>{t("dashboard.lede")}</p>
           <div className="hero-actions">
             <Link href="/classic" className="primary-button">
-              Xem bảng xếp hạng <Icon name="arrow" size={18} />
+              {t("dashboard.viewStandings")} <Icon name="arrow" size={18} />
             </Link>
             <Link href="/h2h/fixtures" className="secondary-button">
-              Lịch đối đầu
+              {t("dashboard.fixtures")}
             </Link>
           </div>
         </div>
@@ -46,12 +49,12 @@ export default async function DashboardPage() {
           <div className="gameweek-card__topline">
             <span>{data.gameweek.name}</span>
             <Pill tone={data.gameweek.state === "live" ? "coral" : "blue"}>
-              {gameweekStateLabel(data.gameweek.state)}
+              {gameweekStateLabel(data.gameweek.state, locale)}
             </Pill>
           </div>
           <div className="gameweek-orbit" aria-hidden="true">
             <svg viewBox="0 0 180 180">
-              <title>Tiến độ Gameweek</title>
+              <title>{t("dashboard.gameweekProgress")}</title>
               <circle cx="90" cy="90" r="76" className="orbit-track" />
               <circle
                 cx="90"
@@ -69,15 +72,18 @@ export default async function DashboardPage() {
           </div>
           <div className="gameweek-progress">
             <span>
-              <small>Hoàn thành</small>
+              <small>{t("dashboard.completed")}</small>
               <strong>
-                {data.gameweek.fixturesComplete}/{data.gameweek.fixturesTotal} trận
+                {data.gameweek.fixturesComplete}/{data.gameweek.fixturesTotal}{" "}
+                {t("dashboard.matchesShort")}
               </strong>
             </span>
             <span>
-              <small>Deadline</small>
+              <small>{t("dashboard.deadline")}</small>
               <strong>
-                {data.gameweek.deadline ? formatDateTime(data.gameweek.deadline) : "Chưa công bố"}
+                {data.gameweek.deadline
+                  ? formatDateTime(data.gameweek.deadline, locale)
+                  : t("dashboard.deadlineUnknown")}
               </strong>
             </span>
           </div>
@@ -85,7 +91,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="metrics-grid" aria-label="Chỉ số nhanh">
+      <section className="metrics-grid" aria-label={t("dashboard.quickMetrics")}>
         {data.metrics.map((metric) => (
           <article className="metric-card" data-tone={metric.tone} key={metric.label}>
             <span>{metric.label}</span>
@@ -98,23 +104,23 @@ export default async function DashboardPage() {
       <section className="dashboard-grid section-space">
         <div>
           <SectionHeader
-            eyebrow="Tâm điểm vòng đấu"
-            title="Đối đầu nổi bật"
+            eyebrow={t("dashboard.spotlightEyebrow")}
+            title={t("dashboard.spotlightTitle")}
             href="/h2h/fixtures"
-            linkLabel="Mọi trận đấu"
+            linkLabel={t("dashboard.allMatches")}
           />
           {data.featuredFixture ? (
             <FixtureCard fixture={data.featuredFixture} />
           ) : (
             <EmptyState
               icon="calendar"
-              title="Chưa có lịch H2H"
-              description="Lịch thi đấu sẽ xuất hiện sau khi admin tạo schedule."
+              title={t("dashboard.noFixtureTitle")}
+              description={t("dashboard.noFixtureBody")}
             />
           )}
         </div>
         <aside>
-          <SectionHeader eyebrow="Ban tổ chức" title="Thông báo" />
+          <SectionHeader eyebrow={t("dashboard.organiser")} title={t("dashboard.notices")} />
           {data.notices.length > 0 ? (
             <div className="notice-stack">
               {data.notices.map((notice) => (
@@ -125,29 +131,36 @@ export default async function DashboardPage() {
                   <div>
                     <strong>{notice.title}</strong>
                     <p>{notice.body}</p>
-                    <time>{formatDateTime(notice.publishedAt)}</time>
+                    <time>{formatDateTime(notice.publishedAt, locale)}</time>
                   </div>
                 </article>
               ))}
             </div>
           ) : (
-            <EmptyState title="Chưa có thông báo" description="Admin chưa đăng thông báo mới." />
+            <EmptyState
+              title={t("dashboard.noNoticeTitle")}
+              description={t("dashboard.noNoticeBody")}
+            />
           )}
         </aside>
       </section>
 
       <section className="section-space">
         <SectionHeader
-          eyebrow="Division HIGH"
-          title="Cuộc đua Classic"
-          description="Bảng điểm tạm tính sau các trận đã hoàn tất."
+          eyebrow={t("dashboard.classicEyebrow")}
+          title={t("dashboard.classicTitle")}
+          description={t("dashboard.classicBody")}
           href="/classic"
         />
         <StandingsTable entries={data.standings} compact />
       </section>
 
       <section className="section-space">
-        <SectionHeader eyebrow="Khoảnh khắc VMF" title="Highlights mới nhất" href="/highlights" />
+        <SectionHeader
+          eyebrow={t("dashboard.momentsEyebrow")}
+          title={t("dashboard.momentsTitle")}
+          href="/highlights"
+        />
         {data.recentHighlights.length > 0 ? (
           <div className="highlight-preview-grid">
             {data.recentHighlights.map((highlight, index) => (
@@ -167,8 +180,8 @@ export default async function DashboardPage() {
         ) : (
           <EmptyState
             icon="highlight"
-            title="Highlights đang được hoàn thiện"
-            description="Backend hiện chưa cung cấp nguồn highlights."
+            title={t("dashboard.noHighlightTitle")}
+            description={t("dashboard.noHighlightBody")}
           />
         )}
       </section>

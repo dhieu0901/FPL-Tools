@@ -1,19 +1,15 @@
+"use client";
+
 import Link from "next/link";
 import { formatNumber, rankDelta } from "@/lib/format";
 import type { StandingEntry } from "@/lib/types";
+import { useLocale, useTranslator } from "./locale-provider";
 import { Avatar, FormDots, Pill } from "./ui";
 
 function QualificationMarker({ value }: { value: StandingEntry["qualification"] }) {
+  const t = useTranslator();
   if (!value) return null;
-  const labels = {
-    title: "Đua vô địch",
-    championship: "Championship",
-    cup: "Suất Cup",
-    playoff: "Play-off",
-    safe: "An toàn",
-    relegation: "Xuống hạng"
-  };
-  return <span className="qualification-marker" data-zone={value} title={labels[value]} />;
+  return <span className="qualification-marker" data-zone={value} title={t(`zone.${value}`)} />;
 }
 
 export function StandingsTable({
@@ -23,6 +19,8 @@ export function StandingsTable({
   entries: StandingEntry[];
   compact?: boolean;
 }) {
+  const locale = useLocale();
+  const t = useTranslator();
   const showForm = !compact && entries.some((entry) => entry.form.length > 0);
   const showGameweek = entries.some((entry) => entry.gameweekPoints !== null);
 
@@ -31,16 +29,16 @@ export function StandingsTable({
       <table className="standings-table">
         <thead>
           <tr>
-            <th scope="col">Hạng</th>
-            <th scope="col">Đội bóng</th>
-            {showForm && <th scope="col">Phong độ</th>}
+            <th scope="col">{t("common.rank")}</th>
+            <th scope="col">{t("common.team")}</th>
+            {showForm && <th scope="col">{t("common.form")}</th>}
             {showGameweek && (
               <th scope="col" className="number-cell">
                 GW
               </th>
             )}
             <th scope="col" className="number-cell">
-              Tổng
+              {t("common.total")}
             </th>
             {!compact && (
               <th scope="col" className="number-cell">
@@ -88,7 +86,9 @@ export function StandingsTable({
                   </td>
                 )}
                 {showGameweek && <td className="number-cell">{entry.gameweekPoints}</td>}
-                <td className="number-cell total-cell">{formatNumber(entry.totalPoints)}</td>
+                <td className="number-cell total-cell">
+                  {formatNumber(entry.totalPoints, locale)}
+                </td>
                 {!compact && <td className="number-cell">{entry.totw}</td>}
               </tr>
             );

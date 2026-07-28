@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslator } from "@/components/locale-provider";
 import { EmptyState } from "@/components/ui";
 
 export default function ErrorPage({
@@ -10,6 +11,8 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const t = useTranslator();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -17,11 +20,11 @@ export default function ErrorPage({
   return (
     <EmptyState
       icon="warning"
-      title="Không thể tải nội dung"
-      description="Dữ liệu đang tạm thời gián đoạn. Bạn có thể thử tải lại mà không làm mất trạng thái."
+      title={t("error.title")}
+      description={t("error.body")}
       action={
         <button className="primary-button" type="button" onClick={reset}>
-          Thử lại
+          {t("common.retry")}
         </button>
       }
     />

@@ -203,7 +203,7 @@ export const fixtures: H2HFixture[] = [
   {
     id: "h2h-gw13-01",
     gameweek: 13,
-    group: "Division HIGH",
+    bracketLabel: null,
     kickoff: "2026-11-28T12:30:00+07:00",
     status: "live",
     home: {
@@ -228,7 +228,7 @@ export const fixtures: H2HFixture[] = [
   {
     id: "h2h-gw13-02",
     gameweek: 13,
-    group: "Division HIGH",
+    bracketLabel: null,
     kickoff: "2026-11-28T12:30:00+07:00",
     status: "provisional",
     home: {
@@ -252,7 +252,7 @@ export const fixtures: H2HFixture[] = [
   {
     id: "h2h-gw13-03",
     gameweek: 13,
-    group: "Division HIGH",
+    bracketLabel: null,
     kickoff: "2026-11-29T15:00:00+07:00",
     status: "scheduled",
     home: {
@@ -271,7 +271,7 @@ export const fixtures: H2HFixture[] = [
   {
     id: "h2h-gw13-04",
     gameweek: 13,
-    group: "Division HIGH",
+    bracketLabel: null,
     kickoff: "2026-11-29T15:00:00+07:00",
     status: "scheduled",
     home: {
@@ -292,10 +292,10 @@ export const fixtures: H2HFixture[] = [
 export const matchDetail: MatchDetail = {
   ...fixtures[0],
   scoreBreakdown: [
-    { label: "Điểm đội hình", home: 71, away: 67 },
-    { label: "Điểm trừ chuyển nhượng", home: -4, away: -8 },
-    { label: "Điều chỉnh admin", home: -3, away: 0 },
-    { label: "Điểm net", home: 64, away: 59 }
+    { labelKey: "match.squadPoints", home: 71, away: 67 },
+    { labelKey: "match.transferCost", home: -4, away: -8 },
+    { labelKey: "match.adminAdjustment", home: -3, away: 0 },
+    { labelKey: "match.netPoints", home: 64, away: 59 }
   ],
   events: [
     {
@@ -317,8 +317,7 @@ export const matchDetail: MatchDetail = {
       tone: "neutral"
     }
   ],
-  ruleNote:
-    "Kết quả còn tạm tính cho tới khi FPL chốt điểm chính thức. Mọi điều chỉnh đều được lưu trong nhật ký kiểm toán."
+  ruleNote: { kind: "provisional" }
 };
 
 export const cupData: CupData = {
@@ -564,7 +563,7 @@ export const violations: Violation[] = [
     transferCost: 16,
     severity: 1,
     status: "pending",
-    impact: ["Trừ 6 điểm bảng H2H", "Điểm GW không tính xét suất Cup"],
+    impact: ["h2hDeduction", "cupZero"],
     createdAt: "2026-11-28T18:05:00+07:00"
   },
   {
@@ -578,7 +577,7 @@ export const violations: Violation[] = [
     transferCost: 20,
     severity: 2,
     status: "confirmed",
-    impact: ["Trừ 6 điểm bảng H2H", "Cảnh cáo cấp 2", "Loại điểm xét suất Cup"],
+    impact: ["h2hDeduction", "level2Warning", "cupZero"],
     createdAt: "2026-11-21T17:56:00+07:00"
   },
   {
@@ -592,7 +591,7 @@ export const violations: Violation[] = [
     transferCost: 12,
     severity: 1,
     status: "waived",
-    impact: ["Giữ nguyên transfer hit FPL", "Không cộng violation"],
+    impact: ["keepTransferHit", "waived"],
     createdAt: "2026-11-14T16:42:00+07:00"
   }
 ];

@@ -2,8 +2,12 @@ import type { Metadata } from "next";
 import { Icon } from "@/components/icons";
 import { DataBadge, EmptyState, PageHeader, Pill } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
-export const metadata: Metadata = { title: "Highlights" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await getLocale())("nav.highlights") };
+}
 
 const iconMap = {
   totw: "highlight",
@@ -13,13 +17,14 @@ const iconMap = {
 } as const;
 
 export default async function HighlightsPage() {
+  const t = createTranslator(await getLocale());
   const result = await vmfApi.highlights();
   return (
     <>
       <PageHeader
-        eyebrow="Season stories"
-        title="Highlights"
-        description="Những đội hình xuất sắc, cuộc lội ngược dòng và cột mốc đáng nhớ của cộng đồng VMF."
+        eyebrow={t("highlights.eyebrow")}
+        title={t("nav.highlights")}
+        description={t("highlights.description")}
         actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
       />
       {result.data.length > 0 ? (
@@ -53,8 +58,8 @@ export default async function HighlightsPage() {
       ) : (
         <EmptyState
           icon="highlight"
-          title="Chưa có highlights"
-          description="Backend hiện chưa có endpoint highlights; trang sẽ tự hiển thị khi nguồn dữ liệu được bổ sung."
+          title={t("highlights.emptyTitle")}
+          description={t("highlights.emptyBody")}
         />
       )}
     </>

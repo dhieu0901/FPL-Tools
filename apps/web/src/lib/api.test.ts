@@ -222,7 +222,7 @@ describe("VMF API client", () => {
     expect(response.data[0]).toMatchObject({
       status: "waived",
       occurrences: 0,
-      impact: ["Không cộng violation"]
+      impact: ["waived"]
     });
   });
 });

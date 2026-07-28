@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 import { DataBadge, PageHeader, Pill, SegmentedLinks } from "@/components/ui";
-import { matchStatusLabel } from "@/lib/format";
 import { vmfApi } from "@/lib/api";
+import { matchStatusLabel } from "@/lib/format";
+import { createTranslator, type Locale } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 import type { CupMatch } from "@/lib/types";
 
-export const metadata: Metadata = { title: "VMF Cup" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await getLocale())("cup.title") };
+}
 
-function BracketMatch({ match }: { match: CupMatch }) {
+function BracketMatch({ match, locale }: { match: CupMatch; locale: Locale }) {
   return (
     <article className="bracket-match">
       <div className="bracket-match__head">
@@ -20,7 +24,7 @@ function BracketMatch({ match }: { match: CupMatch }) {
                 : "neutral"
           }
         >
-          {matchStatusLabel(match.status)}
+          {matchStatusLabel(match.status, locale)}
         </Pill>
       </div>
       {[
@@ -49,6 +53,8 @@ export default async function CupPage({
 }: {
   searchParams: Promise<{ season?: string }>;
 }) {
+  const locale = await getLocale();
+  const t = createTranslator(locale);
   const params = await searchParams;
   const season = params.season === "2" ? 2 : 1;
   const result = await vmfApi.cup(season);
@@ -57,19 +63,21 @@ export default async function CupPage({
   return (
     <>
       <PageHeader
-        eyebrow="Knock-out"
+        eyebrow={t("cup.eyebrow")}
         title={cup.title}
-        description={`${cup.qualificationWindow}. Mọi GW vi phạm đóng góp 0 điểm vào bảng xét suất Cup.`}
+        description={t("cup.description", {
+          window: season === 2 ? t("cup.window2") : t("cup.window1")
+        })}
         actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
       />
       <div className="toolbar-row">
         <SegmentedLinks
           items={[
-            { href: "/cup?season=1", label: "Season 1", active: season === 1 },
-            { href: "/cup?season=2", label: "Season 2", active: season === 2 }
+            { href: "/cup?season=1", label: t("cup.season1"), active: season === 1 },
+            { href: "/cup?season=2", label: t("cup.season2"), active: season === 2 }
           ]}
         />
-        <span className="toolbar-note">Cập nhật theo điểm net</span>
+        <span className="toolbar-note">{t("cup.netNote")}</span>
       </div>
       <div className="bracket-shell">
         <div className="bracket">
@@ -81,7 +89,7 @@ export default async function CupPage({
               </header>
               <div className="bracket-round__matches">
                 {round.matches.map((match) => (
-                  <BracketMatch match={match} key={match.id} />
+                  <BracketMatch match={match} locale={locale} key={match.id} />
                 ))}
               </div>
             </section>
@@ -91,12 +99,12 @@ export default async function CupPage({
       {cup.thirdPlace && (
         <section className="third-place">
           <div>
-            <p className="eyebrow">Vị trí danh dự</p>
-            <h2>Trận tranh hạng ba</h2>
-            <p>Cup có trận tranh hạng ba riêng ở vòng đấu cuối.</p>
+            <p className="eyebrow">{t("cup.honours")}</p>
+            <h2>{t("cup.thirdPlace")}</h2>
+            <p>{t("cup.thirdPlaceBody")}</p>
           </div>
           <div className="third-place__match">
-            <BracketMatch match={cup.thirdPlace} />
+            <BracketMatch match={cup.thirdPlace} locale={locale} />
           </div>
         </section>
       )}

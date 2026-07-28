@@ -1,4 +1,9 @@
+"use client";
+
+import { useTranslator } from "./locale-provider";
+
 export function BrandMark({ compact = false }: { compact?: boolean }) {
+  const t = useTranslator();
   return (
     <span className="brand-lockup" role="img" aria-label="Văn Minh Fantasy League">
       <svg className="brand-mark" viewBox="0 0 44 44" aria-hidden="true">
@@ -11,7 +16,7 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <span className="brand-copy">
           <strong>VMF League</strong>
-          <small>Văn Minh Fantasy</small>
+          <small>{t("brand.tagline")}</small>
         </span>
       )}
     </span>

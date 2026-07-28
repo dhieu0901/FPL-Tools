@@ -1,4 +1,8 @@
-export default function Loading() {
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
+
+export default async function Loading() {
+  const t = createTranslator(await getLocale());
   return (
     <div className="loading-page" role="status" aria-live="polite">
       <div className="loading-heading" />
@@ -8,7 +12,7 @@ export default function Loading() {
           <div className="loading-card" key={item} />
         ))}
       </div>
-      <span className="sr-only">Đang tải dữ liệu…</span>
+      <span className="sr-only">{t("loading.label")}</span>
     </div>
   );
 }

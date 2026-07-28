@@ -1,8 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatDateTime, initials } from "@/lib/format";
 import type { DataSource, Division } from "@/lib/types";
 import { Icon, type IconName } from "./icons";
+import { useLocale, useTranslator } from "./locale-provider";
 
 export function PageHeader({
   eyebrow,
@@ -32,7 +35,7 @@ export function SectionHeader({
   title,
   description,
   href,
-  linkLabel = "Xem tất cả"
+  linkLabel
 }: {
   eyebrow?: string;
   title: string;
@@ -40,6 +43,7 @@ export function SectionHeader({
   href?: string;
   linkLabel?: string;
 }) {
+  const t = useTranslator();
   return (
     <div className="section-header">
       <div>
@@ -49,7 +53,7 @@ export function SectionHeader({
       </div>
       {href && (
         <Link href={href} className="text-link">
-          {linkLabel} <Icon name="arrow" size={17} />
+          {linkLabel ?? t("common.viewAll")} <Icon name="arrow" size={17} />
         </Link>
       )}
     </div>
@@ -57,18 +61,22 @@ export function SectionHeader({
 }
 
 export function DataBadge({ source, updatedAt }: { source: DataSource; updatedAt: string }) {
+  const locale = useLocale();
+  const t = useTranslator();
   const isMock = source === "mock";
   const label =
     source === "mock"
-      ? "Dữ liệu minh hoạ"
+      ? t("data.mock")
       : source === "unavailable"
-        ? "Chưa có nguồn dữ liệu"
-        : "Đã kết nối API";
+        ? t("data.unavailable")
+        : t("data.live");
   return (
     <div className="data-badge" data-mock={isMock} data-unavailable={source === "unavailable"}>
       <span className="data-badge__dot" />
       <span>{label}</span>
-      <span className="data-badge__time">· phản hồi {formatDateTime(updatedAt)}</span>
+      <span className="data-badge__time">
+        {t("data.respondedAt", { time: formatDateTime(updatedAt, locale) })}
+      </span>
     </div>
   );
 }
@@ -109,8 +117,13 @@ export function Avatar({
 }
 
 export function FormDots({ form }: { form: Array<"W" | "D" | "L"> }) {
+  const t = useTranslator();
   return (
-    <span className="form-dots" role="img" aria-label={`Phong độ: ${form.join(", ")}`}>
+    <span
+      className="form-dots"
+      role="img"
+      aria-label={t("common.formAria", { form: form.join(", ") })}
+    >
       {form.map((item, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: form slots have fixed positional identity.
         <span key={`${item}-${index}`} data-result={item}>
@@ -171,8 +184,9 @@ export function SegmentedLinks({
 }: {
   items: Array<{ href: string; label: string; active?: boolean }>;
 }) {
+  const t = useTranslator();
   return (
-    <nav className="segmented-links" aria-label="Lựa chọn nội dung">
+    <nav className="segmented-links" aria-label={t("common.contentOptions")}>
       {items.map((item) => (
         <Link
           key={item.href}

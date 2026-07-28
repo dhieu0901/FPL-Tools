@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { EmptyState } from "@/components/ui";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
-export default function NotFound() {
+export default async function NotFound() {
+  const t = createTranslator(await getLocale());
   return (
     <EmptyState
-      title="Không tìm thấy trang"
-      description="Đường dẫn này không tồn tại hoặc nội dung đã được di chuyển."
+      title={t("notFound.title")}
+      description={t("notFound.body")}
       action={
         <Link className="primary-button" href="/">
-          Về tổng quan
+          {t("notFound.action")}
         </Link>
       }
     />

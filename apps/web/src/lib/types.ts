@@ -72,7 +72,8 @@ export interface FixtureSide {
 export interface H2HFixture {
   id: string;
   gameweek: number;
-  group: string;
+  /** Bracket name supplied by the backend; null means the group stage. */
+  bracketLabel: string | null;
   kickoff: string | null;
   status: MatchStatus;
   walkoverReason?: string | null;
@@ -81,10 +82,21 @@ export interface H2HFixture {
 }
 
 export interface ScoreBreakdown {
-  label: string;
+  /** Dictionary key, so the label follows the reader's language. */
+  labelKey:
+    | "match.squadPoints"
+    | "match.transferCost"
+    | "match.adminAdjustment"
+    | "match.netPoints";
   home: number;
   away: number;
 }
+
+/** Machine-readable result note, translated by the page that renders it. */
+export type MatchRuleNote =
+  | { kind: "walkover"; reason: string }
+  | { kind: "settled" }
+  | { kind: "provisional" };
 
 export interface MatchDetail extends H2HFixture {
   scoreBreakdown: ScoreBreakdown[];
@@ -94,7 +106,7 @@ export interface MatchDetail extends H2HFixture {
     description: string;
     tone: "positive" | "negative" | "neutral";
   }>;
-  ruleNote?: string;
+  ruleNote?: MatchRuleNote;
 }
 
 export interface CupMatch {
@@ -147,6 +159,14 @@ export interface Manager {
   joinedAt: string;
 }
 
+export type ViolationImpact =
+  | "waived"
+  | "threshold"
+  | "cupZero"
+  | "h2hDeduction"
+  | "level2Warning"
+  | "keepTransferHit";
+
 export interface Violation {
   id: string;
   managerId: string;
@@ -166,7 +186,7 @@ export interface Violation {
     | "rejected"
     | "overridden";
   status: ViolationStatus;
-  impact: string[];
+  impact: ViolationImpact[];
   createdAt: string | null;
 }
 

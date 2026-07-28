@@ -2,14 +2,19 @@ import type { Metadata } from "next";
 import { FixtureCard } from "@/components/fixture-card";
 import { DataBadge, PageHeader, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
-export const metadata: Metadata = { title: "Lịch H2H" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await getLocale())("fixtures.title") };
+}
 
 export default async function H2HFixturesPage({
   searchParams
 }: {
   searchParams: Promise<{ gameweek?: string }>;
 }) {
+  const t = createTranslator(await getLocale());
   const params = await searchParams;
   const parsedGameweek = Number(params.gameweek);
   const gameweek =
@@ -21,19 +26,19 @@ export default async function H2HFixturesPage({
     <>
       <PageHeader
         eyebrow="Head to Head"
-        title="Lịch & kết quả"
-        description="Điểm live có thể thay đổi cho tới khi gameweek được finalize."
+        title={t("fixtures.heading")}
+        description={t("fixtures.description")}
         actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
       />
       <div className="toolbar-row">
         <SegmentedLinks
           items={[
-            { href: "/h2h", label: "Bảng xếp hạng" },
-            { href: "/h2h/fixtures", label: "Lịch & kết quả", active: true }
+            { href: "/h2h", label: t("h2h.standings") },
+            { href: "/h2h/fixtures", label: t("h2h.fixtures"), active: true }
           ]}
         />
         <form method="get" className="compact-select">
-          <label htmlFor="gameweek">Vòng đấu</label>
+          <label htmlFor="gameweek">{t("fixtures.gameweek")}</label>
           <select id="gameweek" name="gameweek" defaultValue={String(gameweek)}>
             {Array.from({ length: 38 }, (_, index) => index + 1).map((number) => (
               <option value={number} key={number}>
@@ -42,7 +47,7 @@ export default async function H2HFixturesPage({
             ))}
           </select>
           <button type="submit" className="secondary-button">
-            Xem
+            {t("fixtures.apply")}
           </button>
         </form>
       </div>
@@ -52,7 +57,7 @@ export default async function H2HFixturesPage({
         ))}
       </div>
       {result.data.length === 0 && (
-        <p className="toolbar-note">Chưa có trận H2H nào được xếp cho GW{gameweek}.</p>
+        <p className="toolbar-note">{t("fixtures.empty", { gameweek })}</p>
       )}
     </>
   );

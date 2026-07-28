@@ -1,23 +1,28 @@
+"use client";
+
 import Link from "next/link";
 import { formatNumber } from "@/lib/format";
 import type { H2HStanding } from "@/lib/types";
+import { useLocale, useTranslator } from "./locale-provider";
 import { Avatar, FormDots, Pill } from "./ui";
 
 export function H2HTable({ entries }: { entries: H2HStanding[] }) {
+  const locale = useLocale();
+  const t = useTranslator();
   return (
     <div className="table-shell">
       <table className="standings-table h2h-table">
         <thead>
           <tr>
-            <th>Hạng</th>
-            <th>Đội bóng</th>
-            <th>Trận</th>
-            <th>Thắng</th>
-            <th>Hoà</th>
-            <th>Thua</th>
-            <th>Điểm ghi</th>
-            <th>Phong độ</th>
-            <th className="number-cell">Điểm</th>
+            <th>{t("common.rank")}</th>
+            <th>{t("common.team")}</th>
+            <th>{t("h2h.played")}</th>
+            <th>{t("h2h.won")}</th>
+            <th>{t("h2h.drawn")}</th>
+            <th>{t("h2h.lost")}</th>
+            <th>{t("h2h.pointsFor")}</th>
+            <th>{t("common.form")}</th>
+            <th className="number-cell">{t("common.points")}</th>
           </tr>
         </thead>
         <tbody>
@@ -41,7 +46,7 @@ export function H2HTable({ entries }: { entries: H2HStanding[] }) {
               <td>{entry.won}</td>
               <td>{entry.drawn}</td>
               <td>{entry.lost}</td>
-              <td>{formatNumber(entry.pointsFor)}</td>
+              <td>{formatNumber(entry.pointsFor, locale)}</td>
               <td>
                 <FormDots form={entry.form} />
               </td>

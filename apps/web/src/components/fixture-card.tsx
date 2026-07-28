@@ -1,7 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { formatDateTime, matchStatusLabel } from "@/lib/format";
 import type { H2HFixture } from "@/lib/types";
 import { Icon } from "./icons";
+import { useLocale, useTranslator } from "./locale-provider";
 import { Pill } from "./ui";
 
 function Score({ fixture }: { fixture: H2HFixture }) {
@@ -18,6 +21,8 @@ function Score({ fixture }: { fixture: H2HFixture }) {
 }
 
 export function FixtureCard({ fixture }: { fixture: H2HFixture }) {
+  const locale = useLocale();
+  const t = useTranslator();
   const tone =
     fixture.status === "live" ? "coral" : fixture.status === "final" ? "lime" : "neutral";
 
@@ -25,9 +30,9 @@ export function FixtureCard({ fixture }: { fixture: H2HFixture }) {
     <Link href={`/h2h/matches/${fixture.id}`} className="fixture-card">
       <div className="fixture-card__meta">
         <span>
-          GW{fixture.gameweek} · {fixture.group}
+          GW{fixture.gameweek} · {fixture.bracketLabel ?? t("h2h.groupLabel")}
         </span>
-        <Pill tone={tone}>{matchStatusLabel(fixture.status)}</Pill>
+        <Pill tone={tone}>{matchStatusLabel(fixture.status, locale)}</Pill>
       </div>
       <div className="fixture-card__teams">
         <div className="fixture-team fixture-team--home">
@@ -43,10 +48,10 @@ export function FixtureCard({ fixture }: { fixture: H2HFixture }) {
       <div className="fixture-card__footer">
         <span>
           <Icon name="clock" size={15} />
-          {fixture.kickoff ? formatDateTime(fixture.kickoff) : "Chưa có giờ thi đấu"}
+          {fixture.kickoff ? formatDateTime(fixture.kickoff, locale) : t("fixtures.kickoffUnknown")}
         </span>
         <span className="fixture-card__open">
-          Chi tiết <Icon name="chevron" size={15} />
+          {t("common.details")} <Icon name="chevron" size={15} />
         </span>
       </div>
     </Link>

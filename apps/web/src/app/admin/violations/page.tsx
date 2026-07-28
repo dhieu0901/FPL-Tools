@@ -2,20 +2,18 @@ import type { Metadata } from "next";
 import { AdminNav } from "@/components/admin-nav";
 import { Icon } from "@/components/icons";
 import { Avatar, DataBadge, PageHeader, Pill, SegmentedLinks } from "@/components/ui";
-import { formatDateTime } from "@/lib/format";
 import { vmfApi } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
+import { createTranslator, type Translator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 import type { Violation } from "@/lib/types";
 import { reviewViolation } from "./actions";
 
-export const metadata: Metadata = { title: "Quản lý vi phạm" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await getLocale())("violations.title") };
+}
 
-const statusLabel = {
-  pending: "Chờ xử lý",
-  confirmed: "Đã xác nhận",
-  waived: "Được miễn"
-};
-
-function ReviewActions({ violation }: { violation: Violation }) {
+function ReviewActions({ violation, t }: { violation: Violation; t: Translator }) {
   if (violation.status !== "pending") {
     return (
       <div className="violation-card__actions">
@@ -23,9 +21,9 @@ function ReviewActions({ violation }: { violation: Violation }) {
           className="secondary-button"
           type="button"
           disabled
-          title="Audit-log detail chưa có endpoint cho giao diện."
+          title={t("violations.auditUnavailable")}
         >
-          Xem audit log
+          {t("violations.viewAudit")}
         </button>
       </div>
     );
@@ -36,12 +34,12 @@ function ReviewActions({ violation }: { violation: Violation }) {
       ? [
           {
             value: "request_forgotten_chip_review",
-            label: "Yêu cầu kiểm tra chip",
+            label: t("violations.requestChipReview"),
             className: "secondary-button"
           },
           {
             value: "confirm",
-            label: "Xác nhận vi phạm",
+            label: t("violations.confirmViolation"),
             className: "danger-button"
           }
         ]
@@ -49,12 +47,12 @@ function ReviewActions({ violation }: { violation: Violation }) {
         ? [
             {
               value: "approve_exception",
-              label: "Duyệt ngoại lệ",
+              label: t("violations.approveException"),
               className: "secondary-button"
             },
             {
               value: "reject_exception",
-              label: "Bác ngoại lệ",
+              label: t("violations.rejectException"),
               className: "danger-button"
             }
           ]
@@ -64,7 +62,7 @@ function ReviewActions({ violation }: { violation: Violation }) {
     return (
       <div className="violation-card__actions">
         <button className="secondary-button" type="button" disabled>
-          Dữ liệu minh hoạ · không thể review
+          {t("violations.mockNotice")}
         </button>
       </div>
     );
@@ -78,8 +76,8 @@ function ReviewActions({ violation }: { violation: Violation }) {
         name="note"
         required
         maxLength={2000}
-        placeholder="Ghi chú bắt buộc"
-        aria-label={`Ghi chú review violation ${violation.id}`}
+        placeholder={t("violations.notePlaceholder")}
+        aria-label={t("violations.noteAria", { id: violation.id })}
       />
       {actions.map((action) => (
         <button
@@ -101,6 +99,8 @@ export default async function AdminViolationsPage({
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
+  const locale = await getLocale();
+  const t = createTranslator(locale);
   const params = await searchParams;
   const selected =
     params.status === "pending" || params.status === "confirmed" || params.status === "waived"
@@ -114,9 +114,9 @@ export default async function AdminViolationsPage({
   return (
     <>
       <PageHeader
-        eyebrow="Khu vực điều hành"
-        title="Violation review"
-        description="Xác minh vi phạm, phạm vi ảnh hưởng và lịch sử quyết định theo từng gameweek."
+        eyebrow={t("admin.eyebrow")}
+        title={t("violations.heading")}
+        description={t("violations.description")}
         actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
       />
       <AdminNav active="violations" />
@@ -125,27 +125,27 @@ export default async function AdminViolationsPage({
           items={[
             {
               href: "/admin/violations",
-              label: "Tất cả",
+              label: t("common.all"),
               active: selected === "all"
             },
             {
               href: "/admin/violations?status=pending",
-              label: "Chờ xử lý",
+              label: t("violations.pending"),
               active: selected === "pending"
             },
             {
               href: "/admin/violations?status=confirmed",
-              label: "Đã xác nhận",
+              label: t("violations.confirmed"),
               active: selected === "confirmed"
             },
             {
               href: "/admin/violations?status=waived",
-              label: "Được miễn",
+              label: t("violations.waived"),
               active: selected === "waived"
             }
           ]}
         />
-        <span>{filteredViolations.length} hồ sơ</span>
+        <span>{t("common.profileCount", { count: filteredViolations.length })}</span>
       </div>
       <div className="violation-list">
         {filteredViolations.map((violation) => (
@@ -158,29 +158,32 @@ export default async function AdminViolationsPage({
                 </span>
                 <h2>{violation.teamName}</h2>
                 <p>
-                  {violation.managerName} · Division {violation.division}
+                  {violation.managerName} ·{" "}
+                  {t("managers.division", { division: violation.division })}
                 </p>
               </div>
             </div>
             <div className="violation-card__reason">
               <span className="severity" data-level={violation.severity}>
                 {(violation.occurrences ?? violation.severity) === 0
-                  ? "Không xác nhận"
-                  : `${violation.occurrences ?? violation.severity} lần trong bản ghi`}
+                  ? t("violations.noneConfirmed")
+                  : t("violations.occurrences", {
+                      count: violation.occurrences ?? violation.severity
+                    })}
               </span>
               <div>
                 <strong>{violation.reason}</strong>
                 <p>
                   {violation.transferCost === null
-                    ? "Backend chưa trả transfer cost"
-                    : `Transfer cost ghi nhận: −${violation.transferCost}`}
+                    ? t("violations.noTransferCost")
+                    : t("violations.transferCost", { cost: violation.transferCost })}
                 </p>
               </div>
             </div>
             <div className="impact-list">
               {violation.impact.map((impact) => (
                 <span key={impact}>
-                  <Icon name="chevron" size={13} /> {impact}
+                  <Icon name="chevron" size={13} /> {t(`violations.impact.${impact}`)}
                 </span>
               ))}
             </div>
@@ -194,13 +197,15 @@ export default async function AdminViolationsPage({
                       : "lime"
                 }
               >
-                {statusLabel[violation.status]}
+                {t(`violations.${violation.status}`)}
               </Pill>
               <time>
-                {violation.createdAt ? formatDateTime(violation.createdAt) : "Chưa review"}
+                {violation.createdAt
+                  ? formatDateTime(violation.createdAt, locale)
+                  : t("violations.notReviewed")}
               </time>
             </div>
-            <ReviewActions violation={violation} />
+            <ReviewActions violation={violation} t={t} />
           </article>
         ))}
       </div>

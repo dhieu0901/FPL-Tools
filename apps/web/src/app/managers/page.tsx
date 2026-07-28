@@ -1,17 +1,21 @@
 import type { Metadata } from "next";
 import { Avatar, DataBadge, PageHeader, Pill, SegmentedLinks } from "@/components/ui";
-import { formatNumber } from "@/lib/format";
 import { vmfApi } from "@/lib/api";
+import { formatNumber } from "@/lib/format";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
-export const metadata: Metadata = { title: "Managers" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await getLocale())("nav.managers") };
+}
 
-const statusPresentation = {
-  active: { label: "Active", tone: "lime" },
-  locked: { label: "Locked", tone: "warning" },
-  suspended: { label: "Suspended", tone: "warning" },
-  pending_review: { label: "Pending", tone: "warning" },
-  removed: { label: "Removed", tone: "danger" },
-  deleted: { label: "Deleted", tone: "danger" }
+const statusTone = {
+  active: "lime",
+  locked: "warning",
+  suspended: "warning",
+  pending_review: "warning",
+  removed: "danger",
+  deleted: "danger"
 } as const;
 
 export default async function ManagersPage({
@@ -19,6 +23,8 @@ export default async function ManagersPage({
 }: {
   searchParams: Promise<{ division?: string }>;
 }) {
+  const locale = await getLocale();
+  const t = createTranslator(locale);
   const params = await searchParams;
   const selected =
     params.division === "high" || params.division === "low" ? params.division : "all";
@@ -30,15 +36,15 @@ export default async function ManagersPage({
   return (
     <>
       <PageHeader
-        eyebrow="Cộng đồng"
-        title={`${result.data.length} managers. Một mùa giải.`}
-        description="Hồ sơ thi đấu công khai chỉ hiển thị dữ liệu giải; thông tin cá nhân được giới hạn cho ban tổ chức."
+        eyebrow={t("managers.eyebrow")}
+        title={t("managers.heading", { count: result.data.length })}
+        description={t("managers.description")}
         actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
       />
       <div className="manager-toolbar">
         <SegmentedLinks
           items={[
-            { href: "/managers", label: "Tất cả", active: selected === "all" },
+            { href: "/managers", label: t("common.all"), active: selected === "all" },
             {
               href: "/managers?division=high",
               label: "HIGH",
@@ -51,7 +57,7 @@ export default async function ManagersPage({
             }
           ]}
         />
-        <span>{filteredManagers.length} hồ sơ</span>
+        <span>{t("common.profileCount", { count: filteredManagers.length })}</span>
       </div>
       <div className="managers-grid">
         {filteredManagers.map((manager) => (
@@ -59,23 +65,25 @@ export default async function ManagersPage({
             <header>
               <Avatar name={manager.name} division={manager.division} size="large" />
               <div>
-                <span className="manager-card__division">Division {manager.division}</span>
+                <span className="manager-card__division">
+                  {t("managers.division", { division: manager.division })}
+                </span>
                 <h2>{manager.teamName}</h2>
                 <p>{manager.name}</p>
               </div>
-              <Pill tone={statusPresentation[manager.status].tone}>
-                {statusPresentation[manager.status].label}
+              <Pill tone={statusTone[manager.status]}>
+                {t(`managers.status.${manager.status}`)}
               </Pill>
             </header>
             <div className="manager-card__stats">
               <span>
-                <small>Hạng</small>
+                <small>{t("common.rank")}</small>
                 <strong>{manager.rank === null ? "—" : `#${manager.rank}`}</strong>
               </span>
               <span>
-                <small>Tổng điểm</small>
+                <small>{t("managers.totalPoints")}</small>
                 <strong>
-                  {manager.totalPoints === null ? "—" : formatNumber(manager.totalPoints)}
+                  {manager.totalPoints === null ? "—" : formatNumber(manager.totalPoints, locale)}
                 </strong>
               </span>
               <span>
@@ -85,10 +93,10 @@ export default async function ManagersPage({
             </div>
             <footer>
               <span>
-                GW gần nhất <strong>{manager.gameweekPoints ?? "—"}</strong>
+                {t("managers.lastGameweek")} <strong>{manager.gameweekPoints ?? "—"}</strong>
               </span>
               <span>
-                Violation <strong>{manager.violations ?? "—"}</strong>
+                {t("managers.violations")} <strong>{manager.violations ?? "—"}</strong>
               </span>
             </footer>
           </article>

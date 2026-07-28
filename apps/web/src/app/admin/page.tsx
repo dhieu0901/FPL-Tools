@@ -2,20 +2,26 @@ import type { Metadata } from "next";
 import { AdminNav } from "@/components/admin-nav";
 import { Icon } from "@/components/icons";
 import { DataBadge, EmptyState, PageHeader, Pill } from "@/components/ui";
-import { formatDateTime } from "@/lib/format";
 import { vmfApi } from "@/lib/api";
+import { formatDateTime } from "@/lib/format";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
-export const metadata: Metadata = { title: "Điều hành" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await getLocale())("admin.title") };
+}
 
 export default async function AdminPage() {
+  const locale = await getLocale();
+  const t = createTranslator(locale);
   const result = await vmfApi.adminOverview();
   const data = result.data;
   return (
     <>
       <PageHeader
-        eyebrow="Khu vực điều hành"
-        title="Trung tâm vận hành"
-        description="Theo dõi đồng bộ, trạng thái tính điểm và các ngoại lệ cần xử lý."
+        eyebrow={t("admin.eyebrow")}
+        title={t("admin.heading")}
+        description={t("admin.description")}
         actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
       />
       <AdminNav active="overview" />
@@ -24,46 +30,53 @@ export default async function AdminPage() {
           <Icon name="pulse" size={28} />
         </div>
         <div>
-          <span>Tình trạng đồng bộ</span>
-          <h2>{data.sync ? "Hệ thống hoạt động bình thường" : "Chưa có telemetry worker"}</h2>
+          <span>{t("admin.syncState")}</span>
+          <h2>{data.sync ? t("admin.syncHealthy") : t("admin.syncUnknown")}</h2>
           <p>
             {data.sync
-              ? `Thành công lúc ${formatDateTime(data.sync.lastSuccessfulAt)} · Độ trễ ${data.sync.latencySeconds} giây`
-              : "Backend hiện chưa cung cấp endpoint trạng thái đồng bộ."}
+              ? t("admin.syncDetail", {
+                  time: formatDateTime(data.sync.lastSuccessfulAt, locale),
+                  latency: data.sync.latencySeconds
+                })
+              : t("admin.syncMissing")}
           </p>
         </div>
-        <Pill tone={data.sync ? "lime" : "warning"}>{data.sync ? "Healthy" : "Unknown"}</Pill>
+        <Pill tone={data.sync ? "lime" : "warning"}>
+          {data.sync ? t("admin.healthy") : t("admin.unknown")}
+        </Pill>
       </section>
       <section className="admin-stat-grid">
         <article>
-          <span>Managers</span>
+          <span>{t("nav.managers")}</span>
           <strong>{data.counts.managers}</strong>
-          <small>Đã xác nhận tham gia</small>
+          <small>{t("admin.managersConfirmed")}</small>
         </article>
         <article>
-          <span>Điểm tạm tính</span>
+          <span>{t("admin.provisionalScores")}</span>
           <strong>{data.counts.provisionalScores ?? "—"}</strong>
           <small>
-            {data.counts.provisionalScores === null ? "Chưa có endpoint" : "Chờ finalize"}
+            {data.counts.provisionalScores === null
+              ? t("admin.noEndpoint")
+              : t("admin.awaitingFinalize")}
           </small>
         </article>
         <article data-tone="warning">
-          <span>Violation chờ xử lý</span>
+          <span>{t("admin.pendingViolations")}</span>
           <strong>{data.counts.pendingViolations}</strong>
-          <small>Cần quyết định admin</small>
+          <small>{t("admin.needsDecision")}</small>
         </article>
         <article>
-          <span>Team bị khóa</span>
+          <span>{t("admin.lockedTeams")}</span>
           <strong>{data.counts.lockedTeams}</strong>
-          <small>Dùng điểm trung bình division</small>
+          <small>{t("admin.lockedTeamsNote")}</small>
         </article>
       </section>
       <div className="admin-grid">
         <section className="panel-card">
           <div className="panel-title-row">
             <div>
-              <p className="eyebrow">Theo gameweek</p>
-              <h2>Điểm trung bình division</h2>
+              <p className="eyebrow">{t("admin.byGameweek")}</p>
+              <h2>{t("admin.divisionAverage")}</h2>
             </div>
             <Icon name="standings" size={22} />
           </div>
@@ -71,29 +84,24 @@ export default async function AdminPage() {
             <div className="average-list">
               {data.divisionAverages.map((item) => (
                 <article key={item.division}>
-                  <span>Division {item.division}</span>
+                  <span>{t("managers.division", { division: item.division })}</span>
                   <strong>{item.average}</strong>
-                  <small>{item.eligibleManagers} managers hợp lệ</small>
+                  <small>{t("admin.eligibleManagers", { count: item.eligibleManagers })}</small>
                 </article>
               ))}
             </div>
           ) : (
-            <EmptyState
-              title="Chưa có dữ liệu trung bình"
-              description="Backend chưa cung cấp endpoint division average."
-            />
+            <EmptyState title={t("admin.noAverageTitle")} description={t("admin.noAverageBody")} />
           )}
-          <p className="panel-note">
-            Team locked/removed và điểm replacement không được đưa vào mẫu tính.
-          </p>
+          <p className="panel-note">{t("admin.averageNote")}</p>
         </section>
         <section className="panel-card">
           <div className="panel-title-row">
             <div>
-              <p className="eyebrow">Worker log</p>
-              <h2>Tác vụ gần đây</h2>
+              <p className="eyebrow">{t("admin.workerLog")}</p>
+              <h2>{t("admin.recentJobs")}</h2>
             </div>
-            <Pill tone="warning">Probe 15 phút</Pill>
+            <Pill tone="warning">{t("admin.syncCadence")}</Pill>
           </div>
           {data.recentJobs.length > 0 ? (
             <div className="job-list">
@@ -104,17 +112,14 @@ export default async function AdminPage() {
                   </span>
                   <div>
                     <strong>{job.name}</strong>
-                    <small>{formatDateTime(job.startedAt)}</small>
+                    <small>{formatDateTime(job.startedAt, locale)}</small>
                   </div>
                   <span>{job.duration}</span>
                 </article>
               ))}
             </div>
           ) : (
-            <EmptyState
-              title="Chưa có worker log"
-              description="Backend chưa cung cấp endpoint lịch sử tác vụ."
-            />
+            <EmptyState title={t("admin.noJobTitle")} description={t("admin.noJobBody")} />
           )}
         </section>
       </div>

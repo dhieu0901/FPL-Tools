@@ -4,10 +4,16 @@ import { notFound } from "next/navigation";
 import { Avatar, Callout, DataBadge, Pill } from "@/components/ui";
 import { ApiRequestError, vmfApi } from "@/lib/api";
 import { matchStatusLabel } from "@/lib/format";
+import { createTranslator } from "@/lib/i18n";
+import { getLocale } from "@/lib/locale";
 
-export const metadata: Metadata = { title: "Chi tiết trận H2H" };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: createTranslator(await getLocale())("match.title") };
+}
 
 export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
+  const locale = await getLocale();
+  const t = createTranslator(locale);
   const { id } = await params;
   const result = await vmfApi.h2hMatch(id).catch((error: unknown) => {
     if (error instanceof ApiRequestError && error.status === 404) notFound();
@@ -19,17 +25,17 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
     <>
       <div className="match-topbar">
         <Link href="/h2h/fixtures" className="back-link">
-          <span>←</span> Quay lại lịch thi đấu
+          <span>←</span> {t("match.back")}
         </Link>
         <DataBadge source={result.source} updatedAt={result.updatedAt} />
       </div>
       <section className="match-hero">
         <div className="match-hero__meta">
           <span>
-            GW{match.gameweek} · {match.group}
+            GW{match.gameweek} · {match.bracketLabel ?? t("h2h.groupLabel")}
           </span>
           <Pill tone={match.status === "live" ? "coral" : "neutral"}>
-            {matchStatusLabel(match.status)}
+            {matchStatusLabel(match.status, locale)}
           </Pill>
         </div>
         <div className="match-scoreboard">
@@ -55,11 +61,11 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="live-context">
           <span>
-            <small>Captain</small>
+            <small>{t("match.captain")}</small>
             <strong>{match.home.captain ?? "—"}</strong>
           </span>
           <span>
-            <small>Cầu thủ còn lại</small>
+            <small>{t("match.playersLeft")}</small>
             <strong>
               {match.home.activePlayers === undefined || match.away.activePlayers === undefined
                 ? "—"
@@ -67,26 +73,26 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             </strong>
           </span>
           <span>
-            <small>Captain</small>
+            <small>{t("match.captain")}</small>
             <strong>{match.away.captain ?? "—"}</strong>
           </span>
         </div>
       </section>
       <div className="match-detail-grid">
         <section className="panel-card">
-          <h2>Chi tiết điểm</h2>
+          <h2>{t("match.breakdown")}</h2>
           <div className="score-breakdown">
             {match.scoreBreakdown.map((item) => (
-              <div key={item.label}>
+              <div key={item.labelKey}>
                 <strong>{item.home}</strong>
-                <span>{item.label}</span>
+                <span>{t(item.labelKey)}</span>
                 <strong>{item.away}</strong>
               </div>
             ))}
           </div>
         </section>
         <section className="panel-card">
-          <h2>Diễn biến</h2>
+          <h2>{t("match.timeline")}</h2>
           <div className="event-timeline">
             {match.events.map((event) => (
               <article key={`${event.time}-${event.title}`} data-tone={event.tone}>
@@ -101,8 +107,14 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         </section>
       </div>
       {match.ruleNote && (
-        <Callout title="Trạng thái kết quả" icon="info">
-          <p>{match.ruleNote}</p>
+        <Callout title={t("match.resultStatus")} icon="info">
+          <p>
+            {match.ruleNote.kind === "walkover"
+              ? t("match.walkoverNote", { reason: match.ruleNote.reason })
+              : match.ruleNote.kind === "settled"
+                ? t("match.settledNote")
+                : t("match.provisionalNote")}
+          </p>
         </Callout>
       )}
     </>
