@@ -12,12 +12,15 @@ from vmf_api.schemas.cron import (
     CronSyncResponse,
     DetectionResultResponse,
     FPLProbeResponse,
+    NightlyAuditResponse,
+    RenamedTeamResponse,
     ScoringResult,
     SettlementResultResponse,
     SyncJobResult,
     SyncPlanResponse,
 )
-from vmf_api.services.cron import fpl_probe_lock, fpl_sync_lock
+from vmf_api.services.cron import fpl_probe_lock, fpl_sync_lock, nightly_audit_lock
+from vmf_api.services.nightly_audit import NightlyAuditService
 from vmf_api.services.sync_orchestrator import run_scheduled_sync
 
 router = APIRouter(prefix="/cron", tags=["cron"])
@@ -185,6 +188,72 @@ async def _run_sync(
                 )
             ),
         )
+
+
+async def _run_nightly_audit(
+    session: SessionDep,
+    client: FPLClientDep,
+    settings: SettingsDep,
+) -> NightlyAuditResponse:
+    started_at = datetime.now(UTC)
+    async with nightly_audit_lock(session) as acquired:
+        if not acquired:
+            return NightlyAuditResponse(
+                status="skipped",
+                reason="already_running",
+                started_at=started_at,
+                finished_at=datetime.now(UTC),
+            )
+
+        outcome = await NightlyAuditService(
+            session,
+            client,
+            max_concurrency=settings.fpl_max_concurrency,
+        ).run()
+        await session.commit()
+
+        return NightlyAuditResponse(
+            status="completed",
+            started_at=outcome.started_at or started_at,
+            finished_at=outcome.finished_at or datetime.now(UTC),
+            checked=outcome.checked,
+            profiles_created=outcome.profiles_created,
+            profiles_updated=outcome.profiles_updated,
+            unreachable_manager_ids=list(outcome.unreachable),
+            renamed=[
+                RenamedTeamResponse(
+                    manager_id=row.manager_id,
+                    fpl_entry_id=row.fpl_entry_id,
+                    registered_team_name=row.registered_team_name,
+                    current_team_name=row.current_team_name,
+                )
+                for row in outcome.renamed
+            ],
+        )
+
+
+@router.post("/nightly-audit", response_model=NightlyAuditResponse)
+async def nightly_audit(
+    _: CronAuthorizationDep,
+    session: SessionDep,
+    client: FPLClientDep,
+    settings: SettingsDep,
+) -> NightlyAuditResponse:
+    """Re-read every manager entry and report team names that have changed."""
+
+    return await _run_nightly_audit(session, client, settings)
+
+
+@router.get("/nightly-audit", response_model=NightlyAuditResponse)
+async def nightly_audit_from_vercel_cron(
+    _: CronAuthorizationDep,
+    session: SessionDep,
+    client: FPLClientDep,
+    settings: SettingsDep,
+) -> NightlyAuditResponse:
+    """GET variant for Vercel Cron; Supabase Cron should use POST."""
+
+    return await _run_nightly_audit(session, client, settings)
 
 
 @router.post("/sync", response_model=CronSyncResponse)

@@ -72,6 +72,28 @@ class SettlementResultResponse(BaseModel):
     skipped_reason: str | None = None
 
 
+class RenamedTeamResponse(BaseModel):
+    """A manager whose FPL team name no longer matches the registered one."""
+
+    manager_id: int
+    fpl_entry_id: int
+    registered_team_name: str
+    current_team_name: str
+
+
+class NightlyAuditResponse(BaseModel):
+    status: Literal["completed", "skipped"]
+    started_at: datetime
+    finished_at: datetime
+    reason: Literal["already_running"] | None = None
+    checked: int = 0
+    profiles_created: int = 0
+    profiles_updated: int = 0
+    #: Managers FPL could not be read for; the rest of the audit still ran.
+    unreachable_manager_ids: list[int] = []
+    renamed: list[RenamedTeamResponse] = []
+
+
 class CronSyncResponse(BaseModel):
     status: Literal["executed", "skipped"]
     started_at: datetime

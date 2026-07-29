@@ -11,10 +11,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 FPL_PROBE_LOCK_ID = 0x564D4650524F4245
 # ASCII "VMFSYNC0" for the job that writes source facts.
 FPL_SYNC_LOCK_ID = 0x564D4653594E4330
+# ASCII "VMFAUDIT" for the nightly pass over manager entries.
+NIGHTLY_AUDIT_LOCK_ID = 0x564D4641554449
 
 _local_locks: dict[int, Lock] = {
     FPL_PROBE_LOCK_ID: Lock(),
     FPL_SYNC_LOCK_ID: Lock(),
+    NIGHTLY_AUDIT_LOCK_ID: Lock(),
 }
 
 
@@ -82,6 +85,18 @@ async def fpl_sync_lock(session: AsyncSession) -> AsyncIterator[bool]:
     async with advisory_lock(
         session,
         FPL_SYNC_LOCK_ID,
+        release_with_rollback=False,
+    ) as acquired:
+        yield acquired
+
+
+@asynccontextmanager
+async def nightly_audit_lock(session: AsyncSession) -> AsyncIterator[bool]:
+    """Guard the nightly audit, which writes observed manager profiles."""
+
+    async with advisory_lock(
+        session,
+        NIGHTLY_AUDIT_LOCK_ID,
         release_with_rollback=False,
     ) as acquired:
         yield acquired

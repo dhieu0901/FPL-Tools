@@ -74,6 +74,41 @@ select cron.schedule(
   $job$
 );
 
+-- The five-minute job compares player and team fields every tick, so a
+-- transfer or a new arrival is already picked up there. What it never
+-- revisits is each manager's own FPL entry, which the nightly audit reads so
+-- that a team renamed mid-season is reported rather than going unnoticed.
+--
+-- 18:30 UTC is 01:30 in Asia/Bangkok: after midnight for the organisers, well
+-- clear of FPL deadlines, and after the day's matches have finished.
+select cron.schedule(
+  'vmf-nightly-audit',
+  '30 18 * * *',
+  $job$
+    select net.http_post(
+      url := rtrim(
+        (
+          select decrypted_secret
+            from vault.decrypted_secrets
+           where name = 'vmf_api_base_url'
+        ),
+        '/'
+      ) || '/api/cron/nightly-audit',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || (
+          select decrypted_secret
+            from vault.decrypted_secrets
+           where name = 'vmf_cron_secret'
+        )
+      ),
+      body := '{}'::jsonb,
+      -- Forty manager lookups, so it needs the same headroom as the sync.
+      timeout_milliseconds := 120000
+    ) as request_id;
+  $job$
+);
+
 -- Keep pg_cron history small on the 500 MB Free database.
 select cron.schedule(
   'vmf-cron-history-cleanup',
@@ -84,7 +119,12 @@ select cron.schedule(
        and jobid in (
          select jobid
            from cron.job
-          where jobname in ('vmf-fpl-sync', 'vmf-fpl-probe', 'vmf-cron-history-cleanup')
+          where jobname in (
+            'vmf-fpl-sync',
+            'vmf-fpl-probe',
+            'vmf-nightly-audit',
+            'vmf-cron-history-cleanup'
+          )
        );
   $job$
 );
