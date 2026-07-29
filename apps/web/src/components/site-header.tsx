@@ -46,7 +46,10 @@ export function SiteHeader() {
         <div className="header-actions">
           <span className="season-pill">2026/27</span>
           <LocaleSwitcher />
-          <Link href="/admin" className="admin-link">
+          {/* Prefetching would fetch a protected route in the background, and
+              the 401 it returns makes the browser raise a sign-in dialog over
+              the public site. The admin area is reached by clicking. */}
+          <Link href="/admin" className="admin-link" prefetch={false}>
             <Icon name="shield" size={17} />
             <span>{t("nav.control")}</span>
           </Link>

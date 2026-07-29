@@ -4,12 +4,23 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
+import vmf_api.models  # noqa: F401  (registers every table on the metadata)
 from vmf_api.api.deps import get_fpl_client
+from vmf_api.db.base import Base
+from vmf_api.db.session import get_session
 from vmf_api.integrations.fpl import FPLClientError
 from vmf_api.main import app
+from vmf_api.models.competition import Gameweek, Season
+from vmf_api.models.ingestion import FplFixture
 from vmf_api.schemas.fpl import FPLGameweekState
-from vmf_api.services.fpl import FPLStatusPayloadError, derive_fpl_status
+from vmf_api.services.fpl import (
+    FPLStatusPayloadError,
+    derive_fpl_status,
+    status_from_ingested_data,
+)
 
 OBSERVED_AT = datetime(2026, 8, 15, 12, tzinfo=UTC)
 
@@ -173,7 +184,18 @@ def _override_client(client: _FakeFPLClient) -> TestClient:
     async def override() -> AsyncIterator[_FakeFPLClient]:
         yield client
 
+    async def empty_session() -> AsyncIterator[AsyncSession]:
+        # The endpoint prefers synchronised data, so an empty database is what
+        # makes these cases exercise the live path they are written for.
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            yield session
+        await engine.dispose()
+
     app.dependency_overrides[get_fpl_client] = override
+    app.dependency_overrides[get_session] = empty_session
     return TestClient(app)
 
 
@@ -233,3 +255,153 @@ def test_public_status_endpoint_returns_generic_bad_gateway(fake: _FakeFPLClient
         "FPL upstream response has an invalid payload",
     }
     assert "secret upstream detail" not in response.text
+
+
+# --------------------------------------------------------------------------
+# Status derived from synchronised data
+# --------------------------------------------------------------------------
+
+
+async def _ingested_database(
+    *,
+    deadlines: dict[int, datetime],
+    fixtures: list[tuple[int, bool, bool]] | None = None,
+    finished_gameweeks: set[int] | None = None,
+) -> tuple[async_sessionmaker[AsyncSession], Any]:
+    fixtures = fixtures or []
+    finished_gameweeks = finished_gameweeks or set()
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    sessionmaker = async_sessionmaker(engine, expire_on_commit=False)
+    async with sessionmaker() as session:
+        season = Season(
+            name="VMF Fantasy League 2026/27",
+            fpl_season_code="2026/27",
+            start_gameweek=1,
+            end_gameweek=38,
+        )
+        session.add(season)
+        await session.flush()
+        for number, deadline in deadlines.items():
+            session.add(
+                Gameweek(
+                    season_id=season.id,
+                    number=number,
+                    deadline_time=deadline,
+                    fpl_finished=number in finished_gameweeks,
+                )
+            )
+        for index, (gameweek_number, started, finished) in enumerate(fixtures, start=1):
+            session.add(
+                FplFixture(
+                    season_id=season.id,
+                    fixture_fpl_id=index,
+                    gameweek_number=gameweek_number,
+                    started=started,
+                    finished=finished,
+                )
+            )
+        await session.commit()
+    return sessionmaker, engine
+
+
+@pytest.mark.anyio
+async def test_ingested_status_reports_preseason_before_the_first_deadline() -> None:
+    sessionmaker, engine = await _ingested_database(
+        deadlines={1: datetime(2026, 8, 21, 17, 30), 2: datetime(2026, 8, 28, 17, 30)},
+        fixtures=[(1, False, False), (1, False, False)],
+    )
+    try:
+        async with sessionmaker() as session:
+            status = await status_from_ingested_data(
+                session, "2026/27", observed_at=datetime(2026, 7, 29, 10, tzinfo=UTC)
+            )
+
+            assert status is not None
+            assert status.gameweek_number == 1
+            assert status.state is FPLGameweekState.PRESEASON
+            assert status.total_fixtures == 2
+            assert status.completed_fixtures == 0
+            assert status.deadline == datetime(2026, 8, 21, 17, 30, tzinfo=UTC)
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_ingested_status_reports_live_once_a_fixture_starts() -> None:
+    sessionmaker, engine = await _ingested_database(
+        deadlines={1: datetime(2026, 8, 21, 17, 30)},
+        fixtures=[(1, True, True), (1, True, False)],
+    )
+    try:
+        async with sessionmaker() as session:
+            status = await status_from_ingested_data(
+                session, "2026/27", observed_at=datetime(2026, 8, 22, 16, tzinfo=UTC)
+            )
+
+            assert status is not None
+            assert status.state is FPLGameweekState.LIVE
+            assert status.completed_fixtures == 1
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_ingested_status_reports_provisional_then_final() -> None:
+    sessionmaker, engine = await _ingested_database(
+        deadlines={1: datetime(2026, 8, 21, 17, 30)},
+        fixtures=[(1, True, True), (1, True, True)],
+    )
+    try:
+        async with sessionmaker() as session:
+            status = await status_from_ingested_data(
+                session, "2026/27", observed_at=datetime(2026, 8, 24, 10, tzinfo=UTC)
+            )
+            assert status is not None
+            assert status.state is FPLGameweekState.PROVISIONAL
+
+            gameweek = await session.scalar(select(Gameweek).where(Gameweek.number == 1))
+            assert gameweek is not None
+            gameweek.fpl_finished = True
+            await session.commit()
+
+            settled = await status_from_ingested_data(
+                session, "2026/27", observed_at=datetime(2026, 8, 24, 10, tzinfo=UTC)
+            )
+            assert settled is not None
+            assert settled.state is FPLGameweekState.FINAL
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_the_current_gameweek_moves_on_once_the_previous_one_closes() -> None:
+    sessionmaker, engine = await _ingested_database(
+        deadlines={1: datetime(2026, 8, 21, 17, 30), 2: datetime(2026, 8, 28, 17, 30)},
+        fixtures=[(1, True, True), (2, False, False)],
+        finished_gameweeks={1},
+    )
+    try:
+        async with sessionmaker() as session:
+            status = await status_from_ingested_data(
+                session, "2026/27", observed_at=datetime(2026, 8, 26, 10, tzinfo=UTC)
+            )
+
+            assert status is not None
+            assert status.gameweek_number == 2
+            assert status.state is FPLGameweekState.UPCOMING
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_nothing_ingested_yields_no_answer_so_the_caller_can_fall_back() -> None:
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as connection:
+        await connection.run_sync(Base.metadata.create_all)
+    try:
+        async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+            assert await status_from_ingested_data(session, "2026/27") is None
+    finally:
+        await engine.dispose()

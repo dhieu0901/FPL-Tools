@@ -35,11 +35,21 @@ export function proxy(request: NextRequest): NextResponse {
   }
 
   if (!hasValidAdminCredentials(request.headers.get("authorization"), username, password)) {
+    // Only a navigation may raise the browser's sign-in dialog. A background
+    // request that answered with WWW-Authenticate would pop it over whatever
+    // public page the visitor is actually reading.
+    const isBackgroundRequest =
+      request.headers.get("next-router-prefetch") !== null ||
+      request.headers.get("rsc") !== null ||
+      request.headers.get("sec-fetch-mode") === "cors";
+
     return new NextResponse("Authentication required.", {
       status: 401,
       headers: {
         "Cache-Control": "no-store",
-        "WWW-Authenticate": 'Basic realm="VMF Admin", charset="UTF-8"'
+        ...(isBackgroundRequest
+          ? {}
+          : { "WWW-Authenticate": 'Basic realm="VMF Admin", charset="UTF-8"' })
       }
     });
   }

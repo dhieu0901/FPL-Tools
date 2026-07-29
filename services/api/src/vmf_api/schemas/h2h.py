@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field
 
-from vmf_api.models.enums import MatchStatus
+from vmf_api.domain.matchup import PlayerState
+from vmf_api.models.enums import MatchStatus, ScoreState
 from vmf_api.schemas.common import ORMModel
 
 
@@ -32,6 +33,62 @@ class H2HScheduleResponse(BaseModel):
     rounds: int
     matches: int
     is_locked: bool
+
+
+class MatchupPlayerLine(BaseModel):
+    """One player as he appears across both squads."""
+
+    element_id: int
+    web_name: str | None = None
+    home_multiplier: int
+    away_multiplier: int
+    #: Zero cancels out; the sign says which side the differential favours.
+    net_multiplier: int
+    points: int
+    #: Points this player has already moved the margin by.
+    swing_points: int
+    state: PlayerState
+    fixtures_total: int
+    fixtures_unresolved: int
+    is_home_captain: bool
+    is_away_captain: bool
+
+
+class MatchupSideRemaining(BaseModel):
+    players_remaining: int
+    effective_players_remaining: int
+    #: Reported separately so a Double Gameweek player is not read as two.
+    fixtures_remaining: int
+
+
+class MatchupSide(BaseModel):
+    manager_id: int
+    manager_name: str
+    team_name: str
+    score: int | None
+    gross_points: int | None
+    transfer_cost: int | None
+    bench_points: int | None
+    chip_used: str | None
+    captain_points: int | None
+    goals_counted: int | None
+    is_totw: bool
+    remaining: MatchupSideRemaining
+
+
+class H2HMatchDetailResponse(BaseModel):
+    match_id: int
+    gameweek_number: int
+    status: MatchStatus
+    score_state: ScoreState | None
+    is_playoff: bool
+    bracket_position: str | None
+    walkover_reason: str | None
+    home: MatchupSide
+    away: MatchupSide
+    shared: list[MatchupPlayerLine] = []
+    differentials: list[MatchupPlayerLine] = []
+    captain_differential: list[MatchupPlayerLine] = []
 
 
 class H2HStandingResponse(BaseModel):

@@ -3,14 +3,20 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from vmf_api.api.deps import AdminActorDep, SessionDep, SettingsDep
+from vmf_api.domain.matchup import MatchupComparison, PlayerLine
 from vmf_api.repositories.h2h import H2HRepository
 from vmf_api.schemas.h2h import (
+    H2HMatchDetailResponse,
     H2HMatchResponse,
     H2HScheduleGenerateRequest,
     H2HScheduleResponse,
     H2HStandingResponse,
+    MatchupPlayerLine,
+    MatchupSide,
+    MatchupSideRemaining,
 )
 from vmf_api.services.h2h import H2HService
+from vmf_api.services.matchup import MatchupService, MatchupView, SideView
 
 router = APIRouter(prefix="/h2h", tags=["h2h"])
 
@@ -26,6 +32,71 @@ async def fixtures(
         gameweek_number=gameweek,
     )
     return [H2HMatchResponse.model_validate(match) for match in matches]
+
+
+@router.get("/matches/{match_id}", response_model=H2HMatchDetailResponse)
+async def match_detail(match_id: int, session: SessionDep) -> H2HMatchDetailResponse:
+    """The live matchup view required by rulebook 12."""
+
+    view = await MatchupService(session).h2h_match(match_id)
+    return _match_detail(view)
+
+
+def _match_detail(view: MatchupView) -> H2HMatchDetailResponse:
+    names = view.player_names
+    return H2HMatchDetailResponse(
+        match_id=view.match_id,
+        gameweek_number=view.gameweek_number,
+        status=view.status,
+        score_state=view.score_state,
+        is_playoff=view.is_playoff,
+        bracket_position=view.bracket_position,
+        walkover_reason=view.walkover_reason,
+        home=_side(view.home, view.comparison, home=True),
+        away=_side(view.away, view.comparison, home=False),
+        shared=[_line(line, names) for line in view.comparison.shared],
+        differentials=[_line(line, names) for line in view.comparison.differentials],
+        captain_differential=[_line(line, names) for line in view.comparison.captain_differential],
+    )
+
+
+def _side(side: SideView, comparison: MatchupComparison, *, home: bool) -> MatchupSide:
+    remaining = comparison.home_remaining if home else comparison.away_remaining
+    return MatchupSide(
+        manager_id=side.manager_id,
+        manager_name=side.manager_name,
+        team_name=side.team_name,
+        score=side.score,
+        gross_points=side.gross_points,
+        transfer_cost=side.transfer_cost,
+        bench_points=side.bench_points,
+        chip_used=side.chip_used,
+        captain_points=side.captain_points,
+        goals_counted=side.goals_counted,
+        is_totw=side.is_totw,
+        remaining=MatchupSideRemaining(
+            players_remaining=remaining.players_remaining,
+            effective_players_remaining=remaining.effective_players_remaining,
+            fixtures_remaining=remaining.fixtures_remaining,
+        ),
+    )
+
+
+def _line(line: PlayerLine, names: dict[int, str]) -> MatchupPlayerLine:
+    return MatchupPlayerLine(
+        element_id=line.element_id,
+        web_name=names.get(line.element_id),
+        home_multiplier=line.home_multiplier,
+        away_multiplier=line.away_multiplier,
+        net_multiplier=line.net_multiplier,
+        points=line.points,
+        swing_points=line.swing_points,
+        state=line.state,
+        fixtures_total=line.fixtures_total,
+        fixtures_unresolved=line.fixtures_unresolved,
+        is_home_captain=line.is_home_captain,
+        is_away_captain=line.is_away_captain,
+    )
 
 
 @router.get("/standings", response_model=list[H2HStandingResponse])

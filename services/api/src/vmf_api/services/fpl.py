@@ -4,12 +4,106 @@ import asyncio
 from datetime import UTC, datetime
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from vmf_api.integrations.fpl import FPLClient
+from vmf_api.models.competition import Gameweek, Season
+from vmf_api.models.ingestion import FplFixture
 from vmf_api.schemas.fpl import FPLGameweekState, FPLStatusResponse
 
 
 class FPLStatusPayloadError(ValueError):
     """Raised when FPL metadata cannot be interpreted safely."""
+
+
+async def status_from_ingested_data(
+    session: AsyncSession,
+    season_code: str,
+    *,
+    observed_at: datetime | None = None,
+) -> FPLStatusResponse | None:
+    """Derive the Gameweek state from what the synchronisation already stored.
+
+    Every visitor to the dashboard needs this, so answering from the database
+    rather than from a live call keeps an upstream blip off the public site and
+    keeps the request volume against FPL proportional to the cron schedule
+    instead of to traffic. The data is at most one cron tick old, which is the
+    same freshness the interface advertises anyway.
+
+    Returns ``None`` when nothing has been ingested yet, so the caller can fall
+    back to a live read rather than present an invented state.
+    """
+
+    season = await session.scalar(select(Season).where(Season.fpl_season_code == season_code))
+    if season is None:
+        return None
+
+    gameweeks = list(
+        await session.scalars(
+            select(Gameweek).where(Gameweek.season_id == season.id).order_by(Gameweek.number)
+        )
+    )
+    if not gameweeks or all(gameweek.deadline_time is None for gameweek in gameweeks):
+        return None
+
+    now = (observed_at or datetime.now(UTC)).replace(tzinfo=None)
+    started = [
+        gameweek
+        for gameweek in gameweeks
+        if gameweek.deadline_time is not None and gameweek.deadline_time <= now
+    ]
+    # The current Gameweek is the latest one whose deadline has passed and
+    # which FPL has not closed; before the season that leaves the first.
+    selected = next(
+        (gameweek for gameweek in reversed(started) if not gameweek.fpl_finished),
+        None,
+    )
+    if selected is None:
+        selected = next(
+            (
+                gameweek
+                for gameweek in gameweeks
+                if gameweek.deadline_time is not None and gameweek.deadline_time > now
+            ),
+            gameweeks[-1],
+        )
+
+    fixtures = list(
+        await session.execute(
+            select(
+                FplFixture.started,
+                FplFixture.finished,
+                FplFixture.finished_provisional,
+            ).where(
+                FplFixture.season_id == season.id,
+                FplFixture.gameweek_number == selected.number,
+            )
+        )
+    )
+    completed = sum(row.finished or row.finished_provisional for row in fixtures)
+
+    if selected.fpl_finished:
+        state = FPLGameweekState.FINAL
+    elif fixtures and completed == len(fixtures):
+        state = FPLGameweekState.PROVISIONAL
+    elif any(row.started for row in fixtures):
+        state = FPLGameweekState.LIVE
+    elif selected.number == 1 and not any(gameweek.fpl_finished for gameweek in gameweeks):
+        state = FPLGameweekState.PRESEASON
+    else:
+        state = FPLGameweekState.UPCOMING
+
+    deadline = selected.deadline_time
+    return FPLStatusResponse(
+        gameweek_number=selected.number,
+        gameweek_name=f"Gameweek {selected.number}",
+        state=state,
+        deadline=None if deadline is None else deadline.replace(tzinfo=UTC),
+        completed_fixtures=completed,
+        total_fixtures=len(fixtures),
+        observed_at=observed_at or datetime.now(UTC),
+    )
 
 
 async def fetch_fpl_status(client: FPLClient) -> FPLStatusResponse:
