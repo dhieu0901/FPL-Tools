@@ -60,6 +60,18 @@ class DetectionResultResponse(BaseModel):
     cleared: int = 0
 
 
+class SettlementResultResponse(BaseModel):
+    """H2H matches this tick resolved from the Gameweek scores."""
+
+    gameweek_number: int
+    settled: int = 0
+    walkovers: int = 0
+    #: Matches where both sides forfeited; an administrator decides these.
+    needs_review: list[int] = []
+    untouched_final: int = 0
+    skipped_reason: str | None = None
+
+
 class CronSyncResponse(BaseModel):
     status: Literal["executed", "skipped"]
     started_at: datetime
@@ -69,3 +81,4 @@ class CronSyncResponse(BaseModel):
     jobs: list[SyncJobResult] = []
     scoring: ScoringResult | None = None
     detection: DetectionResultResponse | None = None
+    settlement: SettlementResultResponse | None = None

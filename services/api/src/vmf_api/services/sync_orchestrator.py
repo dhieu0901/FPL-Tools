@@ -20,6 +20,7 @@ from vmf_api.models.competition import Gameweek, Season
 from vmf_api.models.enums import ManagerStatus, RegistrationStatus
 from vmf_api.models.ingestion import FplFixture, ManagerGameweekHistory
 from vmf_api.models.manager import Manager
+from vmf_api.services.h2h_settlement import H2HSettlementService, SettlementOutcome
 from vmf_api.services.ingestion import FplIngestionService, SyncOutcome
 from vmf_api.services.raw_store import naive_utc
 from vmf_api.services.scoring import GameweekScoringService, ScoringOutcome
@@ -42,6 +43,7 @@ class ScheduledSyncResult:
     outcomes: list[SyncOutcome] = field(default_factory=list)
     scoring: ScoringOutcome | None = None
     detection: DetectionResult | None = None
+    settlement: SettlementOutcome | None = None
     skipped_reason: str | None = None
 
 
@@ -77,6 +79,7 @@ async def run_scheduled_sync(
     plan = await _build_plan(session, season, clock=clock)
     scoring: ScoringOutcome | None = None
     detection: DetectionResult | None = None
+    settlement: SettlementOutcome | None = None
     if plan.gameweek_number is not None:
         if plan.run_picks:
             outcomes.append(
@@ -101,11 +104,18 @@ async def run_scheduled_sync(
         # Detection only raises cases for review; no penalty follows from a
         # synchronisation, so this is safe to repeat on every tick.
         detection = await detect_transfer_violations(session)
+        # Results follow the scores that were just written, so a live Gameweek
+        # shows a live H2H result rather than a fixture that never resolves.
+        settlement = await H2HSettlementService(
+            session,
+            season_id=season.id,
+        ).settle_gameweek(plan.gameweek_number)
     return ScheduledSyncResult(
         plan=plan,
         outcomes=outcomes,
         scoring=scoring,
         detection=detection,
+        settlement=settlement,
     )
 
 

@@ -13,6 +13,7 @@ from vmf_api.schemas.cron import (
     DetectionResultResponse,
     FPLProbeResponse,
     ScoringResult,
+    SettlementResultResponse,
     SyncJobResult,
     SyncPlanResponse,
 )
@@ -169,6 +170,18 @@ async def _run_sync(
                     raised=result.detection.raised,
                     updated=result.detection.updated,
                     cleared=result.detection.cleared,
+                )
+            ),
+            settlement=(
+                None
+                if result.settlement is None
+                else SettlementResultResponse(
+                    gameweek_number=result.settlement.gameweek_number,
+                    settled=result.settlement.settled,
+                    walkovers=result.settlement.walkovers,
+                    needs_review=list(result.settlement.needs_review),
+                    untouched_final=result.settlement.untouched_final,
+                    skipped_reason=result.settlement.skipped_reason,
                 )
             ),
         )
