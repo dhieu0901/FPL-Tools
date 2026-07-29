@@ -1,3 +1,5 @@
+import type { MessageKey } from "@/lib/i18n";
+
 export type Division = "HIGH" | "LOW";
 export type DataSource = "live" | "mock" | "unavailable";
 export type MatchStatus = "scheduled" | "live" | "provisional" | "final" | "walkover";
@@ -21,9 +23,14 @@ export interface GameweekStatus {
 }
 
 export interface LeagueMetric {
-  label: string;
+  /**
+   * Dictionary keys, not text: the same payload is rendered in Vietnamese and
+   * in English, so the API layer must not decide which one the reader sees.
+   */
+  labelKey: MessageKey;
+  detailKey: MessageKey;
+  detailVars?: Record<string, string | number>;
   value: string;
-  detail: string;
   tone: "lime" | "coral" | "blue" | "neutral";
 }
 

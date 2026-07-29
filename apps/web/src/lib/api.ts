@@ -544,27 +544,28 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
       },
       metrics: [
         {
-          label: "Quản lý",
+          labelKey: "metric.managers",
           value: String(managerResult.data.length),
-          detail: "Hồ sơ đã đăng ký",
+          detailKey: "metric.managersDetail",
           tone: "blue"
         },
         {
-          label: "Division HIGH",
+          labelKey: "metric.divisionHigh",
           value: String(managerCount("HIGH")),
-          detail: "Managers",
+          detailKey: "metric.divisionDetail",
           tone: "lime"
         },
         {
-          label: "Division LOW",
+          labelKey: "metric.divisionLow",
           value: String(managerCount("LOW")),
-          detail: "Managers",
+          detailKey: "metric.divisionDetail",
           tone: "coral"
         },
         {
-          label: "Trận H2H",
+          labelKey: "metric.h2hMatches",
           value: String(currentFixtures.length),
-          detail: gameweek > 0 ? `Đã xếp cho GW${gameweek}` : "Chưa đến GW1",
+          detailKey: gameweek > 0 ? "metric.h2hScheduled" : "metric.h2hBeforeStart",
+          detailVars: { gameweek },
           tone: "neutral"
         }
       ],

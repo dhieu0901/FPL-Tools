@@ -93,6 +93,17 @@ const messages = {
   "dashboard.deadline": { vi: "Deadline", en: "Deadline" },
   "dashboard.deadlineUnknown": { vi: "Chưa công bố", en: "Not published" },
   "dashboard.quickMetrics": { vi: "Chỉ số nhanh", en: "Key metrics" },
+  "metric.managers": { vi: "Quản lý", en: "Managers" },
+  "metric.managersDetail": { vi: "Hồ sơ đã đăng ký", en: "Registered profiles" },
+  "metric.divisionHigh": { vi: "Division HIGH", en: "Division HIGH" },
+  "metric.divisionLow": { vi: "Division LOW", en: "Division LOW" },
+  "metric.divisionDetail": { vi: "Quản lý", en: "Managers" },
+  "metric.h2hMatches": { vi: "Trận H2H", en: "H2H matches" },
+  "metric.h2hScheduled": {
+    vi: "Đã xếp cho GW{gameweek}",
+    en: "Scheduled for GW{gameweek}"
+  },
+  "metric.h2hBeforeStart": { vi: "Chưa đến GW1", en: "Before GW1" },
   "dashboard.spotlightEyebrow": { vi: "Tâm điểm vòng đấu", en: "Round spotlight" },
   "dashboard.spotlightTitle": { vi: "Đối đầu nổi bật", en: "Featured matchup" },
   "dashboard.allMatches": { vi: "Mọi trận đấu", en: "All matches" },

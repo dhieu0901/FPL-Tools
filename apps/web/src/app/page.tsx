@@ -93,10 +93,10 @@ export default async function DashboardPage() {
 
       <section className="metrics-grid" aria-label={t("dashboard.quickMetrics")}>
         {data.metrics.map((metric) => (
-          <article className="metric-card" data-tone={metric.tone} key={metric.label}>
-            <span>{metric.label}</span>
+          <article className="metric-card" data-tone={metric.tone} key={metric.labelKey}>
+            <span>{t(metric.labelKey)}</span>
             <strong>{metric.value}</strong>
-            <small>{metric.detail}</small>
+            <small>{t(metric.detailKey, metric.detailVars)}</small>
           </article>
         ))}
       </section>

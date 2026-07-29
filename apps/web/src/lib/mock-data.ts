@@ -609,27 +609,28 @@ export const dashboardData: DashboardData = {
   },
   metrics: [
     {
-      label: "Quản lý",
+      labelKey: "metric.managers",
       value: "32",
-      detail: "16 người mỗi division",
+      detailKey: "metric.managersDetail",
       tone: "blue"
     },
     {
-      label: "Điểm cao nhất GW",
-      value: "94",
-      detail: "Cầu Giấy Athletic",
+      labelKey: "metric.divisionHigh",
+      value: "16",
+      detailKey: "metric.divisionDetail",
       tone: "lime"
     },
     {
-      label: "Trung bình HIGH",
-      value: "67",
-      detail: "14 đội đủ điều kiện",
+      labelKey: "metric.divisionLow",
+      value: "16",
+      detailKey: "metric.divisionDetail",
       tone: "coral"
     },
     {
-      label: "Trung bình LOW",
-      value: "63",
-      detail: "16 đội đủ điều kiện",
+      labelKey: "metric.h2hMatches",
+      value: "16",
+      detailKey: "metric.h2hScheduled",
+      detailVars: { gameweek: 12 },
       tone: "neutral"
     }
   ],
