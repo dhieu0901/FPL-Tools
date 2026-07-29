@@ -291,6 +291,8 @@ export const fixtures: H2HFixture[] = [
 
 export const matchDetail: MatchDetail = {
   ...fixtures[0],
+  shared: [],
+  differentials: [],
   scoreBreakdown: [
     { labelKey: "match.squadPoints", home: 71, away: 67 },
     { labelKey: "match.transferCost", home: -4, away: -8 },

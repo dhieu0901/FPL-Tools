@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { SquadList } from "@/components/squad-list";
 import { Avatar, Callout, DataBadge, Pill } from "@/components/ui";
 import { ApiRequestError, vmfApi } from "@/lib/api";
 import { matchStatusLabel } from "@/lib/format";
@@ -61,23 +62,99 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         </div>
         <div className="live-context">
           <span>
-            <small>{t("match.captain")}</small>
-            <strong>{match.home.captain ?? "—"}</strong>
+            <small>{t("match.chip")}</small>
+            <strong>{match.homeDetail?.chipUsed ?? "—"}</strong>
           </span>
           <span>
             <small>{t("match.playersLeft")}</small>
             <strong>
-              {match.home.activePlayers === undefined || match.away.activePlayers === undefined
-                ? "—"
-                : `${match.home.activePlayers} : ${match.away.activePlayers}`}
+              {match.homeDetail && match.awayDetail
+                ? `${match.homeDetail.remaining.players} : ${match.awayDetail.remaining.players}`
+                : "—"}
             </strong>
           </span>
           <span>
-            <small>{t("match.captain")}</small>
-            <strong>{match.away.captain ?? "—"}</strong>
+            <small>{t("match.chip")}</small>
+            <strong>{match.awayDetail?.chipUsed ?? "—"}</strong>
           </span>
         </div>
       </section>
+
+      {match.homeDetail && match.awayDetail && (
+        <section className="squad-grid">
+          {[
+            { detail: match.homeDetail, side: "home" as const },
+            { detail: match.awayDetail, side: "away" as const }
+          ].map(({ detail, side }) => (
+            <article className="panel-card" key={side}>
+              <SquadList
+                squad={detail.squad}
+                t={t}
+                title={t("match.squadOf", { team: detail.teamName })}
+              />
+              <footer className="squad-footer">
+                <span>
+                  <small>{t("match.remainingPlayers")}</small>
+                  <strong>
+                    {t("match.remainingDetail", {
+                      players: detail.remaining.players,
+                      fixtures: detail.remaining.fixtures,
+                      effective: detail.remaining.effectivePlayers
+                    })}
+                  </strong>
+                </span>
+                <span>
+                  <small>{t("match.benchPoints")}</small>
+                  <strong>{detail.benchPoints ?? "—"}</strong>
+                </span>
+              </footer>
+            </article>
+          ))}
+        </section>
+      )}
+
+      {(match.differentials.length > 0 || match.shared.length > 0) && (
+        <div className="match-detail-grid">
+          <section className="panel-card">
+            <h2>{t("match.differentials")}</h2>
+            <p className="panel-note">{t("match.differentialsNote")}</p>
+            {match.differentials.length === 0 ? (
+              <p className="panel-note">{t("match.noDifferentials")}</p>
+            ) : (
+              <ul className="differential-rows">
+                {match.differentials.map((line) => (
+                  <li key={line.elementId} data-side={line.netMultiplier > 0 ? "home" : "away"}>
+                    <span className="differential-rows__name">
+                      {line.name}
+                      {(line.isHomeCaptain || line.isAwayCaptain) && (
+                        <em className="squad-row__armband">(C)</em>
+                      )}
+                    </span>
+                    <span className="differential-rows__multiplier">
+                      {line.homeMultiplier}×:×{line.awayMultiplier}
+                    </span>
+                    <span className="differential-rows__swing">
+                      {line.swingPoints > 0 ? `+${line.swingPoints}` : line.swingPoints}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+          <section className="panel-card">
+            <h2>{t("match.sharedPlayers")}</h2>
+            <p className="panel-note">{t("match.sharedNote")}</p>
+            <ul className="shared-rows">
+              {match.shared.map((line) => (
+                <li key={line.elementId}>
+                  <span>{line.name}</span>
+                  <span>{line.points}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      )}
       <div className="match-detail-grid">
         <section className="panel-card">
           <h2>{t("match.breakdown")}</h2>

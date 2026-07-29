@@ -125,6 +125,26 @@ export interface MatchPlayerLine {
   isAwayCaptain: boolean;
 }
 
+/** One squad member, in the order FPL lists them. */
+export interface SquadSlot {
+  elementId: number;
+  name: string;
+  squadPosition: number;
+  /** 1 keeper, 2 defender, 3 midfielder, 4 forward. */
+  elementType: number;
+  multiplier: number;
+  points: number;
+  contributionPoints: number;
+  state: PlayerState;
+  fixturesTotal: number;
+  fixturesUnresolved: number;
+  isStarter: boolean;
+  isSubstituteGoalkeeper: boolean;
+  benchOrder: number | null;
+  isCaptain: boolean;
+  isViceCaptain: boolean;
+}
+
 export interface SideRemaining {
   players: number;
   effectivePlayers: number;
@@ -143,6 +163,7 @@ export interface MatchSideDetail {
   captainPoints: number | null;
   isTotw: boolean;
   remaining: SideRemaining;
+  squad: SquadSlot[];
 }
 
 export interface MatchDetail extends H2HFixture {

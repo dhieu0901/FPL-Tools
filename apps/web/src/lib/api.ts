@@ -26,6 +26,7 @@ import type {
   MatchStatus,
   PlayerState,
   ScoreBreakdown,
+  SquadSlot,
   StandingEntry,
   Violation
 } from "./types";
@@ -123,6 +124,24 @@ interface MatchupPlayerLineResponse {
   is_away_captain: boolean;
 }
 
+interface SquadSlotResponse {
+  element_id: number;
+  web_name: string | null;
+  squad_position: number;
+  element_type: number;
+  multiplier: number;
+  points: number;
+  contribution_points: number;
+  state: PlayerState;
+  fixtures_total: number;
+  fixtures_unresolved: number;
+  is_starter: boolean;
+  is_substitute_goalkeeper: boolean;
+  bench_order: number | null;
+  is_captain: boolean;
+  is_vice_captain: boolean;
+}
+
 interface MatchupSideResponse {
   manager_id: number;
   manager_name: string;
@@ -140,6 +159,7 @@ interface MatchupSideResponse {
     effective_players_remaining: number;
     fixtures_remaining: number;
   };
+  squad: SquadSlotResponse[];
 }
 
 interface H2HMatchDetailResponse {
@@ -566,6 +586,26 @@ function toPlayerLine(raw: MatchupPlayerLineResponse): MatchPlayerLine {
   };
 }
 
+function toSquadSlot(raw: SquadSlotResponse): SquadSlot {
+  return {
+    elementId: raw.element_id,
+    name: raw.web_name ?? `#${raw.element_id}`,
+    squadPosition: raw.squad_position,
+    elementType: raw.element_type,
+    multiplier: raw.multiplier,
+    points: raw.points,
+    contributionPoints: raw.contribution_points,
+    state: raw.state,
+    fixturesTotal: raw.fixtures_total,
+    fixturesUnresolved: raw.fixtures_unresolved,
+    isStarter: raw.is_starter,
+    isSubstituteGoalkeeper: raw.is_substitute_goalkeeper,
+    benchOrder: raw.bench_order,
+    isCaptain: raw.is_captain,
+    isViceCaptain: raw.is_vice_captain
+  };
+}
+
 function toSideDetail(raw: MatchupSideResponse): MatchSideDetail {
   return {
     managerName: raw.manager_name,
@@ -581,7 +621,8 @@ function toSideDetail(raw: MatchupSideResponse): MatchSideDetail {
       players: raw.remaining.players_remaining,
       effectivePlayers: raw.remaining.effective_players_remaining,
       fixtures: raw.remaining.fixtures_remaining
-    }
+    },
+    squad: (raw.squad ?? []).map(toSquadSlot)
   };
 }
 
@@ -622,9 +663,10 @@ async function h2hMatchLive(id: string): Promise<ApiResult<MatchDetail>> {
         managerName: raw.home.manager_name,
         teamName: raw.home.team_name,
         score: raw.home.score,
-        isWinner: raw.home.score !== null && raw.away.score !== null
-          ? raw.home.score > raw.away.score
-          : false,
+        isWinner:
+          raw.home.score !== null && raw.away.score !== null
+            ? raw.home.score > raw.away.score
+            : false,
         activePlayers: raw.home.remaining.players_remaining
       },
       away: {
@@ -632,9 +674,10 @@ async function h2hMatchLive(id: string): Promise<ApiResult<MatchDetail>> {
         managerName: raw.away.manager_name,
         teamName: raw.away.team_name,
         score: raw.away.score,
-        isWinner: raw.home.score !== null && raw.away.score !== null
-          ? raw.away.score > raw.home.score
-          : false,
+        isWinner:
+          raw.home.score !== null && raw.away.score !== null
+            ? raw.away.score > raw.home.score
+            : false,
         activePlayers: raw.away.remaining.players_remaining
       },
       scoreBreakdown: breakdown,

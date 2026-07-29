@@ -93,6 +93,45 @@ const messages = {
   "dashboard.deadline": { vi: "Deadline", en: "Deadline" },
   "dashboard.deadlineUnknown": { vi: "Chưa công bố", en: "Not published" },
   "dashboard.quickMetrics": { vi: "Chỉ số nhanh", en: "Key metrics" },
+  // Position and bench labels stay in English in both locales: these are the
+  // terms FPL itself uses, so a manager reads them faster than a translation.
+  "squad.gk": { vi: "GK", en: "GK" },
+  "squad.def": { vi: "DEF", en: "DEF" },
+  "squad.mid": { vi: "MID", en: "MID" },
+  "squad.fwd": { vi: "FWD", en: "FWD" },
+  "squad.gkSub": { vi: "GK Sub", en: "GK Sub" },
+  "squad.bench": { vi: "Bench {order}", en: "Bench {order}" },
+  "squad.benchHeading": { vi: "Bench", en: "Bench" },
+  "squad.doubleGameweek": {
+    vi: "Đá hai trận trong vòng này",
+    en: "Plays twice this Gameweek"
+  },
+  "squad.unavailable": {
+    vi: "Đội hình chưa công bố. FPL chỉ mở sau deadline.",
+    en: "Squad not published yet. FPL opens it after the deadline."
+  },
+  "match.squadOf": { vi: "Đội hình · {team}", en: "Squad · {team}" },
+  "match.remainingPlayers": { vi: "Cầu thủ chưa đá", en: "Players still to play" },
+  "match.remainingDetail": {
+    vi: "{players} người · {fixtures} trận · hệ số {effective}",
+    en: "{players} players · {fixtures} fixtures · {effective} effective"
+  },
+  "match.sharedPlayers": { vi: "Cầu thủ trùng nhau", en: "Shared players" },
+  "match.sharedNote": {
+    vi: "Hai bên dùng giống hệt nhau nên không làm thay đổi cách biệt.",
+    en: "Fielded identically by both sides, so they cannot change the margin."
+  },
+  "match.differentials": { vi: "Điểm khác biệt", en: "Differentials" },
+  "match.differentialsNote": {
+    vi: "Dấu cộng nghiêng về đội nhà, dấu trừ nghiêng về đội khách.",
+    en: "A positive swing favours the home side, a negative one the away side."
+  },
+  "match.noDifferentials": {
+    vi: "Chưa có cầu thủ khác biệt nào.",
+    en: "No differentials yet."
+  },
+  "match.chip": { vi: "Chip", en: "Chip" },
+  "match.benchPoints": { vi: "Điểm băng ghế", en: "Bench points" },
   "metric.managers": { vi: "Quản lý", en: "Managers" },
   "metric.managersDetail": { vi: "Hồ sơ đã đăng ký", en: "Registered profiles" },
   "metric.divisionHigh": { vi: "Division HIGH", en: "Division HIGH" },
