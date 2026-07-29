@@ -27,7 +27,10 @@ export function proxy(request: NextRequest): NextResponse {
   const username = process.env.VMF_ADMIN_UI_USER?.trim();
   const password = process.env.VMF_ADMIN_UI_PASSWORD;
 
-  if (!username || !password || password.length < 16) {
+  // Length is the operator's decision, not this file's. Note that guessing it
+  // grants the whole admin surface: finalizing a Gameweek, confirming a
+  // violation and the removals that follow from it.
+  if (!username || !password) {
     return new NextResponse("Admin UI is not configured.", {
       status: 503,
       headers: { "Cache-Control": "no-store" }
