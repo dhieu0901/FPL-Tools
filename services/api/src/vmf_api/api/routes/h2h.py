@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from vmf_api.api.deps import AdminActorDep, SessionDep, SettingsDep
-from vmf_api.domain.matchup import MatchupComparison, PlayerLine
+from vmf_api.domain.matchup import MatchupComparison, PlayerLine, SquadEntry
 from vmf_api.repositories.h2h import H2HRepository
 from vmf_api.schemas.h2h import (
     H2HMatchDetailResponse,
@@ -14,6 +14,7 @@ from vmf_api.schemas.h2h import (
     MatchupPlayerLine,
     MatchupSide,
     MatchupSideRemaining,
+    SquadSlot,
 )
 from vmf_api.services.h2h import H2HService
 from vmf_api.services.matchup import MatchupService, MatchupView, SideView
@@ -52,15 +53,22 @@ def _match_detail(view: MatchupView) -> H2HMatchDetailResponse:
         is_playoff=view.is_playoff,
         bracket_position=view.bracket_position,
         walkover_reason=view.walkover_reason,
-        home=_side(view.home, view.comparison, home=True),
-        away=_side(view.away, view.comparison, home=False),
+        home=_side(view.home, view.comparison, view.home_squad, names, home=True),
+        away=_side(view.away, view.comparison, view.away_squad, names, home=False),
         shared=[_line(line, names) for line in view.comparison.shared],
         differentials=[_line(line, names) for line in view.comparison.differentials],
         captain_differential=[_line(line, names) for line in view.comparison.captain_differential],
     )
 
 
-def _side(side: SideView, comparison: MatchupComparison, *, home: bool) -> MatchupSide:
+def _side(
+    side: SideView,
+    comparison: MatchupComparison,
+    squad: tuple[SquadEntry, ...],
+    names: dict[int, str],
+    *,
+    home: bool,
+) -> MatchupSide:
     remaining = comparison.home_remaining if home else comparison.away_remaining
     return MatchupSide(
         manager_id=side.manager_id,
@@ -79,6 +87,27 @@ def _side(side: SideView, comparison: MatchupComparison, *, home: bool) -> Match
             effective_players_remaining=remaining.effective_players_remaining,
             fixtures_remaining=remaining.fixtures_remaining,
         ),
+        squad=[_slot(entry, names) for entry in squad],
+    )
+
+
+def _slot(entry: SquadEntry, names: dict[int, str]) -> SquadSlot:
+    return SquadSlot(
+        element_id=entry.element_id,
+        web_name=names.get(entry.element_id),
+        squad_position=entry.squad_position,
+        element_type=entry.element_type,
+        multiplier=entry.multiplier,
+        points=entry.points,
+        contribution_points=entry.contribution_points,
+        state=entry.state,
+        fixtures_total=entry.fixtures_total,
+        fixtures_unresolved=entry.fixtures_unresolved,
+        is_starter=entry.is_starter,
+        is_substitute_goalkeeper=entry.is_substitute_goalkeeper,
+        bench_order=entry.bench_order,
+        is_captain=entry.is_captain,
+        is_vice_captain=entry.is_vice_captain,
     )
 
 

@@ -105,6 +105,46 @@ export type MatchRuleNote =
   | { kind: "settled" }
   | { kind: "provisional" };
 
+export type PlayerState = "upcoming" | "playing" | "finished";
+
+/** One player as he appears across both squads. */
+export interface MatchPlayerLine {
+  elementId: number;
+  name: string;
+  homeMultiplier: number;
+  awayMultiplier: number;
+  /** Zero cancels out; the sign says which side the differential favours. */
+  netMultiplier: number;
+  points: number;
+  /** Points this player has already moved the margin by. */
+  swingPoints: number;
+  state: PlayerState;
+  fixturesTotal: number;
+  fixturesUnresolved: number;
+  isHomeCaptain: boolean;
+  isAwayCaptain: boolean;
+}
+
+export interface SideRemaining {
+  players: number;
+  effectivePlayers: number;
+  /** Reported separately so a Double Gameweek player is not read as two. */
+  fixtures: number;
+}
+
+export interface MatchSideDetail {
+  managerName: string;
+  teamName: string;
+  score: number | null;
+  grossPoints: number | null;
+  transferCost: number | null;
+  benchPoints: number | null;
+  chipUsed: string | null;
+  captainPoints: number | null;
+  isTotw: boolean;
+  remaining: SideRemaining;
+}
+
 export interface MatchDetail extends H2HFixture {
   scoreBreakdown: ScoreBreakdown[];
   events: Array<{
@@ -114,6 +154,10 @@ export interface MatchDetail extends H2HFixture {
     tone: "positive" | "negative" | "neutral";
   }>;
   ruleNote?: MatchRuleNote;
+  homeDetail?: MatchSideDetail;
+  awayDetail?: MatchSideDetail;
+  shared: MatchPlayerLine[];
+  differentials: MatchPlayerLine[];
 }
 
 export interface CupMatch {

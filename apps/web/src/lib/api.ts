@@ -21,7 +21,11 @@ import type {
   Highlight,
   Manager,
   MatchDetail,
+  MatchPlayerLine,
+  MatchSideDetail,
   MatchStatus,
+  PlayerState,
+  ScoreBreakdown,
   StandingEntry,
   Violation
 } from "./types";
@@ -102,6 +106,55 @@ interface H2HMatchResponse {
   walkover_reason: string | null;
   is_playoff: boolean;
   bracket_position: string | null;
+}
+
+interface MatchupPlayerLineResponse {
+  element_id: number;
+  web_name: string | null;
+  home_multiplier: number;
+  away_multiplier: number;
+  net_multiplier: number;
+  points: number;
+  swing_points: number;
+  state: PlayerState;
+  fixtures_total: number;
+  fixtures_unresolved: number;
+  is_home_captain: boolean;
+  is_away_captain: boolean;
+}
+
+interface MatchupSideResponse {
+  manager_id: number;
+  manager_name: string;
+  team_name: string;
+  score: number | null;
+  gross_points: number | null;
+  transfer_cost: number | null;
+  bench_points: number | null;
+  chip_used: string | null;
+  captain_points: number | null;
+  goals_counted: number | null;
+  is_totw: boolean;
+  remaining: {
+    players_remaining: number;
+    effective_players_remaining: number;
+    fixtures_remaining: number;
+  };
+}
+
+interface H2HMatchDetailResponse {
+  match_id: number;
+  gameweek_number: number;
+  status: MatchStatus;
+  score_state: "upcoming" | "live" | "provisional" | "final" | null;
+  is_playoff: boolean;
+  bracket_position: string | null;
+  walkover_reason: string | null;
+  home: MatchupSideResponse;
+  away: MatchupSideResponse;
+  shared: MatchupPlayerLineResponse[];
+  differentials: MatchupPlayerLineResponse[];
+  captain_differential: MatchupPlayerLineResponse[];
 }
 
 interface FPLStatusResponse {
@@ -496,6 +549,112 @@ async function h2hFixturesLive(gameweek?: number): Promise<ApiResult<H2HFixture[
   );
 }
 
+function toPlayerLine(raw: MatchupPlayerLineResponse): MatchPlayerLine {
+  return {
+    elementId: raw.element_id,
+    name: raw.web_name ?? `#${raw.element_id}`,
+    homeMultiplier: raw.home_multiplier,
+    awayMultiplier: raw.away_multiplier,
+    netMultiplier: raw.net_multiplier,
+    points: raw.points,
+    swingPoints: raw.swing_points,
+    state: raw.state,
+    fixturesTotal: raw.fixtures_total,
+    fixturesUnresolved: raw.fixtures_unresolved,
+    isHomeCaptain: raw.is_home_captain,
+    isAwayCaptain: raw.is_away_captain
+  };
+}
+
+function toSideDetail(raw: MatchupSideResponse): MatchSideDetail {
+  return {
+    managerName: raw.manager_name,
+    teamName: raw.team_name,
+    score: raw.score,
+    grossPoints: raw.gross_points,
+    transferCost: raw.transfer_cost,
+    benchPoints: raw.bench_points,
+    chipUsed: raw.chip_used,
+    captainPoints: raw.captain_points,
+    isTotw: raw.is_totw,
+    remaining: {
+      players: raw.remaining.players_remaining,
+      effectivePlayers: raw.remaining.effective_players_remaining,
+      fixtures: raw.remaining.fixtures_remaining
+    }
+  };
+}
+
+async function h2hMatchLive(id: string): Promise<ApiResult<MatchDetail>> {
+  // One request for one match. Deriving this from the fixture list meant
+  // fetching every match in the season to render a single page.
+  const response = await requestJson<H2HMatchDetailResponse>(`/h2h/matches/${id}`);
+  const raw = response.data;
+  const breakdown: ScoreBreakdown[] = [];
+  if (raw.home.gross_points !== null && raw.away.gross_points !== null) {
+    breakdown.push({
+      labelKey: "match.squadPoints",
+      home: raw.home.gross_points,
+      away: raw.away.gross_points
+    });
+  }
+  if (raw.home.transfer_cost !== null && raw.away.transfer_cost !== null) {
+    breakdown.push({
+      labelKey: "match.transferCost",
+      home: -raw.home.transfer_cost,
+      away: -raw.away.transfer_cost
+    });
+  }
+  if (raw.home.score !== null && raw.away.score !== null) {
+    breakdown.push({ labelKey: "match.netPoints", home: raw.home.score, away: raw.away.score });
+  }
+
+  return result(
+    {
+      id: String(raw.match_id),
+      gameweek: raw.gameweek_number,
+      bracketLabel: raw.is_playoff ? (raw.bracket_position ?? "Play-off") : null,
+      kickoff: null,
+      status: raw.status,
+      walkoverReason: raw.walkover_reason,
+      home: {
+        managerId: String(raw.home.manager_id),
+        managerName: raw.home.manager_name,
+        teamName: raw.home.team_name,
+        score: raw.home.score,
+        isWinner: raw.home.score !== null && raw.away.score !== null
+          ? raw.home.score > raw.away.score
+          : false,
+        activePlayers: raw.home.remaining.players_remaining
+      },
+      away: {
+        managerId: String(raw.away.manager_id),
+        managerName: raw.away.manager_name,
+        teamName: raw.away.team_name,
+        score: raw.away.score,
+        isWinner: raw.home.score !== null && raw.away.score !== null
+          ? raw.away.score > raw.home.score
+          : false,
+        activePlayers: raw.away.remaining.players_remaining
+      },
+      scoreBreakdown: breakdown,
+      events: [],
+      homeDetail: toSideDetail(raw.home),
+      awayDetail: toSideDetail(raw.away),
+      shared: raw.shared.map(toPlayerLine),
+      differentials: raw.differentials.map(toPlayerLine),
+      ruleNote:
+        raw.status === "walkover" && raw.walkover_reason
+          ? { kind: "walkover", reason: raw.walkover_reason }
+          : raw.score_state === "final"
+            ? { kind: "settled" }
+            : { kind: "provisional" }
+    },
+    "live",
+    response.updatedAt
+  );
+}
+
 async function h2hStandingsLive(): Promise<ApiResult<H2HStanding[]>> {
   const { h2hScheduleId } = runtimeConfiguration();
   const [standingsResponse, managersResponse] = await Promise.all([
@@ -689,32 +848,14 @@ export const vmfApi = {
           id,
           scoreBreakdown: [],
           events: [],
+          shared: [],
+          differentials: [],
           ruleNote: { kind: "provisional" }
         },
         "mock"
       );
     }
-    const fixtureResult = await h2hFixturesLive();
-    const fixture = fixtureResult.data.find((item) => item.id === id);
-    if (!fixture) throw new ApiRequestError(`H2H match #${id} was not found.`, 404);
-    return result(
-      {
-        ...fixture,
-        scoreBreakdown:
-          fixture.home.score !== null && fixture.away.score !== null
-            ? [{ labelKey: "match.netPoints", home: fixture.home.score, away: fixture.away.score }]
-            : [],
-        events: [],
-        ruleNote:
-          fixture.status === "walkover" && fixture.walkoverReason
-            ? { kind: "walkover", reason: fixture.walkoverReason }
-            : fixture.status === "final" || fixture.status === "walkover"
-              ? { kind: "settled" }
-              : { kind: "provisional" }
-      },
-      "live",
-      fixtureResult.updatedAt
-    );
+    return h2hMatchLive(id);
   },
 
   cup: (season = 1): Promise<ApiResult<CupData>> => {

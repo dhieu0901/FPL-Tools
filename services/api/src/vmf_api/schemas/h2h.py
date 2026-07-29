@@ -61,6 +61,32 @@ class MatchupSideRemaining(BaseModel):
     fixtures_remaining: int
 
 
+class SquadSlot(BaseModel):
+    """One squad member, in the order FPL lists them.
+
+    Positions 1 to 11 are the eleven that started, keeper first and then the
+    outfield lines; 12 is the substitute goalkeeper and 13 to 15 the outfield
+    bench, which is what ``bench_order`` numbers.
+    """
+
+    element_id: int
+    web_name: str | None = None
+    squad_position: int
+    #: FPL element type: 1 keeper, 2 defender, 3 midfielder, 4 forward.
+    element_type: int
+    multiplier: int
+    points: int
+    contribution_points: int
+    state: PlayerState
+    fixtures_total: int
+    fixtures_unresolved: int
+    is_starter: bool
+    is_substitute_goalkeeper: bool
+    bench_order: int | None = None
+    is_captain: bool
+    is_vice_captain: bool
+
+
 class MatchupSide(BaseModel):
     manager_id: int
     manager_name: str
@@ -74,6 +100,7 @@ class MatchupSide(BaseModel):
     goals_counted: int | None
     is_totw: bool
     remaining: MatchupSideRemaining
+    squad: list[SquadSlot] = []
 
 
 class H2HMatchDetailResponse(BaseModel):

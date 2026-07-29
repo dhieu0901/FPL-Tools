@@ -15,6 +15,7 @@ from vmf_api.domain.matchup import (
     FixtureProgress,
     PlayerState,
     SidePick,
+    build_squad,
     compare_squads,
 )
 from vmf_api.models.competition import Gameweek, Season
@@ -378,5 +379,64 @@ async def test_an_unknown_match_is_reported_as_missing() -> None:
 
             with pytest.raises(NotFoundError):
                 await MatchupService(session).h2h_match(9999)
+    finally:
+        await engine.dispose()
+
+
+def test_a_squad_is_listed_in_the_order_fpl_presents_it() -> None:
+    picks = {
+        # Deliberately out of order to prove the sort, not the input.
+        14: SidePick(14, 0, squad_position=14, element_type=3),
+        1: SidePick(1, 1, squad_position=1, element_type=1),
+        12: SidePick(12, 0, squad_position=12, element_type=1),
+        9: SidePick(9, 2, squad_position=9, element_type=4, is_effective_captain=True),
+        13: SidePick(13, 0, squad_position=13, element_type=2),
+        15: SidePick(15, 0, squad_position=15, element_type=4),
+    }
+
+    squad = build_squad(picks, {9: 13, 1: 6}, {})
+
+    assert [entry.squad_position for entry in squad] == [1, 9, 12, 13, 14, 15]
+    keeper, captain, sub_keeper, bench_one, bench_two, bench_three = squad
+
+    assert keeper.is_starter
+    assert captain.is_starter and captain.is_captain
+    # The captain's line shows the multiplied contribution.
+    assert captain.contribution_points == 26
+
+    assert not sub_keeper.is_starter
+    assert sub_keeper.is_substitute_goalkeeper
+    assert sub_keeper.bench_order is None
+
+    assert [entry.bench_order for entry in (bench_one, bench_two, bench_three)] == [1, 2, 3]
+    assert not any(entry.is_substitute_goalkeeper for entry in (bench_one, bench_two, bench_three))
+
+
+def test_the_vice_captain_is_reported_even_when_the_armband_did_not_move() -> None:
+    picks = {
+        1: SidePick(1, 2, squad_position=1, element_type=3, is_effective_captain=True),
+        2: SidePick(2, 1, squad_position=2, element_type=3, is_vice_captain=True),
+    }
+
+    squad = build_squad(picks, {}, {})
+
+    assert squad[0].is_captain and not squad[0].is_vice_captain
+    assert squad[1].is_vice_captain and not squad[1].is_captain
+
+
+@pytest.mark.anyio
+async def test_the_service_returns_both_squads_with_names_and_positions() -> None:
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            match = await _seed(session)
+
+            view = await MatchupService(session).h2h_match(match.id)
+
+            assert [slot.squad_position for slot in view.home_squad] == [1, 2]
+            assert view.home_squad[1].is_captain
+            assert view.player_names[view.home_squad[1].element_id] == "Player 2"
+            # Positions come from the player catalog, not from the pick row.
+            assert all(slot.element_type == 3 for slot in view.home_squad)
     finally:
         await engine.dispose()

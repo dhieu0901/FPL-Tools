@@ -15,6 +15,8 @@ from vmf_api.domain.matchup import (
     FixtureProgress,
     MatchupComparison,
     SidePick,
+    SquadEntry,
+    build_squad,
     compare_squads,
 )
 from vmf_api.models.competition import Gameweek
@@ -58,6 +60,8 @@ class MatchupView:
     away: SideView
     comparison: MatchupComparison
     player_names: dict[int, str]
+    home_squad: tuple[SquadEntry, ...] = ()
+    away_squad: tuple[SquadEntry, ...] = ()
 
 
 class MatchupService:
@@ -88,16 +92,16 @@ class MatchupService:
         snapshots = await self._snapshots(gameweek_number, list(managers))
         points, progress = await self._player_state(season_id, gameweek_number)
 
-        comparison = compare_squads(
-            self._side_picks(snapshots.get(match.home_manager_id)),
-            self._side_picks(snapshots.get(match.away_manager_id)),
-            points,
-            progress,
-        )
-        names = await self._player_names(
-            season_id,
-            {line.element_id for line in comparison.lines},
-        )
+        squad_elements = {
+            item.element_id for snapshot in snapshots.values() for item in snapshot.items
+        }
+        catalog = await self._player_catalog(season_id, squad_elements)
+        element_types = {element_id: entry[1] for element_id, entry in catalog.items()}
+
+        home_picks = self._side_picks(snapshots.get(match.home_manager_id), element_types)
+        away_picks = self._side_picks(snapshots.get(match.away_manager_id), element_types)
+        comparison = compare_squads(home_picks, away_picks, points, progress)
+        names = {element_id: entry[0] for element_id, entry in catalog.items()}
 
         return MatchupView(
             match_id=match.id,
@@ -111,6 +115,8 @@ class MatchupService:
             away=self._side(match.away_manager_id, managers, scores, match.away_score),
             comparison=comparison,
             player_names=names,
+            home_squad=build_squad(home_picks, points, progress),
+            away_squad=build_squad(away_picks, points, progress),
         )
 
     @staticmethod
@@ -152,7 +158,10 @@ class MatchupService:
         )
 
     @staticmethod
-    def _side_picks(snapshot: ManagerPickSnapshot | None) -> dict[int, SidePick]:
+    def _side_picks(
+        snapshot: ManagerPickSnapshot | None,
+        element_types: dict[int, int],
+    ) -> dict[int, SidePick]:
         if snapshot is None:
             return {}
         captain = effective_captain(
@@ -173,6 +182,11 @@ class MatchupService:
                 element_id=item.element_id,
                 multiplier=item.multiplier,
                 is_effective_captain=item.element_id == captain_element,
+                squad_position=item.squad_position,
+                element_type=element_types.get(item.element_id, 0),
+                # The armband may have moved, so the vice-captain is reported
+                # as published rather than inferred from who is captaining.
+                is_vice_captain=item.is_vice_captain,
             )
             for item in snapshot.items
         }
@@ -270,13 +284,19 @@ class MatchupService:
         }
         return points, progress
 
-    async def _player_names(self, season_id: int, element_ids: set[int]) -> dict[int, str]:
+    async def _player_catalog(
+        self,
+        season_id: int,
+        element_ids: set[int],
+    ) -> dict[int, tuple[str, int]]:
+        """Name and position for each squad member, in one query."""
+
         if not element_ids:
             return {}
         rows = await self.session.execute(
-            select(FplPlayer.element_id, FplPlayer.web_name).where(
+            select(FplPlayer.element_id, FplPlayer.web_name, FplPlayer.element_type).where(
                 FplPlayer.season_id == season_id,
                 FplPlayer.element_id.in_(element_ids),
             )
         )
-        return {element_id: web_name for element_id, web_name in rows}
+        return {element_id: (web_name, element_type) for element_id, web_name, element_type in rows}

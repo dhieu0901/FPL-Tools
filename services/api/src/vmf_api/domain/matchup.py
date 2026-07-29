@@ -16,6 +16,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from vmf_api.domain.gameweek_scoring import STARTING_XI_SIZE
+
 
 class PlayerState(StrEnum):
     """How much of a player's Gameweek is still to be played."""
@@ -51,6 +53,17 @@ class SidePick:
     element_id: int
     multiplier: int
     is_effective_captain: bool = False
+    #: FPL orders a squad 1..15: the goalkeeper, then the outfield eleven by
+    #: line, then the substitute goalkeeper and the three outfield
+    #: substitutes. Keeping it is what lets the interface list a squad in the
+    #: order a manager recognises without re-deriving a formation.
+    squad_position: int = 0
+    element_type: int = 0
+    is_vice_captain: bool = False
+
+
+#: Squad positions 12 to 15 are the bench, and 12 is always the second keeper.
+SUBSTITUTE_GOALKEEPER_POSITION = 12
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +97,67 @@ class PlayerLine:
         """The points this player has already moved the margin by."""
 
         return self.points * self.net_multiplier
+
+
+@dataclass(frozen=True, slots=True)
+class SquadEntry:
+    """One player in one manager's squad, in the order FPL lists them."""
+
+    element_id: int
+    squad_position: int
+    element_type: int
+    multiplier: int
+    points: int
+    state: PlayerState
+    fixtures_total: int
+    fixtures_unresolved: int
+    is_captain: bool
+    is_vice_captain: bool
+
+    @property
+    def is_starter(self) -> bool:
+        return self.squad_position <= STARTING_XI_SIZE
+
+    @property
+    def is_substitute_goalkeeper(self) -> bool:
+        return self.squad_position == SUBSTITUTE_GOALKEEPER_POSITION
+
+    @property
+    def bench_order(self) -> int | None:
+        """1, 2 or 3 for the outfield bench; ``None`` for anyone else."""
+
+        if self.squad_position <= SUBSTITUTE_GOALKEEPER_POSITION:
+            return None
+        return self.squad_position - SUBSTITUTE_GOALKEEPER_POSITION
+
+    @property
+    def contribution_points(self) -> int:
+        return self.points * self.multiplier
+
+
+def build_squad(
+    picks: dict[int, SidePick],
+    points: dict[int, int],
+    progress: dict[int, FixtureProgress],
+) -> tuple[SquadEntry, ...]:
+    """Return one side's fifteen, ordered as FPL presents them."""
+
+    entries = [
+        SquadEntry(
+            element_id=pick.element_id,
+            squad_position=pick.squad_position,
+            element_type=pick.element_type,
+            multiplier=pick.multiplier,
+            points=points.get(pick.element_id, 0),
+            state=progress.get(pick.element_id, FixtureProgress()).state,
+            fixtures_total=progress.get(pick.element_id, FixtureProgress()).total,
+            fixtures_unresolved=progress.get(pick.element_id, FixtureProgress()).unresolved,
+            is_captain=pick.is_effective_captain,
+            is_vice_captain=pick.is_vice_captain,
+        )
+        for pick in picks.values()
+    ]
+    return tuple(sorted(entries, key=lambda entry: entry.squad_position))
 
 
 @dataclass(frozen=True, slots=True)
