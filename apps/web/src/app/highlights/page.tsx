@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Icon } from "@/components/icons";
 import { DataBadge, EmptyState, PageHeader, Pill } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
+import { highlightCopy } from "@/lib/highlight-text";
 import { createTranslator } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
 
@@ -29,31 +30,39 @@ export default async function HighlightsPage() {
       />
       {result.data.length > 0 ? (
         <div className="highlights-grid">
-          {result.data.map((highlight, index) => (
-            <article
-              className="highlight-card"
-              data-category={highlight.category}
-              data-large={index === 0}
-              key={highlight.id}
-            >
-              <div className="highlight-card__top">
-                <span className="highlight-card__icon">
-                  <Icon name={iconMap[highlight.category]} size={23} />
+          {result.data.map((highlight, index) => {
+            const copy = highlightCopy(highlight, t);
+            return (
+              <article
+                className="highlight-card"
+                data-category={highlight.category}
+                data-large={index === 0}
+                key={highlight.id}
+              >
+                <div className="highlight-card__top">
+                  <span className="highlight-card__icon">
+                    <Icon name={iconMap[highlight.category]} size={23} />
+                  </span>
+                  {highlight.gameweek !== null && <Pill>GW{highlight.gameweek}</Pill>}
+                  {highlight.isProvisional && (
+                    <Pill tone="coral">{t("highlight.provisional")}</Pill>
+                  )}
+                </div>
+                <div>
+                  <p className="eyebrow">{copy.eyebrow}</p>
+                  <h2>{copy.title}</h2>
+                  <p>{copy.body}</p>
+                </div>
+                <footer>
+                  <span>{highlight.managerName}</span>
+                  <strong>{copy.value}</strong>
+                </footer>
+                <span className="highlight-card__ordinal">
+                  {String(index + 1).padStart(2, "0")}
                 </span>
-                <Pill>GW{highlight.gameweek}</Pill>
-              </div>
-              <div>
-                <p className="eyebrow">{highlight.eyebrow}</p>
-                <h2>{highlight.title}</h2>
-                <p>{highlight.description}</p>
-              </div>
-              <footer>
-                {highlight.managerName && <span>{highlight.managerName}</span>}
-                {highlight.value && <strong>{highlight.value}</strong>}
-              </footer>
-              <span className="highlight-card__ordinal">{String(index + 1).padStart(2, "0")}</span>
-            </article>
-          ))}
+              </article>
+            );
+          })}
         </div>
       ) : (
         <EmptyState

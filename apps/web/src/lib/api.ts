@@ -19,6 +19,7 @@ import type {
   H2HFixture,
   H2HStanding,
   Highlight,
+  HighlightKind,
   Manager,
   MatchDetail,
   MatchPlayerLine,
@@ -175,6 +176,16 @@ interface H2HMatchDetailResponse {
   shared: MatchupPlayerLineResponse[];
   differentials: MatchupPlayerLineResponse[];
   captain_differential: MatchupPlayerLineResponse[];
+}
+
+interface HighlightResponse {
+  kind: HighlightKind;
+  gameweek_number: number | null;
+  manager_id: number;
+  manager_name: string;
+  team_name: string;
+  value: number;
+  is_provisional: boolean;
 }
 
 interface FPLStatusResponse {
@@ -698,6 +709,33 @@ async function h2hMatchLive(id: string): Promise<ApiResult<MatchDetail>> {
   );
 }
 
+const HIGHLIGHT_CATEGORY: Record<HighlightKind, Highlight["category"]> = {
+  team_of_the_week: "totw",
+  season_high: "record",
+  captain_haul: "comeback",
+  totw_leader: "record",
+  bench_regret: "notice"
+};
+
+async function highlightsLive(): Promise<ApiResult<Highlight[]>> {
+  const { seasonId } = runtimeConfiguration();
+  const response = await requestJson<HighlightResponse[]>(`/highlights?season_id=${seasonId}`);
+  return result(
+    response.data.map((raw, index) => ({
+      id: `${raw.kind}-${raw.manager_id}-${index}`,
+      category: HIGHLIGHT_CATEGORY[raw.kind] ?? "notice",
+      kind: raw.kind,
+      managerName: raw.manager_name,
+      teamName: raw.team_name,
+      value: raw.value,
+      gameweek: raw.gameweek_number,
+      isProvisional: raw.is_provisional
+    })),
+    "live",
+    response.updatedAt
+  );
+}
+
 async function h2hStandingsLive(): Promise<ApiResult<H2HStanding[]>> {
   const { h2hScheduleId } = runtimeConfiguration();
   const [standingsResponse, managersResponse] = await Promise.all([
@@ -718,10 +756,13 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
   const fplStatus = fplStatusResult.data;
   const gameweek = fplStatus.gameweek_number ?? 0;
   const period: ClassicPeriod = gameweek >= 20 ? "season_2" : "season_1";
-  const [highResult, lowResult, fixtureResult] = await Promise.all([
+  const [highResult, lowResult, fixtureResult, highlightResult] = await Promise.all([
     classicStandingsLive("HIGH", period),
     classicStandingsLive("LOW", period),
-    gameweek > 0 ? h2hFixturesLive(gameweek) : Promise.resolve(result([], "live"))
+    gameweek > 0 ? h2hFixturesLive(gameweek) : Promise.resolve(result([], "live")),
+    // A dashboard is worth showing without its stories, so a highlights
+    // failure degrades that one panel rather than the whole page.
+    highlightsLive().catch(() => result<Highlight[]>([], "unavailable"))
   ]);
   const currentFixtures = fixtureResult.data;
   const managerCount = (division: Division) =>
@@ -773,7 +814,7 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
       ],
       featuredFixture,
       standings: highResult.data.slice(0, 6),
-      recentHighlights: [],
+      recentHighlights: highlightResult.data.slice(0, 3),
       notices: []
     },
     "live",
@@ -921,7 +962,7 @@ export const vmfApi = {
   highlights: (): Promise<ApiResult<Highlight[]>> =>
     runtimeConfiguration().useMockData
       ? Promise.resolve(result(highlights, "mock"))
-      : Promise.resolve(result([], "unavailable")),
+      : highlightsLive(),
 
   managers: (): Promise<ApiResult<Manager[]>> =>
     runtimeConfiguration().useMockData ? Promise.resolve(result(managers, "mock")) : managersLive(),

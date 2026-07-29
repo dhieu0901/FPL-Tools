@@ -130,6 +130,52 @@ const messages = {
     vi: "Chưa có cầu thủ khác biệt nào.",
     en: "No differentials yet."
   },
+  "highlight.team_of_the_week.eyebrow": { vi: "Đội hình tuần", en: "Team of the Week" },
+  "highlight.team_of_the_week.title": {
+    vi: "{team} dẫn đầu vòng này",
+    en: "{team} tops the Gameweek"
+  },
+  "highlight.team_of_the_week.body": {
+    vi: "{manager} đạt {value} điểm thuần, cao nhất trong 40 HLV ở GW{gameweek}.",
+    en: "{manager} scored {value} net points, the highest of the forty in GW{gameweek}."
+  },
+  "highlight.season_high.eyebrow": { vi: "Kỷ lục mùa giải", en: "Season record" },
+  "highlight.season_high.title": {
+    vi: "Điểm cao nhất mùa: {value}",
+    en: "Season high: {value}"
+  },
+  "highlight.season_high.body": {
+    vi: "{manager} lập mốc {value} điểm ở GW{gameweek}, chưa ai vượt qua.",
+    en: "{manager} set {value} points in GW{gameweek}, still unbeaten."
+  },
+  "highlight.captain_haul.eyebrow": { vi: "Băng đội trưởng", en: "The armband" },
+  "highlight.captain_haul.title": {
+    vi: "Đội trưởng của {team} bùng nổ",
+    en: "A captain haul for {team}"
+  },
+  "highlight.captain_haul.body": {
+    vi: "Riêng băng đội trưởng mang về {value} điểm ở GW{gameweek}.",
+    en: "The armband alone returned {value} points in GW{gameweek}."
+  },
+  "highlight.totw_leader.eyebrow": { vi: "Dẫn đầu TotW", en: "TotW leader" },
+  "highlight.totw_leader.title": {
+    vi: "{team} có {value} lần đội hình tuần",
+    en: "{team} leads with {value} TotW awards"
+  },
+  "highlight.totw_leader.body": {
+    vi: "{manager} đang giữ nhiều danh hiệu đội hình tuần nhất mùa này.",
+    en: "{manager} holds more Team of the Week awards than anyone this season."
+  },
+  "highlight.bench_regret.eyebrow": { vi: "Tiếc nuối", en: "Bench regret" },
+  "highlight.bench_regret.title": {
+    vi: "{team} bỏ phí {value} điểm trên băng ghế",
+    en: "{team} left {value} points on the bench"
+  },
+  "highlight.bench_regret.body": {
+    vi: "Số điểm này thuộc về những cầu thủ không được xếp đá chính ở GW{gameweek}.",
+    en: "Those points belong to players who were not in the eleven in GW{gameweek}."
+  },
+  "highlight.provisional": { vi: "Tạm tính", en: "Provisional" },
   "match.chip": { vi: "Chip", en: "Chip" },
   "match.benchPoints": { vi: "Điểm băng ghế", en: "Bench points" },
   "metric.managers": { vi: "Quản lý", en: "Managers" },

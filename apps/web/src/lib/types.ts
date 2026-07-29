@@ -205,15 +205,26 @@ export interface CupData {
   thirdPlace: CupMatch | null;
 }
 
+export type HighlightKind =
+  | "team_of_the_week"
+  | "season_high"
+  | "captain_haul"
+  | "totw_leader"
+  | "bench_regret";
+
 export interface Highlight {
   id: string;
   category: "totw" | "record" | "comeback" | "notice";
-  eyebrow: string;
-  title: string;
-  description: string;
-  value?: string;
-  managerName?: string;
-  gameweek: number;
+  /**
+   * The fact, not the sentence. The API must not decide which language the
+   * reader sees, so the page writes the prose from this and the numbers.
+   */
+  kind: HighlightKind;
+  managerName: string;
+  teamName: string;
+  value: number;
+  gameweek: number | null;
+  isProvisional: boolean;
 }
 
 export interface Manager {

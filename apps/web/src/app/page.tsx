@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { StandingsTable } from "@/components/standings-table";
 import { DataBadge, EmptyState, Pill, SectionHeader } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
+import { highlightCopy } from "@/lib/highlight-text";
 import { formatDateTime, gameweekStateLabel } from "@/lib/format";
 import { createTranslator } from "@/lib/i18n";
 import { getLocale } from "@/lib/locale";
@@ -163,19 +164,26 @@ export default async function DashboardPage() {
         />
         {data.recentHighlights.length > 0 ? (
           <div className="highlight-preview-grid">
-            {data.recentHighlights.map((highlight, index) => (
-              <article className="highlight-preview" data-featured={index === 0} key={highlight.id}>
-                <span className="highlight-preview__number">
-                  {String(index + 1).padStart(2, "0")}
-                </span>
-                <div>
-                  <p className="eyebrow">{highlight.eyebrow}</p>
-                  <h3>{highlight.title}</h3>
-                  <p>{highlight.description}</p>
-                </div>
-                {highlight.value && <strong>{highlight.value}</strong>}
-              </article>
-            ))}
+            {data.recentHighlights.map((highlight, index) => {
+              const copy = highlightCopy(highlight, t);
+              return (
+                <article
+                  className="highlight-preview"
+                  data-featured={index === 0}
+                  key={highlight.id}
+                >
+                  <span className="highlight-preview__number">
+                    {String(index + 1).padStart(2, "0")}
+                  </span>
+                  <div>
+                    <p className="eyebrow">{copy.eyebrow}</p>
+                    <h3>{copy.title}</h3>
+                    <p>{copy.body}</p>
+                  </div>
+                  <strong>{copy.value}</strong>
+                </article>
+              );
+            })}
           </div>
         ) : (
           <EmptyState

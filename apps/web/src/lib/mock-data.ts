@@ -456,40 +456,42 @@ export const highlights: Highlight[] = [
   {
     id: "hl-01",
     category: "totw",
-    eyebrow: "Đội hình tuần · GW12",
-    title: "Đỗ Thành Công bứt phá",
-    description: "Ba cầu thủ hai chữ số giúp Cầu Giấy Athletic vượt trung bình division 22 điểm.",
-    value: "94 điểm",
+    kind: "team_of_the_week",
     managerName: "Đỗ Thành Công",
-    gameweek: 12
+    teamName: "Cầu Giấy Athletic",
+    value: 94,
+    gameweek: 12,
+    isProvisional: false
   },
   {
     id: "hl-02",
-    category: "comeback",
-    eyebrow: "Cuộc lội ngược dòng",
-    title: "Từ 18% lên 72%",
-    description: "Red River XI đảo chiều cặp H2H sau cú đúp của captain trong trận đấu muộn.",
-    value: "+19 điểm",
+    category: "record",
+    kind: "season_high",
     managerName: "Nguyễn Hoàng Nam",
-    gameweek: 11
+    teamName: "Red River XI",
+    value: 98,
+    gameweek: 11,
+    isProvisional: false
   },
   {
     id: "hl-03",
-    category: "record",
-    eyebrow: "Kỷ lục mùa giải",
-    title: "Khoảng cách sít sao nhất",
-    description: "Blue Lanterns thắng Golden Boots đúng một điểm sau khi autosub hoàn tất.",
-    value: "68–67",
+    category: "comeback",
+    kind: "captain_haul",
     managerName: "Vũ Khánh Linh",
-    gameweek: 9
+    teamName: "Blue Lanterns",
+    value: 36,
+    gameweek: 12,
+    isProvisional: true
   },
   {
     id: "hl-04",
     category: "notice",
-    eyebrow: "Thông báo điều hành",
-    title: "Chốt điểm GW12",
-    description: "Toàn bộ kết quả đã được finalize. Một điều chỉnh có audit log được áp dụng.",
-    gameweek: 12
+    kind: "bench_regret",
+    managerName: "Hoàng Hải Yến",
+    teamName: "Golden Boots",
+    value: 27,
+    gameweek: 12,
+    isProvisional: false
   }
 ];
 
