@@ -41,10 +41,18 @@ export function proxy(request: NextRequest): NextResponse {
     // Only a navigation may raise the browser's sign-in dialog. A background
     // request that answered with WWW-Authenticate would pop it over whatever
     // public page the visitor is actually reading.
+    //
+    // Sec-Purpose and Sec-Fetch-* come from the browser and survive the edge,
+    // which the Next router headers do not: those are stripped from external
+    // requests, so they are checked last rather than relied on.
+    const headers = request.headers;
     const isBackgroundRequest =
-      request.headers.get("next-router-prefetch") !== null ||
-      request.headers.get("rsc") !== null ||
-      request.headers.get("sec-fetch-mode") === "cors";
+      headers.get("sec-purpose")?.includes("prefetch") === true ||
+      headers.get("purpose") === "prefetch" ||
+      headers.get("sec-fetch-mode") === "cors" ||
+      headers.get("sec-fetch-dest") === "empty" ||
+      headers.get("next-router-prefetch") !== null ||
+      headers.get("rsc") !== null;
 
     return new NextResponse("Authentication required.", {
       status: 401,
