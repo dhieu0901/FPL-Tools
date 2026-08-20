@@ -25,6 +25,7 @@ vmf-import-managers = "vmf_api.cli.import_managers:main"
 vmf-replace-roster = "vmf_api.cli.replace_roster:main"
 vmf-generate-h2h-schedule = "vmf_api.cli.generate_h2h_schedule:main"
 vmf-swap-divisions = "vmf_api.cli.swap_divisions:main"
+vmf-sync-team-names = "vmf_api.cli.sync_team_names:main"
 
 [project.optional-dependencies]
 dev = [
