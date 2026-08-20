@@ -26,28 +26,39 @@ function fullName(code: string): string {
 }
 
 /**
- * What a manager played this Gameweek and what they have left.
+ * What a manager has spent, and what they still hold.
  *
  * Chips are written the way managers say them — "BB1" is a Bench Boost played
- * in GW1 — so a season of chip history fits on one line. An unplayed chip has
- * no Gameweek yet, so it carries the letters alone.
+ * in GW1 — so the Gameweek a chip went on is part of its name and no separate
+ * line is needed to say what was played this week. An unplayed chip has no
+ * Gameweek yet, so it carries the letters alone.
  *
  * Both lines always appear, and both say "None" when empty: an absent line
- * reads as missing data, where "None" is an answer. Playing no chip is the
- * normal case and worth stating.
+ * reads as missing data, where "None" is an answer. Holding every chip and
+ * having spent none are both normal, and both worth stating.
  */
 export function ChipLine({ chips }: { chips: ChipStatus }) {
-  const played = chips.playedThisGameweek;
+  const playedNow = chips.playedThisGameweek?.short ?? null;
 
   return (
     <dl className="chip-line">
       <div className="chip-line__row">
-        <dt>{t("chips.thisGameweek")}</dt>
+        <dt>{t("chips.used")}</dt>
         <dd>
-          {played ? (
-            <span className="chip-tag" data-played="true" title={fullName(played.chip)}>
-              {played.short}
-            </span>
+          {chips.used.length > 0 ? (
+            chips.used.map((play) => (
+              <span
+                className="chip-tag"
+                // The chip played in the Gameweek being viewed is the reason
+                // a score looks unusual, so it keeps the colour.
+                data-played={play.short === playedNow}
+                data-spent={play.short !== playedNow}
+                title={fullName(play.chip)}
+                key={play.short}
+              >
+                {play.short}
+              </span>
+            ))
           ) : (
             <span className="chip-none">{t("chips.none")}</span>
           )}
@@ -67,23 +78,6 @@ export function ChipLine({ chips }: { chips: ChipStatus }) {
           )}
         </dd>
       </div>
-      {chips.used.length > 0 && (
-        <div className="chip-line__row">
-          <dt>{t("chips.usedThisHalf")}</dt>
-          <dd>
-            {chips.used.map((play) => (
-              <span
-                className="chip-tag"
-                data-spent="true"
-                title={fullName(play.chip)}
-                key={play.short}
-              >
-                {play.short}
-              </span>
-            ))}
-          </dd>
-        </div>
-      )}
     </dl>
   );
 }
