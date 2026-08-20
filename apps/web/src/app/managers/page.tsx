@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { fplSeasonUrl } from "@/components/fpl-link";
 import { Avatar, DataBadge, PageHeader, Pill, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
@@ -65,7 +66,17 @@ export default async function ManagersPage({
                 <span className="manager-card__division">
                   {t("managers.division", { division: manager.division })}
                 </span>
-                <h2>{manager.teamName}</h2>
+                <h2>
+                  <a
+                    className="fpl-link"
+                    href={fplSeasonUrl(manager.fplEntryId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={t("fpl.openSeason", { team: manager.teamName })}
+                  >
+                    {manager.teamName}
+                  </a>
+                </h2>
                 <p>{manager.name}</p>
               </div>
               <Pill tone={statusTone[manager.status]}>

@@ -6,6 +6,11 @@ export function fplEntryUrl(entryId: number, gameweek: number): string {
   return `https://fantasy.premierleague.com/entry/${entryId}/event/${gameweek}`;
 }
 
+/** Their season on FPL: every Gameweek, their chips and their history. */
+export function fplSeasonUrl(entryId: number): string {
+  return `https://fantasy.premierleague.com/entry/${entryId}/history`;
+}
+
 /**
  * A team name that opens the same Gameweek on FPL.
  *

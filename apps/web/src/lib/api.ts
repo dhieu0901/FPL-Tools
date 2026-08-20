@@ -53,6 +53,7 @@ interface ManagerResponse {
 interface ClassicStandingResponse {
   rank: number;
   manager_id: number;
+  fpl_entry_id: number;
   manager_name: string;
   team_name: string;
   division: Division;
@@ -424,6 +425,7 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
 function toManager(raw: ManagerResponse): Manager {
   return {
     id: String(raw.id),
+    fplEntryId: raw.fpl_entry_id,
     name: raw.manager_name,
     teamName: raw.team_name,
     division: raw.division,
@@ -443,6 +445,7 @@ function toStanding(raw: ClassicStandingResponse, period: ClassicPeriod): Standi
     rank: raw.rank,
     previousRank: null,
     managerId: String(raw.manager_id),
+    fplEntryId: raw.fpl_entry_id,
     managerName: raw.manager_name,
     teamName: raw.team_name,
     division: raw.division,

@@ -206,6 +206,7 @@ const messages = {
   "fixtures.loadingSquads": "Loading squads…",
   "fixtures.squadsUnavailable": "Squads could not be loaded. Try again shortly.",
   "fpl.openOnFpl": "Open {team} on Fantasy Premier League",
+  "fpl.openSeason": "Open {team}'s season on Fantasy Premier League",
 
   "match.title": "H2H match detail",
   "match.back": "Back to fixtures",

@@ -14,6 +14,7 @@ from vmf_api.models.scoring import ManagerGameweekScore
 @dataclass(frozen=True, slots=True)
 class ClassicAggregate:
     manager_id: int
+    fpl_entry_id: int
     manager_name: str
     team_name: str
     division: Division
@@ -86,6 +87,7 @@ class ClassicRepository:
         statement = (
             select(
                 Manager.id,
+                Manager.fpl_entry_id,
                 Manager.manager_name,
                 Manager.team_name,
                 Manager.division,
@@ -107,17 +109,18 @@ class ClassicRepository:
         return [
             ClassicAggregate(
                 manager_id=row[0],
-                manager_name=row[1],
-                team_name=row[2],
-                division=row[3],
-                gameweeks_scored=row[4],
-                season_points=row[5],
-                full_season_points=row[6],
-                totw_count=row[7],
-                highest_gameweek_score=row[8],
-                captain_points=row[9],
-                goals=row[10],
-                cards=row[11],
+                fpl_entry_id=row[1],
+                manager_name=row[2],
+                team_name=row[3],
+                division=row[4],
+                gameweeks_scored=row[5],
+                season_points=row[6],
+                full_season_points=row[7],
+                totw_count=row[8],
+                highest_gameweek_score=row[9],
+                captain_points=row[10],
+                goals=row[11],
+                cards=row[12],
             )
             for row in rows
         ]

@@ -24,6 +24,7 @@ vmf-bootstrap-season = "vmf_api.cli.bootstrap_season:main"
 vmf-import-managers = "vmf_api.cli.import_managers:main"
 vmf-replace-roster = "vmf_api.cli.replace_roster:main"
 vmf-generate-h2h-schedule = "vmf_api.cli.generate_h2h_schedule:main"
+vmf-swap-divisions = "vmf_api.cli.swap_divisions:main"
 
 [project.optional-dependencies]
 dev = [

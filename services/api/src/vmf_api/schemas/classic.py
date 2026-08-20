@@ -8,6 +8,8 @@ from vmf_api.models.enums import Division
 class ClassicStandingResponse(BaseModel):
     rank: int
     manager_id: int
+    #: FPL's own id, so a team name can link through to their season there.
+    fpl_entry_id: int
     manager_name: str
     team_name: str
     division: Division

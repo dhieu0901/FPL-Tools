@@ -38,6 +38,8 @@ export interface StandingEntry {
   rank: number;
   previousRank: number | null;
   managerId: string;
+  /** FPL's own id, so a team name links through to their season there. */
+  fplEntryId: number;
   managerName: string;
   teamName: string;
   division: Division;
@@ -280,6 +282,8 @@ export interface Highlight {
 
 export interface Manager {
   id: string;
+  /** FPL's own id, used to link through to their season on FPL. */
+  fplEntryId: number;
   name: string;
   teamName: string;
   division: Division;

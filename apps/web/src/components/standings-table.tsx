@@ -4,6 +4,7 @@ import Link from "next/link";
 import { formatNumber, rankDelta } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { StandingEntry } from "@/lib/types";
+import { fplSeasonUrl } from "./fpl-link";
 import { Avatar, FormDots, Pill } from "./ui";
 
 function QualificationMarker({ value }: { value: StandingEntry["qualification"] }) {
@@ -69,7 +70,17 @@ export function StandingsTable({
                   <Link href={`/managers#${entry.managerId}`} className="team-cell">
                     <Avatar name={entry.managerName} division={entry.division} size="small" />
                     <span>
-                      <strong>{entry.teamName}</strong>
+                      <strong>
+                        <a
+                          className="fpl-link"
+                          href={fplSeasonUrl(entry.fplEntryId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={t("fpl.openSeason", { team: entry.teamName })}
+                        >
+                          {entry.teamName}
+                        </a>
+                      </strong>
                       <small>{entry.managerName}</small>
                     </span>
                     {entry.violations !== null && entry.violations > 0 && (

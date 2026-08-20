@@ -7,6 +7,7 @@ function table(ranks: number[]): StandingEntry[] {
     rank,
     previousRank: null,
     managerId: String(index + 1),
+    fplEntryId: 1000 + index,
     managerName: `Manager ${index + 1}`,
     teamName: `Team ${index + 1}`,
     division: "HIGH",

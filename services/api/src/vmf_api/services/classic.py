@@ -53,6 +53,7 @@ class ClassicService:
             ClassicStandingResponse(
                 rank=item.rank,
                 manager_id=item.value.manager_id,
+                fpl_entry_id=by_id[item.value.manager_id].fpl_entry_id,
                 manager_name=by_id[item.value.manager_id].manager_name,
                 team_name=by_id[item.value.manager_id].team_name,
                 division=by_id[item.value.manager_id].division,
