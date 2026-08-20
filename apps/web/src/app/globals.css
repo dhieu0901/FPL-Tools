@@ -2604,6 +2604,27 @@ h1 {
   flex-shrink: 0;
 }
 
+/* Sits where the button was, so choosing a team does not shift the row.
+   Says what just happened, because a select that applies itself gives no
+   other sign that it worked. */
+.team-picker__status {
+  display: inline-flex;
+  min-width: 72px;
+  align-items: center;
+  flex-shrink: 0;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.team-picker[data-pending] .team-picker__status {
+  color: var(--lime);
+}
+
+.team-picker[data-pending] select {
+  opacity: 0.65;
+}
+
 .my-standing {
   display: flex;
   margin: 16px 0 0;

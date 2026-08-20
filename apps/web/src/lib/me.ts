@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { isManagerId, MANAGER_COOKIE, MANAGER_COOKIE_MAX_AGE } from "./me-cookie";
 
 /**
  * Which of the 46 managers is reading.
@@ -10,13 +11,10 @@ import { cookies } from "next/headers";
  * nothing, so there is nothing to protect.
  */
 
-export const MANAGER_COOKIE = "vmf_manager";
-
-/** One year, so a manager chooses once a season. */
-export const MANAGER_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
+export { MANAGER_COOKIE, MANAGER_COOKIE_MAX_AGE };
 
 export async function getMyManagerId(): Promise<string | null> {
   const store = await cookies();
   const value = store.get(MANAGER_COOKIE)?.value?.trim();
-  return value && /^\d+$/.test(value) ? value : null;
+  return value && isManagerId(value) ? value : null;
 }

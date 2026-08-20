@@ -88,6 +88,9 @@ const messages = {
   "me.placeholder": "Not set",
   "me.save": "Save",
   "me.change": "Change",
+  // Shown in place of the button once the choice applies on selection.
+  "me.applying": "Updating…",
+  "me.applied": "Saved",
   // Counts to the deadline, when squads lock. The first kick-off is later
   // still - GW1 locks at 00:30 and starts at 02:00 league time - so this
   // number runs out before a ball is kicked, by design.

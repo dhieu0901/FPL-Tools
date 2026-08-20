@@ -7,8 +7,14 @@ import { MANAGER_COOKIE, MANAGER_COOKIE_MAX_AGE } from "@/lib/me";
 /**
  * Remember, or forget, which manager is reading.
  *
- * A server action keeps this working without client JavaScript and lets every
- * page stay server-rendered, which matters on a phone on stadium wifi.
+ * This is the fallback path, taken when the form is submitted before the
+ * picker has hydrated. Once it has, the picker writes the cookie itself and
+ * refreshes the router, which is far quicker.
+ *
+ * The revalidate below is heavier than the change deserves: it throws away
+ * the cached upstream responses for every page under the layout, so the next
+ * render rebuilds the dashboard from six API calls. That is the price of a
+ * full page POST with no client to update, and it is only paid on this path.
  */
 export async function setMyManager(formData: FormData): Promise<void> {
   const requested = String(formData.get("manager_id") ?? "").trim();
