@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import asyncio
 from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from vmf_api.cli.runner import run as run_async
 from vmf_api.core.config import get_settings
 from vmf_api.db.base import Base
 import vmf_api.models  # noqa: F401  # registers ORM metadata
@@ -54,7 +54,10 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    asyncio.run(run_async_migrations())
+    # The shared runner picks an event loop psycopg can use. Migrations are run
+    # from CI on Linux but also by hand from a maintainer's machine, and on
+    # Windows the default loop cannot drive an async driver at all.
+    run_async(run_async_migrations())
 
 
 if context.is_offline_mode():
