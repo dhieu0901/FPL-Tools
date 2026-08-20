@@ -10,7 +10,7 @@ router = APIRouter(prefix="/highlights", tags=["highlights"])
 
 
 class HighlightResponse(BaseModel):
-    """A fact, not a sentence: the interface writes the prose in its own language."""
+    """A fact, not a sentence. The interface writes the prose around it."""
 
     kind: HighlightKind
     gameweek_number: int | None
@@ -19,6 +19,10 @@ class HighlightResponse(BaseModel):
     team_name: str
     value: int
     is_provisional: bool
+    #: The player a story is about, where there is one.
+    subject: str | None = None
+    #: A second value the sentence needs: a squad size, or which chip.
+    detail: str | None = None
 
 
 @router.get("", response_model=list[HighlightResponse])
@@ -37,6 +41,8 @@ async def highlights(
             team_name=row.team_name,
             value=row.value,
             is_provisional=row.is_provisional,
+            subject=row.subject,
+            detail=row.detail,
         )
         for row in rows
     ]
