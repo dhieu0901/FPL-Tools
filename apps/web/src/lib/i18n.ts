@@ -88,6 +88,9 @@ const messages = {
   "me.placeholder": "Not set",
   "me.save": "Save",
   "me.change": "Change",
+  // Counts to the deadline, when squads lock. The first kick-off is later
+  // still - GW1 locks at 00:30 and starts at 02:00 league time - so this
+  // number runs out before a ball is kicked, by design.
   "countdown.deadline": "Gameweek starts in",
   "countdown.locked": "Under way",
   "countdown.lockedDetail": "Scores are moving",
