@@ -47,13 +47,34 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: "/favicon.png", sizes: "32x32", type: "image/png" },
-      { url: "/vmf-192.png", sizes: "192x192", type: "image/png" }
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" }
     ],
     apple: "/apple-icon.png"
+  },
+  // iOS ignores the manifest and reads these instead, and most of this league
+  // is on a phone.
+  appleWebApp: {
+    capable: true,
+    title: "VMF League",
+    // Opaque, so an installed app starts below the status bar rather than
+    // underneath it. Pairs with the viewport note above.
+    statusBarStyle: "black"
   }
 };
 
 export const viewport: Viewport = {
+  // Stated rather than inherited: the whole league reads this on a phone, and
+  // a page that renders at desktop width and then scales down is unreadable.
+  width: "device-width",
+  initialScale: 1,
+  // Never block pinch-zoom. Scoreboards are small type, and some readers need
+  // to magnify them.
+  maximumScale: 5,
+  userScalable: true,
+  // Deliberately not "cover": that draws under the notch, and nothing in the
+  // stylesheet pads for safe-area insets yet, so the header would end up
+  // beneath the status bar.
   colorScheme: "dark",
   themeColor: "#0a1020"
 };

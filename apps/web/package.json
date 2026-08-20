@@ -33,6 +33,15 @@
   "engines": {
     "node": ">=20.9.0"
   },
+  "browserslist": [
+    "chrome >= 121",
+    "edge >= 121",
+    "firefox >= 121",
+    "safari >= 16.4",
+    "ios_saf >= 16.4",
+    "samsung >= 25",
+    "not dead"
+  ],
   "overrides": {
     "postcss": "8.5.24",
     "sharp": "0.35.3"
