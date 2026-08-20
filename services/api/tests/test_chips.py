@@ -6,10 +6,12 @@ import pytest
 
 from vmf_api.domain.chips import (
     CHIPS_PER_HALF,
+    abbreviation,
     chip_status,
     display_name,
     half_range,
     season_half,
+    short_form,
 )
 
 
@@ -40,8 +42,9 @@ def test_a_manager_who_has_played_nothing_holds_everything() -> None:
 def test_a_chip_played_this_gameweek_is_reported_and_counted_as_spent() -> None:
     status = chip_status(gameweek_number=6, used_by_gameweek={6: "wildcard"})
 
-    assert status.played_this_gameweek == "wildcard"
-    assert status.used == ("wildcard",)
+    assert status.played_this_gameweek is not None
+    assert status.played_this_gameweek.short == "WC6"
+    assert [play.short for play in status.used] == ["WC6"]
     assert "wildcard" not in status.remaining
     assert len(status.remaining) == 3
 
@@ -50,7 +53,7 @@ def test_a_chip_played_earlier_stays_spent() -> None:
     status = chip_status(gameweek_number=12, used_by_gameweek={3: "bboost", 8: "3xc"})
 
     assert status.played_this_gameweek is None
-    assert status.used == ("bboost", "3xc")
+    assert [play.short for play in status.used] == ["BB3", "TC8"]
     assert status.remaining == ("wildcard", "freehit")
 
 
@@ -59,7 +62,7 @@ def test_a_manager_can_run_out() -> None:
     status = chip_status(gameweek_number=10, used_by_gameweek=used)
 
     assert status.remaining == ()
-    assert len(status.used) == 4
+    assert [play.short for play in status.used] == ["WC2", "FH4", "BB6", "TC8"]
 
 
 def test_the_second_half_starts_from_a_full_set() -> None:
@@ -68,7 +71,7 @@ def test_the_second_half_starts_from_a_full_set() -> None:
     used = {2: "wildcard", 6: "bboost", 21: "freehit"}
     status = chip_status(gameweek_number=24, used_by_gameweek=used)
 
-    assert status.used == ("freehit",)
+    assert [play.short for play in status.used] == ["FH21"]
     assert status.remaining == ("wildcard", "bboost", "3xc")
 
 
@@ -84,7 +87,8 @@ def test_a_later_gameweek_does_not_leak_backwards() -> None:
 def test_the_same_chip_reported_twice_is_still_one_chip() -> None:
     status = chip_status(gameweek_number=9, used_by_gameweek={4: "wildcard", 7: "wildcard"})
 
-    assert status.used == ("wildcard",)
+    # The earliest Gameweek is the one it was played in.
+    assert [play.short for play in status.used] == ["WC4"]
     assert len(status.remaining) == 3
 
 
@@ -92,6 +96,22 @@ def test_remaining_keeps_the_order_fpl_issues_them() -> None:
     status = chip_status(gameweek_number=9, used_by_gameweek={4: "bboost"})
 
     assert status.remaining == ("wildcard", "freehit", "3xc")
+
+
+def test_used_is_ordered_by_when_each_chip_was_played() -> None:
+    status = chip_status(gameweek_number=12, used_by_gameweek={9: "3xc", 2: "bboost"})
+
+    assert [play.short for play in status.used] == ["BB2", "TC9"]
+
+
+def test_short_forms_are_the_ones_managers_write() -> None:
+    assert short_form("bboost", 1) == "BB1"
+    assert short_form("freehit", 1) == "FH1"
+    assert short_form("wildcard", 1) == "WC1"
+    assert short_form("3xc", 1) == "TC1"
+    assert short_form("bboost", 27) == "BB27"
+    # An unknown chip still produces something readable.
+    assert abbreviation("assistant") == "ASSISTANT"
 
 
 def test_display_names() -> None:

@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Query, status
 
 from vmf_api.api.deps import AdminActorDep, SessionDep, SettingsDep
+from vmf_api.domain.chips import ChipPlay
 from vmf_api.domain.matchup import MatchupComparison, PlayerLine, SquadEntry
 from vmf_api.repositories.h2h import H2HRepository
 from vmf_api.schemas.h2h import (
@@ -11,6 +12,7 @@ from vmf_api.schemas.h2h import (
     H2HScheduleGenerateRequest,
     H2HScheduleResponse,
     H2HStandingResponse,
+    MatchupChipPlay,
     MatchupChips,
     MatchupPlayerLine,
     MatchupSide,
@@ -84,10 +86,8 @@ def _side(
         captain_points=side.captain_points,
         goals_counted=side.goals_counted,
         chips=MatchupChips(
-            # Names are resolved in the interface, not here: the API reports
-            # the chip FPL played, and the page decides how to write it.
-            played_this_gameweek=side.chips.played_this_gameweek,
-            used=list(side.chips.used),
+            played_this_gameweek=_chip_play(side.chips.played_this_gameweek),
+            used=[_chip_play(play) for play in side.chips.used if play is not None],
             remaining=list(side.chips.remaining),
         ),
         is_totw=side.is_totw,
@@ -98,6 +98,14 @@ def _side(
         ),
         squad=[_slot(entry, names) for entry in squad],
     )
+
+
+def _chip_play(play: ChipPlay | None) -> MatchupChipPlay | None:
+    """The API reports the short form too, so every reader writes it alike."""
+
+    if play is None:
+        return None
+    return MatchupChipPlay(chip=play.chip, gameweek=play.gameweek, short=play.short)
 
 
 def _slot(entry: SquadEntry, names: dict[int, str]) -> SquadSlot:

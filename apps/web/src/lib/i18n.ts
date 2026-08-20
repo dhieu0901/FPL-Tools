@@ -139,6 +139,7 @@ const messages = {
   "match.chip": "Chip",
   "chips.thisGameweek": "Chip this Gameweek",
   "chips.remaining": "Chips remaining",
+  "chips.usedThisHalf": "Already used",
   "chips.none": "None",
   "match.benchPoints": "Bench points",
   "metric.managers": "Managers",

@@ -87,12 +87,23 @@ class SquadSlot(BaseModel):
     is_vice_captain: bool
 
 
+class MatchupChipPlay(BaseModel):
+    """A chip and the Gameweek it was played in."""
+
+    chip: str
+    gameweek: int
+    #: How managers write it: "BB1" is a Bench Boost played in GW1.
+    short: str
+
+
 class MatchupChips(BaseModel):
     """What a manager has spent and what they still hold, this half."""
 
     #: The chip played in the Gameweek being viewed, or null for none.
-    played_this_gameweek: str | None
-    used: list[str]
+    played_this_gameweek: MatchupChipPlay | None
+    #: Every chip spent this half, oldest first.
+    used: list[MatchupChipPlay]
+    #: Codes only: an unplayed chip has no Gameweek yet.
     remaining: list[str]
 
 

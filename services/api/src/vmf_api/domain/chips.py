@@ -22,6 +22,16 @@ CHIP_NAMES: dict[str, str] = {
     "3xc": "Triple Captain",
 }
 
+#: The short forms managers actually say. A chip is written with the Gameweek
+#: it was played in — "BB1" is a Bench Boost in GW1 — so a whole season of
+#: chip history fits on one line.
+CHIP_ABBREVIATIONS: dict[str, str] = {
+    "wildcard": "WC",
+    "freehit": "FH",
+    "bboost": "BB",
+    "3xc": "TC",
+}
+
 #: One of each per half of the season.
 CHIPS_PER_HALF: tuple[str, ...] = ("wildcard", "freehit", "bboost", "3xc")
 
@@ -53,14 +63,39 @@ def display_name(code: str | None) -> str | None:
     return CHIP_NAMES.get(code, code)
 
 
+def abbreviation(code: str) -> str:
+    """WC, FH, BB, TC — or the raw code for a chip we do not know."""
+
+    return CHIP_ABBREVIATIONS.get(code, code.upper())
+
+
+def short_form(code: str, gameweek_number: int) -> str:
+    """A played chip as managers write it: "BB1" for a Bench Boost in GW1."""
+
+    return f"{abbreviation(code)}{gameweek_number}"
+
+
+@dataclass(frozen=True, slots=True)
+class ChipPlay:
+    """A chip, and the Gameweek it was played in."""
+
+    chip: str
+    gameweek: int
+
+    @property
+    def short(self) -> str:
+        return short_form(self.chip, self.gameweek)
+
+
 @dataclass(frozen=True, slots=True)
 class ChipStatus:
     """What a manager has spent and what they still hold, this half."""
 
     #: The chip played in the Gameweek being viewed, if any.
-    played_this_gameweek: str | None
-    #: Every chip already spent in this half, in the order FPL issues them.
-    used: tuple[str, ...]
+    played_this_gameweek: ChipPlay | None
+    #: Every chip already spent in this half, oldest first.
+    used: tuple[ChipPlay, ...]
+    #: Codes only: a chip that has not been played has no Gameweek yet.
     remaining: tuple[str, ...]
 
 
@@ -78,14 +113,20 @@ def chip_status(
 
     half = season_half(gameweek_number)
     window = half_range(half)
-    spent = {
-        chip
-        for number, chip in used_by_gameweek.items()
-        if chip and number in window and number <= gameweek_number
-    }
+    plays: dict[str, int] = {}
+    for number, chip in sorted(used_by_gameweek.items()):
+        if not chip or number not in window or number > gameweek_number:
+            continue
+        # FPL reporting the same chip twice in a half is still one chip spent,
+        # and the earliest Gameweek is the one it was played in.
+        plays.setdefault(chip, number)
+
+    this_gameweek = used_by_gameweek.get(gameweek_number) or None
 
     return ChipStatus(
-        played_this_gameweek=used_by_gameweek.get(gameweek_number) or None,
-        used=tuple(chip for chip in CHIPS_PER_HALF if chip in spent),
-        remaining=tuple(chip for chip in CHIPS_PER_HALF if chip not in spent),
+        played_this_gameweek=(ChipPlay(this_gameweek, gameweek_number) if this_gameweek else None),
+        used=tuple(
+            ChipPlay(chip, number) for chip, number in sorted(plays.items(), key=lambda p: p[1])
+        ),
+        remaining=tuple(chip for chip in CHIPS_PER_HALF if chip not in plays),
     )

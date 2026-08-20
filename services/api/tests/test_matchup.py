@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import (
 )
 
 import vmf_api.models  # noqa: F401  (registers every table on the metadata)
+from vmf_api.api.routes.h2h import _match_detail
 from vmf_api.core.errors import NotFoundError
 from vmf_api.db.base import Base
 from vmf_api.domain.matchup import (
@@ -292,6 +293,7 @@ async def _seed(session: AsyncSession) -> H2HMatch:
                 net_points=24,
                 captain_points=18,
                 bench_points=3,
+                chip_used="bboost",
                 score_status=ScoreState.LIVE,
             ),
             ManagerGameweekScore(
@@ -330,6 +332,56 @@ async def test_the_matchup_view_separates_shared_players_from_differentials() ->
             differentials = [line.element_id for line in view.comparison.differentials]
             assert sorted(differentials) == [2, 3]
             assert view.player_names[2] == "Player 2"
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_each_side_reports_the_chip_it_played_and_the_ones_it_holds() -> None:
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            match = await _seed(session)
+
+            view = await MatchupService(session).h2h_match(match.id)
+
+            played = view.home.chips.played_this_gameweek
+            assert played is not None
+            assert played.short == "BB1", "a Bench Boost in GW1 reads as BB1"
+            assert "bboost" not in view.home.chips.remaining
+            assert set(view.home.chips.remaining) == {"wildcard", "freehit", "3xc"}
+
+            # The away side played nothing, which is a state worth reporting
+            # rather than an absence of data.
+            assert view.away.chips.played_this_gameweek is None
+            assert view.away.chips.used == ()
+            assert len(view.away.chips.remaining) == 4
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_the_api_writes_the_short_form_for_every_reader() -> None:
+    """The route reports "BB1" itself, so no client has to spell it out."""
+
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            match = await _seed(session)
+            view = await MatchupService(session).h2h_match(match.id)
+
+            body = _match_detail(view).model_dump()
+
+            assert body["home"]["chips"]["played_this_gameweek"]["short"] == "BB1"
+            assert [play["short"] for play in body["home"]["chips"]["used"]] == ["BB1"]
+            assert body["away"]["chips"]["played_this_gameweek"] is None
+            assert body["away"]["chips"]["used"] == []
+            assert body["away"]["chips"]["remaining"] == [
+                "wildcard",
+                "freehit",
+                "bboost",
+                "3xc",
+            ]
     finally:
         await engine.dispose()
 

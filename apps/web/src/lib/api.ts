@@ -157,9 +157,15 @@ interface CupQualificationResponse {
   low: CupQualificationEntryResponse[];
 }
 
+interface MatchupChipPlayResponse {
+  chip: string;
+  gameweek: number;
+  short: string;
+}
+
 interface MatchupChipsResponse {
-  played_this_gameweek: string | null;
-  used: string[];
+  played_this_gameweek: MatchupChipPlayResponse | null;
+  used: MatchupChipPlayResponse[];
   remaining: string[];
 }
 

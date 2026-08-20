@@ -998,6 +998,12 @@ h1 {
 
 /* A chip played this week is the reason a score looks unusual, so it is the
    one that carries colour. */
+/* Already spent, and no longer available: readable but stepped back. */
+.chip-tag[data-spent="true"] {
+  color: var(--ink-3);
+  border-style: dashed;
+}
+
 .chip-tag[data-played="true"] {
   color: var(--bg, #080d18);
   background: var(--lime);

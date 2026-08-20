@@ -154,11 +154,21 @@ export interface SideRemaining {
   fixtures: number;
 }
 
-/** FPL's chip codes: "wildcard", "freehit", "bboost", "3xc". */
+/** A chip and the Gameweek it was played in. */
+export interface ChipPlay {
+  /** FPL's code: "wildcard", "freehit", "bboost", "3xc". */
+  chip: string;
+  gameweek: number;
+  /** How managers write it: "BB1" is a Bench Boost played in GW1. */
+  short: string;
+}
+
 export interface ChipStatus {
   /** The chip played in the Gameweek being viewed, or null for none. */
-  playedThisGameweek: string | null;
-  used: string[];
+  playedThisGameweek: ChipPlay | null;
+  /** Every chip spent this half of the season, oldest first. */
+  used: ChipPlay[];
+  /** Codes only: an unplayed chip has no Gameweek yet. */
   remaining: string[];
 }
 
