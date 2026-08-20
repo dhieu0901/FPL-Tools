@@ -374,7 +374,7 @@ async def _run(
                 raise
     finally:
         if client is not None:
-            await client.aclose()
+            await client.close()
         await engine.dispose()
 
 

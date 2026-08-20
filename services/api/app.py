@@ -1,9 +1,10 @@
-"""Vercel-recognized FastAPI entrypoint.
+"""Vercel entrypoint, discovered at the project root.
 
-Vercel installs this project from ``pyproject.toml``, including the ``src``
-package, then discovers the exported application at this conventional path.
+Both this file and ``api/index.py`` export the same object from
+``vmf_api.asgi``. Which one the platform picks is its business; what matters
+is that it cannot pick a different application from the one under test.
 """
 
-from vmf_api.main import app
+from vmf_api.asgi import app
 
 __all__ = ["app"]
