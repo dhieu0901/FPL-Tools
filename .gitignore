@@ -47,3 +47,4 @@ tmp/
 
 # League roster spreadsheets: real names and FPL entry ids, kept out of git
 VMF-*.xlsx
+roster*.csv
