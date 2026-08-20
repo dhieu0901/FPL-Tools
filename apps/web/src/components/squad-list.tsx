@@ -49,6 +49,7 @@ function SquadRow({ slot }: { slot: SquadSlot }) {
       <span className="squad-row__slot">{slotLabel(slot)}</span>
       <span className="squad-row__name">
         {slot.name}
+        {slot.club && <span className="squad-row__club">({slot.club})</span>}
         {badge && <em className="squad-row__armband">{badge}</em>}
         {slot.multiplier > 1 && <em className="squad-row__multiplier">×{slot.multiplier}</em>}
         {slot.fixturesTotal > 1 && (

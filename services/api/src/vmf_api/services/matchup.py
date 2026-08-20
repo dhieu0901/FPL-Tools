@@ -33,6 +33,7 @@ from vmf_api.models.ingestion import (
     FplFixture,
     FplPlayer,
     FplPlayerFixtureStat,
+    FplTeam,
     ManagerPickSnapshot,
 )
 from vmf_api.models.manager import Manager
@@ -69,6 +70,8 @@ class MatchupView:
     away: SideView
     comparison: MatchupComparison
     player_names: dict[int, str]
+    #: FPL's own three-letter club code, keyed by element id.
+    player_clubs: dict[int, str]
     home_squad: tuple[SquadEntry, ...] = ()
     away_squad: tuple[SquadEntry, ...] = ()
 
@@ -112,6 +115,9 @@ class MatchupService:
         away_picks = self._side_picks(snapshots.get(match.away_manager_id), element_types)
         comparison = compare_squads(home_picks, away_picks, points, progress)
         names = {element_id: entry[0] for element_id, entry in catalog.items()}
+        clubs = {
+            element_id: entry[2] for element_id, entry in catalog.items() if entry[2] is not None
+        }
 
         return MatchupView(
             match_id=match.id,
@@ -125,6 +131,7 @@ class MatchupService:
             away=self._side(match.away_manager_id, managers, scores, match.away_score, chips),
             comparison=comparison,
             player_names=names,
+            player_clubs=clubs,
             home_squad=build_squad(home_picks, points, progress),
             away_squad=build_squad(away_picks, points, progress),
         )
@@ -340,15 +347,38 @@ class MatchupService:
         self,
         season_id: int,
         element_ids: set[int],
-    ) -> dict[int, tuple[str, int]]:
-        """Name and position for each squad member, in one query."""
+    ) -> dict[int, tuple[str, int, str | None]]:
+        """Name, position and club for each squad member, in one query.
+
+        The club is FPL's own ``short_name`` - the three letters shown in the
+        game itself - rather than an abbreviation of our own. It is read
+        through the player's current ``team_fpl_id``, so a January transfer
+        moves a player's club here the moment the catalogue is re-ingested.
+
+        The join is outer: a player whose club has not been ingested yet is
+        still a player, and is worth listing without one.
+        """
 
         if not element_ids:
             return {}
         rows = await self.session.execute(
-            select(FplPlayer.element_id, FplPlayer.web_name, FplPlayer.element_type).where(
+            select(
+                FplPlayer.element_id,
+                FplPlayer.web_name,
+                FplPlayer.element_type,
+                FplTeam.short_name,
+            )
+            .outerjoin(
+                FplTeam,
+                (FplTeam.team_fpl_id == FplPlayer.team_fpl_id)
+                & (FplTeam.season_id == FplPlayer.season_id),
+            )
+            .where(
                 FplPlayer.season_id == season_id,
                 FplPlayer.element_id.in_(element_ids),
             )
         )
-        return {element_id: (web_name, element_type) for element_id, web_name, element_type in rows}
+        return {
+            element_id: (web_name, element_type, short_name)
+            for element_id, web_name, element_type, short_name in rows
+        }

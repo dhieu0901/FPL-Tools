@@ -48,6 +48,7 @@ async def match_detail(match_id: int, session: SessionDep) -> H2HMatchDetailResp
 
 def _match_detail(view: MatchupView) -> H2HMatchDetailResponse:
     names = view.player_names
+    clubs = view.player_clubs
     return H2HMatchDetailResponse(
         match_id=view.match_id,
         gameweek_number=view.gameweek_number,
@@ -56,8 +57,8 @@ def _match_detail(view: MatchupView) -> H2HMatchDetailResponse:
         is_playoff=view.is_playoff,
         bracket_position=view.bracket_position,
         walkover_reason=view.walkover_reason,
-        home=_side(view.home, view.comparison, view.home_squad, names, home=True),
-        away=_side(view.away, view.comparison, view.away_squad, names, home=False),
+        home=_side(view.home, view.comparison, view.home_squad, names, clubs, home=True),
+        away=_side(view.away, view.comparison, view.away_squad, names, clubs, home=False),
         shared=[_line(line, names) for line in view.comparison.shared],
         differentials=[_line(line, names) for line in view.comparison.differentials],
         captain_differential=[_line(line, names) for line in view.comparison.captain_differential],
@@ -69,6 +70,7 @@ def _side(
     comparison: MatchupComparison,
     squad: tuple[SquadEntry, ...],
     names: dict[int, str],
+    clubs: dict[int, str],
     *,
     home: bool,
 ) -> MatchupSide:
@@ -96,7 +98,7 @@ def _side(
             effective_players_remaining=remaining.effective_players_remaining,
             fixtures_remaining=remaining.fixtures_remaining,
         ),
-        squad=[_slot(entry, names) for entry in squad],
+        squad=[_slot(entry, names, clubs) for entry in squad],
     )
 
 
@@ -108,10 +110,11 @@ def _chip_play(play: ChipPlay | None) -> MatchupChipPlay | None:
     return MatchupChipPlay(chip=play.chip, gameweek=play.gameweek, short=play.short)
 
 
-def _slot(entry: SquadEntry, names: dict[int, str]) -> SquadSlot:
+def _slot(entry: SquadEntry, names: dict[int, str], clubs: dict[int, str]) -> SquadSlot:
     return SquadSlot(
         element_id=entry.element_id,
         web_name=names.get(entry.element_id),
+        club=clubs.get(entry.element_id),
         squad_position=entry.squad_position,
         element_type=entry.element_type,
         multiplier=entry.multiplier,

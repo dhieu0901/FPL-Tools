@@ -132,6 +132,8 @@ export interface MatchPlayerLine {
 export interface SquadSlot {
   elementId: number;
   name: string;
+  /** FPL's own club code, as shown in the game: "EVE", "ARS", "NFO". */
+  club: string | null;
   squadPosition: number;
   /** 1 keeper, 2 defender, 3 midfielder, 4 forward. */
   elementType: number;

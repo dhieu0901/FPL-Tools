@@ -32,6 +32,7 @@ from vmf_api.models.ingestion import (
     FplFixture,
     FplPlayer,
     FplPlayerFixtureStat,
+    FplTeam,
     ManagerPickItem,
     ManagerPickSnapshot,
 )
@@ -201,6 +202,10 @@ async def _seed(session: AsyncSession) -> H2HMatch:
     )
     session.add(match)
 
+    # Elements 1 and 2 play for a club that has been ingested; element 3 is
+    # at a club that has not, which is the case the outer join exists for.
+    session.add(FplTeam(season_id=season.id, team_fpl_id=1, name="Everton", short_name="EVE"))
+
     # Element 1 is shared, 2 is the home differential, 3 the away captain.
     session.add_all(
         [
@@ -209,7 +214,7 @@ async def _seed(session: AsyncSession) -> H2HMatch:
                 element_id=element_id,
                 web_name=f"Player {element_id}",
                 full_name=f"Player {element_id}",
-                team_fpl_id=1,
+                team_fpl_id=1 if element_id in (1, 2) else 99,
                 element_type=3,
             )
             for element_id in (1, 2, 3)
@@ -490,5 +495,25 @@ async def test_the_service_returns_both_squads_with_names_and_positions() -> Non
             assert view.player_names[view.home_squad[1].element_id] == "Player 2"
             # Positions come from the player catalog, not from the pick row.
             assert all(slot.element_type == 3 for slot in view.home_squad)
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_a_squad_carries_the_club_code_fpl_itself_shows() -> None:
+    """Two players named Silva are told apart by their club, not by us."""
+
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            match = await _seed(session)
+
+            view = await MatchupService(session).h2h_match(match.id)
+
+            assert view.player_clubs[1] == "EVE"
+            assert view.player_clubs[2] == "EVE"
+            # Element 3's club has not been ingested. That is a player with no
+            # club to show, not a missing player and not an error.
+            assert 3 not in view.player_clubs
     finally:
         await engine.dispose()

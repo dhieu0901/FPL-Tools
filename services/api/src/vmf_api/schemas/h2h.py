@@ -71,6 +71,8 @@ class SquadSlot(BaseModel):
 
     element_id: int
     web_name: str | None = None
+    #: FPL's own club code, as shown in the game: "EVE", "ARS", "NFO".
+    club: str | None = None
     squad_position: int
     #: FPL element type: 1 keeper, 2 defender, 3 midfielder, 4 forward.
     element_type: int
