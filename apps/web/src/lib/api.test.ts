@@ -151,6 +151,9 @@ describe("VMF API client", () => {
     expect(ids).toContain("119");
     expect(ids).toContain("225");
     expect(data.allStandings.filter((entry) => entry.division === "LOW")).toHaveLength(26);
+
+    // H2H answered 503 in this test. That panel empties; the page still loads.
+    expect(data.h2hStandings).toEqual([]);
   });
 
   it("sends every required Classic query parameter and maps its envelope", async () => {

@@ -76,6 +76,10 @@ const messages = {
   "dashboard.quickMetrics": "Key metrics",
   "dashboard.welcome": "Your season",
   "dashboard.totw": "TotW",
+  "dashboard.rankInDivision": "{division} division",
+  "dashboard.rankInH2H": "Head to head",
+  "dashboard.totalPoints": "Total points",
+  "dashboard.outOf": "of {total}",
   "dashboard.noStandingYet": "No Gameweek has been scored yet.",
   "dashboard.pickPrompt":
     "Tell the site which team is yours and it will lead with your match and your place in the table.",

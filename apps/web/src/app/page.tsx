@@ -8,11 +8,11 @@ import { StandingsTable } from "@/components/standings-table";
 import { TeamPicker } from "@/components/team-picker";
 import { DataBadge, EmptyState, Pill, SectionHeader } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
-import { gameweekStateLabel } from "@/lib/format";
+import { formatNumber, gameweekStateLabel } from "@/lib/format";
 import { highlightCopy } from "@/lib/highlight-text";
 import { t } from "@/lib/i18n";
 import { getMyManagerId } from "@/lib/me";
-import type { H2HFixture, StandingEntry } from "@/lib/types";
+import type { H2HFixture, H2HStanding, StandingEntry } from "@/lib/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: t("dashboard.title") };
@@ -27,22 +27,52 @@ function findMyFixture(fixtures: H2HFixture[], managerId: string | null): H2HFix
   );
 }
 
-function MyStanding({ entry }: { entry: StandingEntry }) {
+/**
+ * Where the reader stands, in both competitions at once.
+ *
+ * VMF runs two tables side by side and a manager cares about both: a Classic
+ * table inside their own division, and one H2H table covering all 46. The
+ * two ranks are counted out of different fields, so each says which pool it
+ * is measuring - "#4" out of twenty and "#4" out of forty-six are not the
+ * same achievement and must not read as though they were.
+ */
+function MyStanding({
+  classic,
+  divisionSize,
+  h2h,
+  h2hSize
+}: {
+  classic: StandingEntry;
+  divisionSize: number;
+  h2h: H2HStanding | null;
+  h2hSize: number;
+}) {
   return (
     <div className="my-standing">
       <span>
-        <small>{t("common.rank")}</small>
-        <strong>{entry.rank}</strong>
+        <small>{t("dashboard.rankInDivision", { division: classic.division })}</small>
+        <strong>
+          #{classic.rank}
+          <em>{t("dashboard.outOf", { total: divisionSize })}</em>
+        </strong>
       </span>
       <span>
-        <small>{t("common.total")}</small>
-        <strong>{entry.totalPoints}</strong>
+        <small>{t("dashboard.rankInH2H")}</small>
+        <strong>
+          {h2h ? (
+            <>
+              #{h2h.rank}
+              <em>{t("dashboard.outOf", { total: h2hSize })}</em>
+            </>
+          ) : (
+            "-"
+          )}
+        </strong>
       </span>
       <span>
-        <small>{t("dashboard.totw")}</small>
-        <strong>{entry.totw}</strong>
+        <small>{t("dashboard.totalPoints")}</small>
+        <strong>{formatNumber(classic.totalPoints)}</strong>
       </span>
-      <Pill tone="blue">{entry.division}</Pill>
     </div>
   );
 }
@@ -54,6 +84,11 @@ export default async function DashboardPage() {
   const myFixture = findMyFixture(data.fixtures, myManagerId);
   const myManager = data.managers.find((manager) => manager.id === myManagerId) ?? null;
   const myStanding = data.allStandings.find((entry) => entry.managerId === myManagerId) ?? null;
+  const myH2H = data.h2hStandings.find((entry) => entry.managerId === myManagerId) ?? null;
+  // Each rank is out of its own field: a division, or the whole league.
+  const myDivisionSize = myStanding
+    ? data.allStandings.filter((entry) => entry.division === myStanding.division).length
+    : 0;
   const hasStarted = data.gameweek.state !== "preseason" && data.gameweek.number > 0;
 
   // Before anyone has played, a table of zeros reads as a broken page rather
@@ -79,12 +114,17 @@ export default async function DashboardPage() {
             <>
               <p className="eyebrow">{t("dashboard.welcome")}</p>
               <h1>{myManager.teamName}</h1>
-              {/* Before a ball is kicked every manager is level on zero and
-                  the table ranks all of them first. Telling forty-six people
-                  they lead the division is worse than telling them nothing,
-                  so the standing appears once there is a standing to show. */}
-              {myStanding && anyPointsScored ? (
-                <MyStanding entry={myStanding} />
+              {/* Shown from the start, zeros and all. Before a ball is kicked
+                  every manager is genuinely level, so the table has them joint
+                  first; that is the table, not a mistake in it. The field
+                  sizes beside each rank are what keep it readable. */}
+              {myStanding ? (
+                <MyStanding
+                  classic={myStanding}
+                  divisionSize={myDivisionSize}
+                  h2h={myH2H}
+                  h2hSize={data.h2hStandings.length}
+                />
               ) : (
                 <p>{t("dashboard.noStandingYet")}</p>
               )}

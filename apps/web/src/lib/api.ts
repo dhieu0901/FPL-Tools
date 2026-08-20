@@ -856,10 +856,14 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
   const fplStatus = fplStatusResult.data;
   const gameweek = fplStatus.gameweek_number ?? 0;
   const period: ClassicPeriod = gameweek >= 20 ? "season_2" : "season_1";
-  const [highResult, lowResult, fixtureResult, highlightResult] = await Promise.all([
+  const [highResult, lowResult, fixtureResult, h2hResult, highlightResult] = await Promise.all([
     classicStandingsLive("HIGH", period),
     classicStandingsLive("LOW", period),
     gameweek > 0 ? h2hFixturesLive(gameweek) : Promise.resolve(result([], "live")),
+    // The reader's H2H position, which is a different competition from their
+    // Classic division. A misconfigured schedule id must not take the whole
+    // dashboard down with it, so this panel degrades on its own.
+    h2hStandingsLive().catch(() => result<H2HStanding[]>([], "unavailable")),
     // A dashboard is worth showing without its stories, so a highlights
     // failure degrades that one panel rather than the whole page.
     highlightsLive().catch(() => result<Highlight[]>([], "unavailable"))
@@ -906,6 +910,7 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
       // The preview above is the top six of HIGH; looking a manager up in
       // that would only ever find six of the forty-six.
       allStandings: [...highResult.data, ...lowResult.data],
+      h2hStandings: h2hResult.data,
       recentHighlights: highlightResult.data.slice(0, 3)
     },
     "live",

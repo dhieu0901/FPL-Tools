@@ -2653,6 +2653,17 @@ h1 {
   line-height: 1;
 }
 
+/* The size of the field a rank was won in. Fourth of twenty and fourth of
+   forty-six are different achievements, and the numbers alone cannot say so. */
+.my-standing strong em {
+  margin-left: 5px;
+  color: var(--ink-3);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
 /* Deadline ------------------------------------------------------------- */
 
 .countdown {

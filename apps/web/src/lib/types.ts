@@ -342,6 +342,8 @@ export interface DashboardData {
   standings: StandingEntry[];
   /** Both divisions in full, for finding the reader's own row. */
   allStandings: StandingEntry[];
+  /** The H2H table, a separate competition covering all 46 together. */
+  h2hStandings: H2HStanding[];
   recentHighlights: Highlight[];
 }
 
