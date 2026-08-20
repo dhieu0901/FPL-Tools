@@ -157,9 +157,16 @@ interface CupQualificationResponse {
   low: CupQualificationEntryResponse[];
 }
 
+interface MatchupChipsResponse {
+  played_this_gameweek: string | null;
+  used: string[];
+  remaining: string[];
+}
+
 interface MatchupSideResponse {
   manager_id: number;
   fpl_entry_id: number;
+  chips: MatchupChipsResponse;
   manager_name: string;
   team_name: string;
   score: number | null;
@@ -667,6 +674,11 @@ function toSideDetail(raw: MatchupSideResponse): MatchSideDetail {
     transferCost: raw.transfer_cost,
     benchPoints: raw.bench_points,
     chipUsed: raw.chip_used,
+    chips: {
+      playedThisGameweek: raw.chips?.played_this_gameweek ?? null,
+      used: raw.chips?.used ?? [],
+      remaining: raw.chips?.remaining ?? []
+    },
     captainPoints: raw.captain_points,
     isTotw: raw.is_totw,
     remaining: {

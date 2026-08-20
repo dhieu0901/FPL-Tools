@@ -5,6 +5,7 @@ import { useState } from "react";
 import { formatDateTime, matchStatusLabel } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { H2HFixture, MatchDetail } from "@/lib/types";
+import { ChipLine } from "./chip-line";
 import { TeamLink } from "./fpl-link";
 import { Icon } from "./icons";
 import { SquadList } from "./squad-list";
@@ -120,14 +121,15 @@ export function FixtureCard({
           {state === "ready" && detail && (
             <>
               <div className="fixture-card__squads">
-                <SquadList
-                  squad={detail.homeDetail?.squad ?? []}
-                  title={detail.homeDetail?.teamName ?? fixture.home.teamName}
-                />
-                <SquadList
-                  squad={detail.awayDetail?.squad ?? []}
-                  title={detail.awayDetail?.teamName ?? fixture.away.teamName}
-                />
+                {[
+                  { side: detail.homeDetail, fallback: fixture.home.teamName, key: "home" },
+                  { side: detail.awayDetail, fallback: fixture.away.teamName, key: "away" }
+                ].map(({ side, fallback, key }) => (
+                  <div className="fixture-card__side" key={key}>
+                    {side && <ChipLine chips={side.chips} />}
+                    <SquadList squad={side?.squad ?? []} title={side?.teamName ?? fallback} />
+                  </div>
+                ))}
               </div>
               <p className="fixture-card__legend">
                 <span data-state="upcoming" /> {t("squad.state.upcoming")}

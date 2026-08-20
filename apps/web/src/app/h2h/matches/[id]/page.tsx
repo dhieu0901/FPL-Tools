@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChipLine } from "@/components/chip-line";
 import { TeamLink } from "@/components/fpl-link";
 import { SquadList } from "@/components/squad-list";
 import { Avatar, Callout, DataBadge, Pill } from "@/components/ui";
@@ -89,6 +90,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             { detail: match.awayDetail, side: "away" as const }
           ].map(({ detail, side }) => (
             <article className="panel-card" key={side}>
+              <ChipLine chips={detail.chips} />
               <SquadList
                 squad={detail.squad}
                 title={t("match.squadOf", { team: detail.teamName })}

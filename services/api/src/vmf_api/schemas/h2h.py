@@ -87,6 +87,15 @@ class SquadSlot(BaseModel):
     is_vice_captain: bool
 
 
+class MatchupChips(BaseModel):
+    """What a manager has spent and what they still hold, this half."""
+
+    #: The chip played in the Gameweek being viewed, or null for none.
+    played_this_gameweek: str | None
+    used: list[str]
+    remaining: list[str]
+
+
 class MatchupSide(BaseModel):
     manager_id: int
     #: FPL's own entry id, so the site can link a team through to the same
@@ -101,6 +110,7 @@ class MatchupSide(BaseModel):
     chip_used: str | None
     captain_points: int | None
     goals_counted: int | None
+    chips: MatchupChips
     is_totw: bool
     remaining: MatchupSideRemaining
     squad: list[SquadSlot] = []

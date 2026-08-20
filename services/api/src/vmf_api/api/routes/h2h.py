@@ -11,6 +11,7 @@ from vmf_api.schemas.h2h import (
     H2HScheduleGenerateRequest,
     H2HScheduleResponse,
     H2HStandingResponse,
+    MatchupChips,
     MatchupPlayerLine,
     MatchupSide,
     MatchupSideRemaining,
@@ -82,6 +83,13 @@ def _side(
         chip_used=side.chip_used,
         captain_points=side.captain_points,
         goals_counted=side.goals_counted,
+        chips=MatchupChips(
+            # Names are resolved in the interface, not here: the API reports
+            # the chip FPL played, and the page decides how to write it.
+            played_this_gameweek=side.chips.played_this_gameweek,
+            used=list(side.chips.used),
+            remaining=list(side.chips.remaining),
+        ),
         is_totw=side.is_totw,
         remaining=MatchupSideRemaining(
             players_remaining=remaining.players_remaining,

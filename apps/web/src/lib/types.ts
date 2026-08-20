@@ -154,6 +154,14 @@ export interface SideRemaining {
   fixtures: number;
 }
 
+/** FPL's chip codes: "wildcard", "freehit", "bboost", "3xc". */
+export interface ChipStatus {
+  /** The chip played in the Gameweek being viewed, or null for none. */
+  playedThisGameweek: string | null;
+  used: string[];
+  remaining: string[];
+}
+
 export interface MatchSideDetail {
   managerName: string;
   teamName: string;
@@ -162,6 +170,7 @@ export interface MatchSideDetail {
   transferCost: number | null;
   benchPoints: number | null;
   chipUsed: string | null;
+  chips: ChipStatus;
   captainPoints: number | null;
   isTotw: boolean;
   remaining: SideRemaining;

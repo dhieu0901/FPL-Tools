@@ -9,6 +9,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from vmf_api.core.errors import NotFoundError
+from vmf_api.domain.chips import (
+    CHIPS_PER_HALF,
+    ChipStatus,
+    chip_status,
+    half_range,
+    season_half,
+)
 from vmf_api.domain.gameweek_scoring import PickInput as ScoringPick
 from vmf_api.domain.gameweek_scoring import effective_captain
 from vmf_api.domain.matchup import (
@@ -46,6 +53,7 @@ class SideView:
     captain_points: int | None
     goals_counted: int | None
     is_totw: bool
+    chips: ChipStatus
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,6 +98,7 @@ class MatchupService:
             )
         }
         scores = await self._scores(season_id, gameweek_number, list(managers))
+        chips = await self._chips(season_id, gameweek_number, list(managers))
         snapshots = await self._snapshots(gameweek_number, list(managers))
         points, progress = await self._player_state(season_id, gameweek_number)
 
@@ -112,8 +121,8 @@ class MatchupService:
             is_playoff=match.is_playoff,
             bracket_position=match.bracket_position,
             walkover_reason=match.walkover_reason,
-            home=self._side(match.home_manager_id, managers, scores, match.home_score),
-            away=self._side(match.away_manager_id, managers, scores, match.away_score),
+            home=self._side(match.home_manager_id, managers, scores, match.home_score, chips),
+            away=self._side(match.away_manager_id, managers, scores, match.away_score, chips),
             comparison=comparison,
             player_names=names,
             home_squad=build_squad(home_picks, points, progress),
@@ -137,6 +146,7 @@ class MatchupService:
         managers: dict[int, Manager],
         scores: dict[int, ManagerGameweekScore],
         recorded_score: int | None,
+        chips: dict[int, ChipStatus],
     ) -> SideView:
         manager = managers.get(manager_id)
         score = scores.get(manager_id)
@@ -157,6 +167,7 @@ class MatchupService:
             captain_points=score.captain_points if score is not None else None,
             goals_counted=score.goals_counted if score is not None else None,
             is_totw=bool(score.is_totw) if score is not None else False,
+            chips=chips.get(manager_id, ChipStatus(None, (), CHIPS_PER_HALF)),
         )
 
     @staticmethod
@@ -191,6 +202,45 @@ class MatchupService:
                 is_vice_captain=item.is_vice_captain,
             )
             for item in snapshot.items
+        }
+
+    async def _chips(
+        self,
+        season_id: int,
+        gameweek_number: int,
+        manager_ids: list[int],
+    ) -> dict[int, ChipStatus]:
+        """Every chip each side has played in this half of the season."""
+
+        if not manager_ids:
+            return {}
+        window = half_range(season_half(gameweek_number))
+        rows = (
+            await self.session.execute(
+                select(
+                    ManagerGameweekScore.manager_id,
+                    Gameweek.number,
+                    ManagerGameweekScore.chip_used,
+                )
+                .join(Gameweek, Gameweek.id == ManagerGameweekScore.gameweek_id)
+                .where(
+                    Gameweek.season_id == season_id,
+                    Gameweek.number.between(window.start, window.stop - 1),
+                    ManagerGameweekScore.manager_id.in_(manager_ids),
+                )
+            )
+        ).all()
+
+        played: dict[int, dict[int, str | None]] = {manager_id: {} for manager_id in manager_ids}
+        for manager_id, number, chip in rows:
+            if manager_id in played:
+                played[manager_id][number] = chip
+        return {
+            manager_id: chip_status(
+                gameweek_number=gameweek_number,
+                used_by_gameweek=by_gameweek,
+            )
+            for manager_id, by_gameweek in played.items()
         }
 
     async def _scores(
