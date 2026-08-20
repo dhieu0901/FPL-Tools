@@ -265,7 +265,15 @@ export type HighlightKind =
   | "season_high"
   | "captain_haul"
   | "totw_leader"
-  | "bench_regret";
+  | "bench_regret"
+  | "lone_wolf"
+  | "unlucky_loser"
+  | "lucky_winner"
+  | "chip_misfire"
+  | "captain_blank";
+
+/** A story about this Gameweek, or a record standing over the whole season. */
+export type HighlightPeriod = "gameweek" | "season";
 
 export interface Highlight {
   id: string;
@@ -275,11 +283,16 @@ export interface Highlight {
    * reader sees, so the page writes the prose from this and the numbers.
    */
   kind: HighlightKind;
+  period: HighlightPeriod;
   managerName: string;
   teamName: string;
   value: number;
   gameweek: number | null;
   isProvisional: boolean;
+  /** The player a story is about, where there is one. */
+  subject: string | null;
+  /** A second value the sentence needs: a squad size, or which chip. */
+  detail: string | null;
 }
 
 export interface Manager {

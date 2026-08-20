@@ -130,7 +130,36 @@ const messages = {
   "highlight.team_of_the_week.eyebrow": "Team of the Week",
   "highlight.team_of_the_week.title": "{team} tops the Gameweek",
   "highlight.team_of_the_week.body":
-    "{manager} scored {value} net points, the highest of the forty in GW{gameweek}.",
+    "{manager} scored {value} net points, the highest in the league in GW{gameweek}.",
+  "highlight.team_of_the_week.note":
+    "Highest score of the Gameweek across all 46, both divisions together. A tie shares the award.",
+
+  "highlight.lone_wolf.eyebrow": "Lone wolf",
+  "highlight.lone_wolf.title": "Only {team} owned {subject}",
+  "highlight.lone_wolf.body": "{subject} returned {value} points in GW{gameweek}.",
+  "highlight.lone_wolf.note":
+    "Not one other manager in the league had this player in their eleven. Ownership here is counted out of {detail}, not out of the millions playing FPL.",
+
+  "highlight.unlucky_loser.eyebrow": "Hard luck",
+  "highlight.unlucky_loser.title": "{value} points, and still beaten",
+  "highlight.unlucky_loser.body":
+    "{manager} put up the highest losing score of GW{gameweek}. Any other opponent and it wins.",
+
+  "highlight.lucky_winner.eyebrow": "Got away with it",
+  "highlight.lucky_winner.title": "{value} points, and still won",
+  "highlight.lucky_winner.body":
+    "The lowest winning score of GW{gameweek}. {manager} will not be apologising.",
+
+  "highlight.chip_misfire.eyebrow": "Chip burned",
+  "highlight.chip_misfire.title": "{team} played {chip} for {value}",
+  "highlight.chip_misfire.body": "Spent in GW{gameweek}, and gone until the half turns over.",
+  "highlight.chip_misfire.note":
+    "There are only four chips in a half of the season. This counts a Triple Captain by what the armband returned and a Bench Boost by what the bench did.",
+
+  "highlight.captain_blank.eyebrow": "The armband",
+  "highlight.captain_blank.title": "{team}'s captain returned {value}",
+  "highlight.captain_blank.body": "The lowest captain return in the league in GW{gameweek}.",
+
   "highlight.season_high.eyebrow": "Season record",
   "highlight.season_high.title": "Season high: {value}",
   "highlight.season_high.body": "{manager} set {value} points in GW{gameweek}, still unbeaten.",
@@ -298,11 +327,13 @@ const messages = {
     "Held outside the prize fund. Each minigame pays 50,000-100,000₫, and forfeited entry fees are added to it.",
   "nav.rules": "Rules",
 
+  "highlights.thisGameweek": "This Gameweek",
+  "highlights.seasonRecords": "Season records",
   "highlights.eyebrow": "Season stories",
-  "highlights.description": "Standout squads, comebacks and milestones from the VMF community.",
+  "highlights.description":
+    "Who topped the Gameweek, who backed a player nobody else did, and who is still explaining a captain pick.",
   "highlights.emptyTitle": "No highlights yet",
-  "highlights.emptyBody":
-    "Team of the Week, captain hauls and season records appear once a Gameweek has been scored.",
+  "highlights.emptyBody": "The first stories appear as soon as a Gameweek has been scored.",
 
   "managers.eyebrow": "Community",
   "managers.heading": "{count} managers. One season.",

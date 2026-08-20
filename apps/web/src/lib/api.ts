@@ -12,6 +12,7 @@ import type {
   H2HStanding,
   Highlight,
   HighlightKind,
+  HighlightPeriod,
   Manager,
   MatchDetail,
   MatchPlayerLine,
@@ -218,6 +219,8 @@ interface HighlightResponse {
   team_name: string;
   value: number;
   is_provisional: boolean;
+  subject?: string | null;
+  detail?: string | null;
 }
 
 interface FPLStatusResponse {
@@ -785,9 +788,28 @@ async function h2hMatchLive(id: string): Promise<ApiResult<MatchDetail>> {
 const HIGHLIGHT_CATEGORY: Record<HighlightKind, Highlight["category"]> = {
   team_of_the_week: "totw",
   season_high: "record",
-  captain_haul: "comeback",
   totw_leader: "record",
+  lone_wolf: "comeback",
+  unlucky_loser: "notice",
+  lucky_winner: "comeback",
+  captain_haul: "comeback",
+  captain_blank: "notice",
+  chip_misfire: "notice",
   bench_regret: "notice"
+};
+
+/** Which of the two sections on the highlights page a story belongs to. */
+const HIGHLIGHT_PERIOD: Record<HighlightKind, HighlightPeriod> = {
+  team_of_the_week: "gameweek",
+  lone_wolf: "gameweek",
+  unlucky_loser: "gameweek",
+  lucky_winner: "gameweek",
+  chip_misfire: "gameweek",
+  captain_haul: "gameweek",
+  captain_blank: "gameweek",
+  bench_regret: "gameweek",
+  season_high: "season",
+  totw_leader: "season"
 };
 
 async function highlightsLive(): Promise<ApiResult<Highlight[]>> {
@@ -797,12 +819,17 @@ async function highlightsLive(): Promise<ApiResult<Highlight[]>> {
     response.data.map((raw, index) => ({
       id: `${raw.kind}-${raw.manager_id}-${index}`,
       category: HIGHLIGHT_CATEGORY[raw.kind] ?? "notice",
+      period: HIGHLIGHT_PERIOD[raw.kind] ?? "gameweek",
       kind: raw.kind,
       managerName: raw.manager_name,
       teamName: raw.team_name,
       value: raw.value,
       gameweek: raw.gameweek_number,
-      isProvisional: raw.is_provisional
+      isProvisional: raw.is_provisional,
+      // An older API build sends neither field; absent and null both mean
+      // "this story does not need one".
+      subject: raw.subject ?? null,
+      detail: raw.detail ?? null
     })),
     "live",
     response.updatedAt
