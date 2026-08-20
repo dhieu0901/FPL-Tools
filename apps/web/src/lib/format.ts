@@ -37,6 +37,23 @@ export function formatDateTime(value: string): string {
   return dateTimeFormat.format(new Date(value));
 }
 
+/**
+ * How long ago something happened, in the coarsest unit that is still honest.
+ *
+ * A live score is only ever a few minutes old, and "2m ago" answers the
+ * question a reader actually has - is this current? - where a timestamp makes
+ * them do the subtraction themselves.
+ */
+export function shortAgo(milliseconds: number): string {
+  const seconds = Math.max(0, Math.round(milliseconds / 1000));
+  if (seconds < 45) return t("time.justNow");
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return t("time.minutesAgo", { minutes });
+
+  return t("time.hoursAgo", { hours: Math.round(minutes / 60) });
+}
+
 export function rankDelta(
   current: number,
   previous: number

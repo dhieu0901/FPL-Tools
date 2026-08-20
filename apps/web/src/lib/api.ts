@@ -7,6 +7,7 @@ import type {
   CupQualificationEntry,
   DashboardData,
   Division,
+  GameweekStatus,
   H2HFixture,
   H2HStanding,
   Highlight,
@@ -120,6 +121,7 @@ interface MatchupPlayerLineResponse {
 interface SquadSlotResponse {
   element_id: number;
   web_name: string | null;
+  club: string | null;
   squad_position: number;
   element_type: number;
   multiplier: number;
@@ -662,6 +664,9 @@ function toSquadSlot(raw: SquadSlotResponse): SquadSlot {
   return {
     elementId: raw.element_id,
     name: raw.web_name ?? `#${raw.element_id}`,
+    // An older API build has no club field at all, so absent and null are
+    // both "no club", not a crash.
+    club: raw.club ?? null,
     squadPosition: raw.squad_position,
     elementType: raw.element_type,
     multiplier: raw.multiplier,
@@ -818,6 +823,33 @@ async function h2hStandingsLive(): Promise<ApiResult<H2HStanding[]>> {
   );
 }
 
+/**
+ * FPL's view of the current Gameweek in the app's own vocabulary.
+ *
+ * FPL calls the window between the deadline and the first kick-off "upcoming";
+ * everywhere else in VMF that state is "open". Translating in one place keeps
+ * every page agreeing on which Gameweek it is and whether it is running.
+ */
+function toGameweekStatus(fplStatus: FPLStatusResponse): GameweekStatus {
+  return {
+    number: fplStatus.gameweek_number ?? 0,
+    name: fplStatus.gameweek_name ?? "Not started",
+    state: fplStatus.state === "upcoming" ? "open" : fplStatus.state,
+    deadline: fplStatus.deadline,
+    progress:
+      fplStatus.total_fixtures > 0
+        ? Math.round((fplStatus.completed_fixtures / fplStatus.total_fixtures) * 100)
+        : 0,
+    fixturesComplete: fplStatus.completed_fixtures,
+    fixturesTotal: fplStatus.total_fixtures
+  };
+}
+
+async function gameweekLive(): Promise<ApiResult<GameweekStatus>> {
+  const response = await fplStatusLive();
+  return result(toGameweekStatus(response.data), response.source, response.updatedAt);
+}
+
 async function dashboardLive(): Promise<ApiResult<DashboardData>> {
   const configuration = runtimeConfiguration();
   const [managerResult, fplStatusResult] = await Promise.all([managersLive(), fplStatusLive()]);
@@ -839,18 +871,7 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
   return result(
     {
       season: configuration.seasonLabel,
-      gameweek: {
-        number: gameweek,
-        name: fplStatus.gameweek_name ?? "Not started",
-        state: fplStatus.state === "upcoming" ? "open" : fplStatus.state,
-        deadline: fplStatus.deadline,
-        progress:
-          fplStatus.total_fixtures > 0
-            ? Math.round((fplStatus.completed_fixtures / fplStatus.total_fixtures) * 100)
-            : 0,
-        fixturesComplete: fplStatus.completed_fixtures,
-        fixturesTotal: fplStatus.total_fixtures
-      },
+      gameweek: toGameweekStatus(fplStatus),
       metrics: [
         {
           labelKey: "metric.managers",
@@ -982,6 +1003,9 @@ async function adminViolationsLive(): Promise<ApiResult<Violation[]>> {
 
 export const vmfApi = {
   dashboard: dashboardLive,
+
+  /** Which Gameweek it is and whether it is running, without the dashboard's cost. */
+  gameweek: gameweekLive,
 
   classicStandings: (
     division: Division = "HIGH",

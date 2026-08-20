@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FixtureCard } from "@/components/fixture-card";
+import { LiveIndicator, LiveRefresh } from "@/components/live-refresh";
 import { DataBadge, PageHeader, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
 import { t } from "@/lib/i18n";
@@ -21,10 +22,18 @@ export default async function H2HFixturesPage({
 }) {
   const params = await searchParams;
   const parsedGameweek = Number(params.gameweek);
-  const gameweek =
+  const chosen =
     Number.isInteger(parsedGameweek) && parsedGameweek >= 1 && parsedGameweek <= 38
       ? parsedGameweek
-      : 1;
+      : null;
+
+  // Without a Gameweek in the URL, the one being played is the one worth
+  // showing. Defaulting to GW1 all season would open this page on a set of
+  // finished matches from months ago.
+  const status = await vmfApi.gameweek();
+  const gameweek = chosen ?? (status.data.number >= 1 ? status.data.number : 1);
+  const isLive =
+    chosen === null || chosen === status.data.number ? status.data.state === "live" : false;
 
   const [result, myManagerId] = await Promise.all([vmfApi.h2hFixtures(gameweek), getMyManagerId()]);
 
@@ -36,12 +45,17 @@ export default async function H2HFixturesPage({
     : result.data;
 
   return (
-    <>
+    <LiveRefresh live={isLive}>
       <PageHeader
         eyebrow="Head to Head"
         title={t("fixtures.heading")}
         description={t("fixtures.description")}
-        actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
+        actions={
+          <>
+            <DataBadge source={result.source} updatedAt={result.updatedAt} />
+            <LiveIndicator />
+          </>
+        }
       />
       <div className="toolbar-row">
         <SegmentedLinks
@@ -92,6 +106,6 @@ export default async function H2HFixturesPage({
       {result.data.length === 0 && (
         <p className="toolbar-note">{t("fixtures.empty", { gameweek })}</p>
       )}
-    </>
+    </LiveRefresh>
   );
 }

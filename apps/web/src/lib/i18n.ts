@@ -42,6 +42,14 @@ const messages = {
   "data.live": "API connected",
   "data.respondedAt": "· responded {time}",
 
+  "live.autoUpdating": "Updating live",
+  "live.checked": "checked {ago}",
+  "live.squadUpdated": "Updated {ago}",
+
+  "time.justNow": "just now",
+  "time.minutesAgo": "{minutes}m ago",
+  "time.hoursAgo": "{hours}h ago",
+
   "zone.promotion": "Promotion place",
   "zone.relegation": "Relegation place",
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChipLine } from "@/components/chip-line";
 import { TeamLink } from "@/components/fpl-link";
+import { LiveIndicator, LiveRefresh } from "@/components/live-refresh";
 import { SquadList } from "@/components/squad-list";
 import { Avatar, Callout, DataBadge, Pill } from "@/components/ui";
 import { ApiRequestError, vmfApi } from "@/lib/api";
@@ -22,12 +23,13 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
   const match = result.data;
 
   return (
-    <>
+    <LiveRefresh live={match.status === "live"}>
       <div className="match-topbar">
         <Link href="/h2h/fixtures" className="back-link">
           <span>←</span> {t("match.back")}
         </Link>
         <DataBadge source={result.source} updatedAt={result.updatedAt} />
+        <LiveIndicator />
       </div>
       <section className="match-hero">
         <div className="match-hero__meta">
@@ -197,6 +199,6 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           </p>
         </Callout>
       )}
-    </>
+    </LiveRefresh>
   );
 }

@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { formatDateTime, matchStatusLabel } from "@/lib/format";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { formatDateTime, matchStatusLabel, shortAgo } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { H2HFixture, MatchDetail } from "@/lib/types";
 import { ChipLine } from "./chip-line";
 import { TeamLink } from "./fpl-link";
 import { Icon } from "./icons";
+import { useLive } from "./live-refresh";
 import { SquadList } from "./squad-list";
 import { Pill } from "./ui";
 
@@ -32,6 +33,9 @@ function Score({ fixture }: { fixture: H2HFixture }) {
  * The panel is fetched on the first expand rather than with the fixture list:
  * a Gameweek is twenty-three ties, and loading forty-six squads to render a
  * list nobody has opened yet would make the page slow for everyone.
+ *
+ * Once open it follows the live tick, because an open squad is exactly what a
+ * manager watches during a match and a frozen one reads as a final score.
  */
 export function FixtureCard({
   fixture,
@@ -43,26 +47,52 @@ export function FixtureCard({
   const [expanded, setExpanded] = useState(false);
   const [state, setState] = useState<LoadState>("idle");
   const [detail, setDetail] = useState<MatchDetail | null>(null);
+  const [updatedAt, setUpdatedAt] = useState<number | null>(null);
+  const { tick, live } = useLive();
+  const handledTick = useRef(0);
   const panelId = `fixture-squads-${fixture.id}`;
 
   const tone =
     fixture.status === "live" ? "coral" : fixture.status === "final" ? "lime" : "neutral";
 
+  const load = useCallback(
+    async (background: boolean) => {
+      if (!background) setState("loading");
+      try {
+        // A refresh must not be served the twenty-second cache the first
+        // open deliberately shares with everyone else opening the same tie.
+        const response = await fetch(
+          `/api/matches/${fixture.id}`,
+          background ? { cache: "no-store" } : undefined
+        );
+        if (!response.ok) throw new Error(String(response.status));
+        const body = (await response.json()) as { data: MatchDetail };
+        setDetail(body.data);
+        setUpdatedAt(Date.now());
+        setState("ready");
+      } catch {
+        // A failed background refresh keeps the last good squad on screen;
+        // only a failed first load has nothing to show.
+        setState((current) => (current === "ready" ? current : "failed"));
+      }
+    },
+    [fixture.id]
+  );
+
+  useEffect(() => {
+    if (!expanded || state !== "ready") return;
+    if (handledTick.current === tick) return;
+    handledTick.current = tick;
+    void load(true);
+  }, [tick, expanded, state, load]);
+
   async function toggle() {
     const next = !expanded;
     setExpanded(next);
     if (!next || state === "loading" || state === "ready") return;
-
-    setState("loading");
-    try {
-      const response = await fetch(`/api/matches/${fixture.id}`);
-      if (!response.ok) throw new Error(String(response.status));
-      const body = (await response.json()) as { data: MatchDetail };
-      setDetail(body.data);
-      setState("ready");
-    } catch {
-      setState("failed");
-    }
+    // This load is already current, so the tick that is running now is spent.
+    handledTick.current = tick;
+    await load(false);
   }
 
   return (
@@ -131,11 +161,18 @@ export function FixtureCard({
                   </div>
                 ))}
               </div>
-              <p className="fixture-card__legend">
-                <span data-state="upcoming" /> {t("squad.state.upcoming")}
-                <span data-state="playing" /> {t("squad.state.playing")}
-                <span data-state="finished" /> {t("squad.state.finished")}
-              </p>
+              <div className="fixture-card__panel-foot">
+                <p className="fixture-card__legend">
+                  <span data-state="upcoming" /> {t("squad.state.upcoming")}
+                  <span data-state="playing" /> {t("squad.state.playing")}
+                  <span data-state="finished" /> {t("squad.state.finished")}
+                </p>
+                {live && updatedAt !== null && (
+                  <p className="fixture-card__freshness">
+                    {t("live.squadUpdated", { ago: shortAgo(Date.now() - updatedAt) })}
+                  </p>
+                )}
+              </div>
             </>
           )}
         </div>

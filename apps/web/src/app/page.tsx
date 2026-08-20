@@ -3,6 +3,7 @@ import Link from "next/link";
 import { DeadlineCountdown } from "@/components/deadline-countdown";
 import { FixtureCard } from "@/components/fixture-card";
 import { Icon } from "@/components/icons";
+import { LiveIndicator, LiveRefresh } from "@/components/live-refresh";
 import { StandingsTable } from "@/components/standings-table";
 import { TeamPicker } from "@/components/team-picker";
 import { DataBadge, EmptyState, Pill, SectionHeader } from "@/components/ui";
@@ -60,7 +61,7 @@ export default async function DashboardPage() {
   const anyPointsScored = data.standings.some((entry) => entry.totalPoints !== 0);
 
   return (
-    <>
+    <LiveRefresh live={data.gameweek.state === "live"}>
       <section className="dashboard-hero">
         <div className="dashboard-hero__copy">
           <div className="hero-meta">
@@ -71,6 +72,7 @@ export default async function DashboardPage() {
               {data.gameweek.name} · {gameweekStateLabel(data.gameweek.state)}
             </Pill>
             <DataBadge source={result.source} updatedAt={result.updatedAt} />
+            <LiveIndicator />
           </div>
 
           {myManager ? (
@@ -231,6 +233,6 @@ export default async function DashboardPage() {
           </div>
         </section>
       )}
-    </>
+    </LiveRefresh>
   );
 }
