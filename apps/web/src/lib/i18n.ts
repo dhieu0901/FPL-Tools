@@ -74,6 +74,27 @@ const messages = {
   "dashboard.deadline": "Deadline",
   "dashboard.deadlineUnknown": "Not published",
   "dashboard.quickMetrics": "Key metrics",
+  "dashboard.welcome": "Your season",
+  "dashboard.totw": "TotW",
+  "dashboard.noStandingYet": "No Gameweek has been scored yet.",
+  "dashboard.pickPrompt":
+    "Tell the site which team is yours and it will lead with your match and your place in the table.",
+  "dashboard.pickToSeeYours": "Pick your team above to see your own match here instead.",
+  "dashboard.yourMatchEyebrow": "Your Gameweek",
+  "dashboard.yourMatchTitle": "Your match",
+  "dashboard.h2hThisWeek": "H2H ties",
+  "dashboard.classicNotStarted": "The table fills in once GW1 is scored.",
+  "me.label": "Which team is yours?",
+  "me.placeholder": "Not set",
+  "me.save": "Save",
+  "me.change": "Change",
+  "countdown.deadline": "Gameweek starts in",
+  "countdown.locked": "Under way",
+  "countdown.lockedDetail": "Scores are moving",
+  "countdown.days": "days",
+  "countdown.hours": "hrs",
+  "countdown.minutes": "min",
+  "countdown.seconds": "sec",
   // Position and bench labels are the terms FPL itself prints, so they are
   // reproduced verbatim rather than expanded into words.
   "squad.gk": "GK",
@@ -140,11 +161,13 @@ const messages = {
   "dashboard.momentsEyebrow": "VMF moments",
   "dashboard.momentsTitle": "Latest highlights",
   "dashboard.noHighlightTitle": "Highlights are still being built",
-  "dashboard.noHighlightBody": "The backend does not expose a highlights source yet.",
+  "dashboard.noHighlightBody":
+    "Records and Team of the Week appear once a Gameweek has been scored.",
 
   "classic.title": "Classic table",
   "classic.heading": "Standings",
-  "classic.description": "Ranked by net FPL points within the selected period and division only.",
+  "classic.description":
+    "Ranked by net FPL points inside the selected period and division. Ties break on TotW, then captain points, goals and cards.",
   "classic.divisionHigh": "HIGH division",
   "classic.divisionLow": "LOW division",
   "classic.teamsShown": "{count} teams shown",
@@ -189,7 +212,8 @@ const messages = {
   "fixtures.gameweek": "Gameweek",
   "fixtures.apply": "Show",
   "fixtures.empty": "No H2H match is scheduled for GW{gameweek} yet.",
-  "fixtures.kickoffUnknown": "Kick-off time to be confirmed",
+  "fixtures.yours": "Your match",
+  "fixtures.everyoneElse": "Every other tie",
   "fixtures.showSquads": "Show both squads",
   "fixtures.hideSquads": "Hide squads",
   "fixtures.loadingSquads": "Loading squads…",
@@ -278,7 +302,7 @@ const messages = {
   "highlights.description": "Standout squads, comebacks and milestones from the VMF community.",
   "highlights.emptyTitle": "No highlights yet",
   "highlights.emptyBody":
-    "The backend has no highlights endpoint yet; this page fills in once the source exists.",
+    "Team of the Week, captain hauls and season records appear once a Gameweek has been scored.",
 
   "managers.eyebrow": "Community",
   "managers.heading": "{count} managers. One season.",

@@ -3,9 +3,15 @@ import { FixtureCard } from "@/components/fixture-card";
 import { DataBadge, PageHeader, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
 import { t } from "@/lib/i18n";
+import { getMyManagerId } from "@/lib/me";
+import type { H2HFixture } from "@/lib/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   return { title: t("fixtures.title") };
+}
+
+function isMine(fixture: H2HFixture, managerId: string): boolean {
+  return fixture.home.managerId === managerId || fixture.away.managerId === managerId;
 }
 
 export default async function H2HFixturesPage({
@@ -19,7 +25,16 @@ export default async function H2HFixturesPage({
     Number.isInteger(parsedGameweek) && parsedGameweek >= 1 && parsedGameweek <= 38
       ? parsedGameweek
       : 1;
-  const result = await vmfApi.h2hFixtures(gameweek);
+
+  const [result, myManagerId] = await Promise.all([vmfApi.h2hFixtures(gameweek), getMyManagerId()]);
+
+  // Twenty-three ties is a long scroll to find the one you are in, so yours
+  // comes first and the rest keep the order the schedule gave them.
+  const mine = myManagerId ? result.data.filter((fixture) => isMine(fixture, myManagerId)) : [];
+  const others = myManagerId
+    ? result.data.filter((fixture) => !isMine(fixture, myManagerId))
+    : result.data;
+
   return (
     <>
       <PageHeader
@@ -49,11 +64,31 @@ export default async function H2HFixturesPage({
           </button>
         </form>
       </div>
-      <div className="fixtures-grid">
-        {result.data.map((fixture) => (
-          <FixtureCard fixture={fixture} key={fixture.id} />
-        ))}
-      </div>
+
+      {mine.length > 0 && (
+        <section className="fixtures-mine">
+          <h2 className="fixtures-mine__heading">{t("fixtures.yours")}</h2>
+          <div className="fixtures-grid">
+            {mine.map((fixture) => (
+              <FixtureCard fixture={fixture} highlighted key={fixture.id} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {others.length > 0 && (
+        <section className={mine.length > 0 ? "section-space" : undefined}>
+          {mine.length > 0 && (
+            <h2 className="fixtures-mine__heading">{t("fixtures.everyoneElse")}</h2>
+          )}
+          <div className="fixtures-grid">
+            {others.map((fixture) => (
+              <FixtureCard fixture={fixture} key={fixture.id} />
+            ))}
+          </div>
+        </section>
+      )}
+
       {result.data.length === 0 && (
         <p className="toolbar-note">{t("fixtures.empty", { gameweek })}</p>
       )}

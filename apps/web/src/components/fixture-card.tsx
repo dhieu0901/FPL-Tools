@@ -32,7 +32,13 @@ function Score({ fixture }: { fixture: H2HFixture }) {
  * a Gameweek is twenty-three ties, and loading forty-six squads to render a
  * list nobody has opened yet would make the page slow for everyone.
  */
-export function FixtureCard({ fixture }: { fixture: H2HFixture }) {
+export function FixtureCard({
+  fixture,
+  highlighted = false
+}: {
+  fixture: H2HFixture;
+  highlighted?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [state, setState] = useState<LoadState>("idle");
   const [detail, setDetail] = useState<MatchDetail | null>(null);
@@ -59,7 +65,7 @@ export function FixtureCard({ fixture }: { fixture: H2HFixture }) {
   }
 
   return (
-    <article className="fixture-card" data-expanded={expanded}>
+    <article className="fixture-card" data-expanded={expanded} data-mine={highlighted}>
       <div className="fixture-card__meta">
         <span>
           GW{fixture.gameweek} · {fixture.bracketLabel ?? t("h2h.groupLabel")}
@@ -133,10 +139,12 @@ export function FixtureCard({ fixture }: { fixture: H2HFixture }) {
         </div>
       )}
 
-      <div className="fixture-card__kickoff">
-        <Icon name="clock" size={15} />
-        {fixture.kickoff ? formatDateTime(fixture.kickoff) : t("fixtures.kickoffUnknown")}
-      </div>
+      {fixture.kickoff && (
+        <div className="fixture-card__kickoff">
+          <Icon name="clock" size={15} />
+          {formatDateTime(fixture.kickoff)}
+        </div>
+      )}
     </article>
   );
 }

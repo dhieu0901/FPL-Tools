@@ -810,8 +810,6 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
   const currentFixtures = fixtureResult.data;
   const managerCount = (division: Division) =>
     managerResult.data.filter((manager) => manager.division === division).length;
-  const featuredFixture =
-    currentFixtures.find((fixture) => fixture.status === "live") ?? currentFixtures[0] ?? null;
 
   return result(
     {
@@ -855,7 +853,8 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
           tone: "neutral"
         }
       ],
-      featuredFixture,
+      fixtures: currentFixtures,
+      managers: managerResult.data,
       standings: highResult.data.slice(0, 6),
       recentHighlights: highlightResult.data.slice(0, 3),
       notices: []

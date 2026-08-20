@@ -310,7 +310,10 @@ export interface DashboardData {
   season: string;
   gameweek: GameweekStatus;
   metrics: LeagueMetric[];
-  featuredFixture: H2HFixture | null;
+  /** Every tie of the current Gameweek, so a reader can be shown their own. */
+  fixtures: H2HFixture[];
+  /** The roster, for the "which of these is you" picker. */
+  managers: Manager[];
   standings: StandingEntry[];
   recentHighlights: Highlight[];
   notices: Array<{
