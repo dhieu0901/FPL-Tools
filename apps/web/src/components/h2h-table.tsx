@@ -50,7 +50,7 @@ export function H2HTable({ entries }: { entries: H2HStanding[] }) {
               </td>
               <td className="number-cell total-cell">
                 {entry.points}
-                {entry.deduction > 0 && <Pill tone="danger">−{entry.deduction}</Pill>}
+                {entry.deduction > 0 && <Pill tone="danger">-{entry.deduction}</Pill>}
               </td>
             </tr>
           ))}

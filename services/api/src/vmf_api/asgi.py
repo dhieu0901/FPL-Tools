@@ -7,7 +7,7 @@ a different app from the one under test.
 The wrapper reports the path the platform actually delivered on a response
 header. A serverless platform may hand the function the visitor's path or a
 rewritten one, and the difference is invisible until every route returns 404
-at once — which is exactly what it cost to find out the first time.
+at once - which is exactly what it cost to find out the first time.
 """
 
 from __future__ import annotations

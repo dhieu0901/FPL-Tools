@@ -1,7 +1,7 @@
 """The two Cup brackets of 2026/27, exactly as the organisers drew them.
 
-Both Cups take the same shape — 40 entrants, two qualifying rounds, then a
-round of 16 that runs to a final and a third-place match — but the seeding
+Both Cups take the same shape - 40 entrants, two qualifying rounds, then a
+round of 16 that runs to a final and a third-place match - but the seeding
 differs between the two halves of the season, so neither is derived from the
 other. The pairings below are transcribed from the published bracket rather
 than generated, because a generated bracket that disagreed with the published

@@ -2,7 +2,7 @@
 
 FPL issues one set of chips for each half of the season: a manager who spent
 their Wildcard in GW6 gets another at GW20. The halves line up with the two VMF
-Seasons, so "remaining" always means remaining *in this half* — a chip used in
+Seasons, so "remaining" always means remaining *in this half* - a chip used in
 Season 1 is not held against anyone in Season 2.
 
 Nothing here is inferred from a squad. A chip is known only because FPL
@@ -23,7 +23,7 @@ CHIP_NAMES: dict[str, str] = {
 }
 
 #: The short forms managers actually say. A chip is written with the Gameweek
-#: it was played in — "BB1" is a Bench Boost in GW1 — so a whole season of
+#: it was played in - "BB1" is a Bench Boost in GW1 - so a whole season of
 #: chip history fits on one line.
 CHIP_ABBREVIATIONS: dict[str, str] = {
     "wildcard": "WC",
@@ -64,7 +64,7 @@ def display_name(code: str | None) -> str | None:
 
 
 def abbreviation(code: str) -> str:
-    """WC, FH, BB, TC — or the raw code for a chip we do not know."""
+    """WC, FH, BB, TC - or the raw code for a chip we do not know."""
 
     return CHIP_ABBREVIATIONS.get(code, code.upper())
 

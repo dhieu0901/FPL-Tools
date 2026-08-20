@@ -1,4 +1,4 @@
-# VMF Fantasy League 2026/27 — Architecture
+# VMF Fantasy League 2026/27 - Architecture
 
 **Document code:** `VMF-ARCH-2026-27`
 **Status:** Production architecture
@@ -261,7 +261,7 @@ A threshold action has a unique key:
 
 so a retried job cannot deduct the same `-6` twice or apply a removal again.
 
-## 5. The player–fixture model for Double Gameweeks
+## 5. The player-fixture model for Double Gameweeks
 
 Never store a single player score and overwrite it per fixture. The source
 grain must be:

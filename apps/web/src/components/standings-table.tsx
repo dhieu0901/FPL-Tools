@@ -61,7 +61,7 @@ export function StandingsTable({
                           ? `↑${delta.value}`
                           : delta.direction === "down"
                             ? `↓${delta.value}`
-                            : "—"}
+                            : "-"}
                       </span>
                     )}
                   </div>

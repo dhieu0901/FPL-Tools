@@ -28,8 +28,8 @@ function fullName(code: string): string {
 /**
  * What a manager has spent, and what they still hold.
  *
- * Chips are written the way managers say them — "BB1" is a Bench Boost played
- * in GW1 — so the Gameweek a chip went on is part of its name and no separate
+ * Chips are written the way managers say them - "BB1" is a Bench Boost played
+ * in GW1 - so the Gameweek a chip went on is part of its name and no separate
  * line is needed to say what was played this week. An unplayed chip has no
  * Gameweek yet, so it carries the letters alone.
  *

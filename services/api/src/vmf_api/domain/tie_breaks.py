@@ -1,7 +1,7 @@
 """The one tie-break chain the 2026/27 rulebook applies to every table.
 
-Classic, H2H and the Cup each sort by their own primary measure first — Classic
-points, H2H table points, the Cup match score — and then hand any remaining tie
+Classic, H2H and the Cup each sort by their own primary measure first - Classic
+points, H2H table points, the Cup match score - and then hand any remaining tie
 to the chain below. Keeping it in a single place is what stops the three tables
 from quietly disagreeing about who finished ahead.
 """

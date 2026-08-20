@@ -58,8 +58,8 @@ English, and managers read those terms on FPL itself every week.
 ## Competition at a glance
 
 - 46 managers: HIGH 20, LOW 26. Six go up and six come down after each Season.
-- Classic Season 1 is GW1–GW19, Season 2 is GW20–GW38 and restarts from zero.
-- Head to head is one competition for all 46: group stage GW1–GW35, then a
-  top-eight play-off in GW36–GW38.
+- Classic Season 1 is GW1-GW19, Season 2 is GW20-GW38 and restarts from zero.
+- Head to head is one competition for all 46: group stage GW1-GW35, then a
+  top-eight play-off in GW36-GW38.
 - Two Cups, drawn after GW13 and GW32, each running six knockout rounds to a
   final and a third-place match.

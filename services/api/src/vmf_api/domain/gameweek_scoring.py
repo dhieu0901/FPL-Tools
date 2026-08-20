@@ -137,7 +137,7 @@ def compute_gameweek_score(
     is supplied it wins, because rulebook section 3.1 makes the published total
     the authority; the total derived from picks is still computed so that a
     disagreement is visible in ``reconciled`` rather than silently absorbed.
-    Before FPL publishes an entry's history — during a live Gameweek — the
+    Before FPL publishes an entry's history - during a live Gameweek - the
     derived total is the only available figure and is used directly.
     """
 

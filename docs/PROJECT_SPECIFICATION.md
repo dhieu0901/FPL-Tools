@@ -274,8 +274,8 @@ third place. Only the Cup plays a third-place match, because its prize
 structure separates third from fourth.
 
 The boundary between 8th and 9th is resolved by the boundary rule in
-[`docs/RULEBOOK.md`](docs/RULEBOOK.md) §7 — H2H table points, then cumulative
-TotW, then highest single Gameweek score, then an audited administrator draw —
+[`docs/RULEBOOK.md`](docs/RULEBOOK.md) §7 - H2H table points, then cumulative
+TotW, then highest single Gameweek score, then an audited administrator draw -
 rather than by the display ranking order below.
 
 Recommended seeding:
@@ -330,7 +330,7 @@ Numbers:
 ## Cup Season 2
 
 **Amended.** Cup Season 2 uses exactly the same structure as Cup Season 1.
-Qualification ranking is taken after GW33 and is computed over GW20–GW33.
+Qualification ranking is taken after GW33 and is computed over GW20-GW33.
 
 ```text
 Rank 1-2 in HIGH: direct entry to Round of 16
@@ -360,7 +360,7 @@ not yet eligible because the Season 2 league was not joined -> contribution = 0
 otherwise -> contribution = effective net points
 ```
 
-Every Gameweek carrying a confirmed violation inside GW1–GW14 or GW20–GW33 is
+Every Gameweek carrying a confirmed violation inside GW1-GW14 or GW20-GW33 is
 zeroed in that ledger, not only the Gameweek in which a Cup tie is played. The
 zero affects the Cup qualification table alone: it never changes Classic
 points, raw FPL data, or a played H2H group result.
@@ -557,7 +557,7 @@ Equivalent examples:
 
 ### Cumulative counting
 
-**Amended.** The violation counter accumulates across GW1–GW38 and does not
+**Amended.** The violation counter accumulates across GW1-GW38 and does not
 reset at GW20. A single Gameweek can cross several thresholds at once:
 
 ```text

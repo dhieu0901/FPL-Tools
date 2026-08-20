@@ -50,7 +50,7 @@ export default async function AdminPage() {
         </article>
         <article>
           <span>{t("admin.provisionalScores")}</span>
-          <strong>{data.counts.provisionalScores ?? "—"}</strong>
+          <strong>{data.counts.provisionalScores ?? "-"}</strong>
           <small>
             {data.counts.provisionalScores === null
               ? t("admin.noEndpoint")

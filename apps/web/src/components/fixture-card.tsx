@@ -20,7 +20,7 @@ function Score({ fixture }: { fixture: H2HFixture }) {
   return (
     <span className="fixture-card__score">
       <strong data-leading={fixture.home.score > fixture.away.score}>{fixture.home.score}</strong>
-      <span>–</span>
+      <span>-</span>
       <strong data-leading={fixture.away.score > fixture.home.score}>{fixture.away.score}</strong>
     </span>
   );

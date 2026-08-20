@@ -170,9 +170,9 @@ export const TIE_BREAK_STEPS: string[] = [
 ];
 
 export const VIOLATION_COUNTING: Array<{ range: string; count: string }> = [
-  { range: "−12 to −16", count: "1 violation" },
-  { range: "−20 to −24", count: "2 violations" },
-  { range: "−28 or worse", count: "3 or more violations" }
+  { range: "-12 to -16", count: "1 violation" },
+  { range: "-20 to -24", count: "2 violations" },
+  { range: "-28 or worse", count: "3 or more violations" }
 ];
 
 export const VIOLATION_CONSEQUENCES: Array<{
@@ -195,7 +195,7 @@ export const VIOLATION_CONSEQUENCES: Array<{
 ];
 
 export const MANAGER_OBLIGATIONS: string[] = [
-  "No transfers that take a Gameweek more than −8 in total.",
+  "No transfers that take a Gameweek more than -8 in total.",
   "Join the new league on time after each Season.",
   "Follow the rulebook and the organisers' announcements."
 ];

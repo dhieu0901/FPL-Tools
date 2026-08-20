@@ -23,8 +23,8 @@ function BracketSide({
   gameweek: number;
   isWinner: boolean;
 }) {
-  // Before a place is filled, the bracket still says who will stand here —
-  // "HIGH 11", "winner of Q1-3" — which is the whole point of drawing it early.
+  // Before a place is filled, the bracket still says who will stand here -
+  // "HIGH 11", "winner of Q1-3" - which is the whole point of drawing it early.
   const pending = side.managerId === "tbd";
   return (
     <div className="bracket-side" data-winner={isWinner} data-pending={pending}>
@@ -36,7 +36,7 @@ function BracketSide({
           <small>{side.managerName}</small>
         </span>
       )}
-      <b>{side.score ?? "—"}</b>
+      <b>{side.score ?? "-"}</b>
     </div>
   );
 }

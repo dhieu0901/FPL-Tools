@@ -1,4 +1,4 @@
-# VMF Fantasy League 2026/27 — Rulebook
+# VMF Fantasy League 2026/27 - Rulebook
 
 **Document code:** `VMF-RULES-2026-27`
 **Version:** `1.0.0-draft`
@@ -161,8 +161,8 @@ The league is 46 managers, in two divisions of different sizes.
 
 | Phase | Gameweeks | HIGH | LOW |
 |---|---:|---:|---:|
-| Classic Season 1 | GW1–GW19 | 20 | 26 |
-| Classic Season 2 | GW20–GW38 | 20 | 26 |
+| Classic Season 1 | GW1-GW19 | 20 | 26 |
+| Classic Season 2 | GW20-GW38 | 20 | 26 |
 
 Promotion and relegation move six managers in each direction, so both
 divisions keep their size across the swap.
@@ -257,7 +257,7 @@ play-offs. The boundary is decided with section 7 using:
 
 ```text
 primary_points = h2h_table_points
-period = GW1–GW35
+period = GW1-GW35
 ```
 
 Point difference, points for and number of wins are still displayed, but they
@@ -308,7 +308,7 @@ Then, in order:
 5. **Higher Classic points** up to that Gameweek.
 6. **An administrator draw** if still tied.
 
-Steps 1–5 are automatic and every one of them records what it compared. Only
+Steps 1-5 are automatic and every one of them records what it compared. Only
 step 6 needs a person.
 
 The highest single Gameweek score is still reported, and it decides a separate
@@ -332,10 +332,10 @@ bracket at one of three points.
 
 | Rank | HIGH | LOW | Enters at |
 |---|---|---|---|
-| Top | 1–3 | 1 | Round of 16 |
-| Middle | 4–10 | 2–6 | Qualifying Round 2 |
-| Lower | 11–18 | 7–22 | Qualifying Round 1 |
-| Out | 19–20 | 23–26 | Not in the Cup |
+| Top | 1-3 | 1 | Round of 16 |
+| Middle | 4-10 | 2-6 | Qualifying Round 2 |
+| Lower | 11-18 | 7-22 | Qualifying Round 1 |
+| Out | 19-20 | 23-26 | Not in the Cup |
 
 That is 24 managers in Qualifying Round 1 playing for 12 places, joined by 12
 more in Qualifying Round 2 playing for 12 places, joined by the last 4 in a
@@ -357,13 +357,13 @@ Every round is a single head-to-head knockout tie.
 
 The two Cups are seeded differently: Season 1 gives HIGH the top places in the
 qualifying draw, Season 2 gives them to LOW. Neither bracket is derived from
-the other, and neither is generated at run time — both are transcribed from the
+the other, and neither is generated at run time - both are transcribed from the
 bracket sheet the organisers published, in `domain/cup_bracket.py`, and checked
 against it by test.
 
 A Cup is drawn once, after its cutoff Gameweek is finalized, and the whole
-bracket is written at that moment. Later rounds carry their position — "winner
-of Q1-7" — until the managers who fill them are known.
+bracket is written at that moment. Later rounds carry their position - "winner
+of Q1-7" - until the managers who fill them are known.
 
 Two managers sharing a qualification rank stops the draw. The system does not
 choose between them; that is the administrator draw in section 7.
@@ -391,7 +391,7 @@ The `0` rule affects the Cup qualification table only:
 - it does not change raw FPL data;
 - it does not by itself change a played H2H group result.
 
-**Every Gameweek carrying a violation** inside GW1–GW13 or GW20–GW32 is removed
+**Every Gameweek carrying a violation** inside GW1-GW13 or GW20-GW32 is removed
 from the Cup total, not only the Gameweek in which a Cup tie is played.
 
 Qualification is computed separately inside HIGH and LOW according to the
@@ -439,7 +439,7 @@ Reference examples:
 | 20, 24 | 2 |
 | 28 | 3 |
 
-The counter accumulates across GW1–GW38 and does not reset at GW20. A single
+The counter accumulates across GW1-GW38 and does not reset at GW20. A single
 Gameweek can cross several thresholds at once:
 
 - a cost of `20` triggers thresholds 1 and 2;
@@ -501,7 +501,7 @@ When a manager reaches threshold 2:
 - historical finalized H2H results are preserved;
 - the manager's remaining matches are recorded as walkovers;
 - the opponent receives `3` points;
-- the technical score is stored as `0–0`;
+- the technical score is stored as `0-0`;
 - a technical walkover adds nothing to points for or points against and creates
   no artificial point difference.
 
@@ -524,7 +524,7 @@ administrator review; the system never picks a winner at random.
 ### 9.6 Failing to join the new league
 
 Not joining the new Season 2 FPL league in time counts as one violation unit in
-the same GW1–GW38 counter.
+the same GW1-GW38 counter.
 
 - Classic and Cup contributions from GW20 until the Gameweek the manager joins
   are `0`.
@@ -729,7 +729,7 @@ play, so it lives beside the interface copy rather than in the database.
 | Runner-up | 400,000₫ | 350,000₫ |
 | Third | 250,000₫ | 200,000₫ |
 | Fourth | 200,000₫ | 150,000₫ |
-| Fifth and sixth | — | 50,000₫ each |
+| Fifth and sixth | - | 50,000₫ each |
 
 **Head to head**: champion 500,000₫, runner-up 300,000₫, 150,000₫ to each
 losing semi-finalist, 100,000₫ to the group-stage winner.
@@ -745,7 +745,7 @@ A manager past the second violation threshold receives 50% of anything they
 would otherwise be paid, per section 9.3.
 
 The **minigame fund** sits outside these figures. Each minigame pays
-50,000–100,000₫, and every forfeited entry fee is added to it.
+50,000-100,000₫, and every forfeited entry fee is added to it.
 
 ## 15. Invariants that must hold
 

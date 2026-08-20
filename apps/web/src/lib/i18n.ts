@@ -159,8 +159,8 @@ const messages = {
   "classic.divisionHigh": "HIGH division",
   "classic.divisionLow": "LOW division",
   "classic.teamsShown": "{count} teams shown",
-  "classic.season1": "Season 1 · GW1–19",
-  "classic.season2": "Season 2 · GW20–38",
+  "classic.season1": "Season 1 · GW1-19",
+  "classic.season2": "Season 2 · GW20-38",
   "classic.fullSeason": "Full season",
   "classic.tieBreakTitle": "Ranking rules",
   "classic.tieBreakBody":
@@ -172,7 +172,7 @@ const messages = {
     "Every Gameweek is a duel. A win is 3 points, a draw 1; violations are deducted separately under the rulebook.",
   "h2h.standings": "Standings",
   "h2h.fixtures": "Fixtures & results",
-  "h2h.groupStage": "Group stage · GW1–GW35",
+  "h2h.groupStage": "Group stage · GW1-GW35",
   "h2h.playoffSlot": "Play-off places",
   "h2h.top8": "Top 8",
   "h2h.afterGw35": "After GW35",
@@ -247,7 +247,7 @@ const messages = {
   "cup.entersQualifying2": "Qualifying 2",
   "cup.entersRoundOf16": "Round of 16",
   "cup.notQualified": "Not in the Cup",
-  "cup.excludedCount": "−{count} GW",
+  "cup.excludedCount": "-{count} GW",
   "cup.excludedDetail": "Excluded by a confirmed violation: GW{gameweeks}",
 
   "rules.eyebrow": "Competition",
@@ -352,7 +352,7 @@ const messages = {
   "violations.noneConfirmed": "None confirmed",
   "violations.occurrences": "{count} recorded occurrences",
   "violations.noTransferCost": "The backend did not return a transfer cost",
-  "violations.transferCost": "Recorded transfer cost: −{cost}",
+  "violations.transferCost": "Recorded transfer cost: -{cost}",
   "violations.notReviewed": "Not reviewed",
 
   "violations.impact.threshold": "Applied at the cumulative violation threshold",

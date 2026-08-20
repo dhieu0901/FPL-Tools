@@ -1,4 +1,4 @@
-# VMF Fantasy League 2026/27 — Test Matrix
+# VMF Fantasy League 2026/27 - Test Matrix
 
 **Document code:** `VMF-TEST-2026-27`
 **Rule source:** [`RULEBOOK.md`](./RULEBOOK.md)
@@ -8,10 +8,10 @@
 
 Levels:
 
-- **U — Unit:** pure rule functions, deterministic, no real network or database.
-- **I — Integration:** PostgreSQL, parsers, transactions, ledgers and the API.
-- **E — End-to-end:** frontend, API and worker against replayed data.
-- **S — Security/operational:** permissions, load, backups, failure modes.
+- **U - Unit:** pure rule functions, deterministic, no real network or database.
+- **I - Integration:** PostgreSQL, parsers, transactions, ledgers and the API.
+- **E - End-to-end:** frontend, API and worker against replayed data.
+- **S - Security/operational:** permissions, load, backups, failure modes.
 
 Every finalized scenario must assert both the value and its provenance:
 
@@ -135,10 +135,10 @@ Build these reusable datasets:
 | H2H-005 | U | A series of results | Played/W/D/L/PF/PA/PD and table points are correct |
 | H2H-006 | U | A penalty pushes table points below zero | The negative value is preserved |
 | H2H-007 | U | A top-8 tie on table points with different TotW | TotW decides the boundary; point difference does not override the fixed rule |
-| H2H-008 | U | Table points and TotW tie, highest GW1–35 differs | The highest Gameweek decides |
+| H2H-008 | U | Table points and TotW tie, highest GW1-35 differs | The highest Gameweek decides |
 | H2H-009 | I | Everything ties at the top-8 boundary | A pending, audited administrator draw; no background randomness |
-| H2H-010 | I | Seed the top 8 | Pairs 1–8, 4–5, 2–7, 3–6 |
-| H2H-011 | E | GW36–38 | Quarter-finals, semi-finals and final; no third-place match is created |
+| H2H-010 | I | Seed the top 8 | Pairs 1-8, 4-5, 2-7, 3-6 |
+| H2H-011 | E | GW36-38 | Quarter-finals, semi-finals and final; no third-place match is created |
 | H2H-012 | I | Two losing semi-finalists | Both hold shared third place |
 | H2H-013 | U | A play-off draw on points | The Cup tie-break chain runs |
 | H2H-014 | I | A manager is removed before the cutoff | Not in the eligible top 8; the place passes to the next manager by the boundary rule |
@@ -147,16 +147,16 @@ Build these reusable datasets:
 
 | ID | Level | Scenario | Expected |
 |---|---|---|---|
-| CUPQ-001 | U | Cup 1 without violations | Qualification total = sum of GW1–14 effective net |
-| CUPQ-002 | U | Cup 2 without violations | Qualification total = sum of GW20–33 effective net |
+| CUPQ-001 | U | Cup 1 without violations | Qualification total = sum of GW1-14 effective net |
+| CUPQ-002 | U | Cup 2 without violations | Qualification total = sum of GW20-33 effective net |
 | CUPQ-003 | U | A confirmed violation in GW5 | GW5 contributes 0; other Gameweeks unchanged |
 | CUPQ-004 | U | A confirmed violation in GW25 | Cup 2 GW25 contributes 0 |
 | CUPQ-005 | U | The violating Gameweek has a negative net | The contribution is still 0, not the negative value |
 | CUPQ-006 | U | An approved forgotten-chip exception | The Gameweek is not zeroed for a violation; official net still carries the transfer cost |
 | CUPQ-007 | U | A Cup qualification violation | Classic points and H2H match scores do not change |
-| CUPQ-008 | U | The Season 2 league is joined at GW23 | GW20–22 contribute 0; GW23 starts counting |
-| CUPQ-009 | I | Ranks 1–2 in each division | Four direct qualifiers |
-| CUPQ-010 | I | Ranks 3–14 in each division | Twenty-four preliminary participants |
+| CUPQ-008 | U | The Season 2 league is joined at GW23 | GW20-22 contribute 0; GW23 starts counting |
+| CUPQ-009 | I | Ranks 1-2 in each division | Four direct qualifiers |
+| CUPQ-010 | I | Ranks 3-14 in each division | Twenty-four preliminary participants |
 | CUPQ-011 | I | Twelve preliminary winners | Sixteen teams in the round of 16 |
 | CUPQ-012 | U | A tie on the rank 2/3 boundary | Points → TotW → highest eligible Gameweek → administrator draw |
 | CUPQ-013 | U | A tie on the rank 14/15 boundary | The same chain selects who plays the preliminary round |
@@ -176,7 +176,7 @@ Build these reusable datasets:
 | TB-005 | U | TotW and captain level, goals differ | More counted goals wins; step 3 |
 | TB-006 | U | The captain scores | The goal is not multiplied |
 | TB-007 | U | Goals level, cards differ | Fewer `yellow + red` wins; step 4 |
-| TB-008 | U | Steps 1–4 level, Classic points differ | Classic Season points up to that Gameweek decide; step 5 |
+| TB-008 | U | Steps 1-4 level, Classic points differ | Classic Season points up to that Gameweek decide; step 5 |
 | TB-009 | I | Every automatic step ties | A pending administrator draw storing every compared input |
 | TB-010 | I | An administrator draw | Store the eligible list, actor, time, method and result |
 | TB-011 | U | Level scores where one side is on a replacement | The side with a genuine score or valid override advances before the chain |
@@ -200,7 +200,7 @@ Build these reusable datasets:
 | VIO-011 | I | An administrator rejects the exception | Confirmed by the formula and the threshold applies idempotently |
 | VIO-012 | U | A first violation during the H2H group stage | The result still awards 3/1/0, then a separate `-6` ledger entry |
 | VIO-013 | I | Threshold 2 after matches were finalized | Historical results are unchanged |
-| VIO-014 | U | A future H2H match after removal | Opponent +3; technical 0–0; PF/PA/PD unchanged |
+| VIO-014 | U | A future H2H match after removal | Opponent +3; technical 0-0; PF/PA/PD unchanged |
 | VIO-015 | U | A violation during an H2H play-off | The opponent advances by walkover |
 | VIO-016 | U | A violation during a Cup knockout tie | The score is invalid; the opponent advances by walkover |
 | VIO-017 | I | Threshold 2 | Removed from H2H and the Cup; prize eligibility 50% |
@@ -288,10 +288,10 @@ Build these reusable datasets:
 | ACC-002 | Replay an ordinary Gameweek | Gross, net, captain, auto-subs and standings match the expected fixture |
 | ACC-003 | Replay a live Double Gameweek | Scores and remaining counts update correctly per fixture |
 | ACC-004 | Simulate all of Classic Season 1 | Division ranks, boundary ties, top and bottom 6 and the GW20 membership are correct |
-| ACC-005 | Run H2H GW1–35 | A valid schedule, 3/1/0 scoring, penalties and the correct top 8 |
-| ACC-006 | Run H2H GW36–38 | The bracket is correct, GW38 holds only the final, and both losing semi-finalists share third |
-| ACC-007 | Run Cup 1 | Qualification over GW1–14, violations zeroed, GW15–19 bracket and tie-breaks correct |
-| ACC-008 | Run Cup 2 | The same structure as Cup 1 over GW20–38 |
+| ACC-005 | Run H2H GW1-35 | A valid schedule, 3/1/0 scoring, penalties and the correct top 8 |
+| ACC-006 | Run H2H GW36-38 | The bracket is correct, GW38 holds only the final, and both losing semi-finalists share third |
+| ACC-007 | Run Cup 1 | Qualification over GW1-14, violations zeroed, GW15-19 bracket and tie-breaks correct |
+| ACC-008 | Run Cup 2 | The same structure as Cup 1 over GW20-38 |
 | ACC-009 | Violations at cost 20 and 28 | Multi-threshold behaviour is deterministic with no duplicates on retry |
 | ACC-010 | Locked teams in both divisions | Two independent averages, half-up rounding, no recursion |
 | ACC-011 | Finalize then apply a late correction | The final result is immutable; a reopen creates a new revision and audit entry |

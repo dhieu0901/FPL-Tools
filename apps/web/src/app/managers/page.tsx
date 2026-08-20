@@ -86,25 +86,25 @@ export default async function ManagersPage({
             <div className="manager-card__stats">
               <span>
                 <small>{t("common.rank")}</small>
-                <strong>{manager.rank === null ? "—" : `#${manager.rank}`}</strong>
+                <strong>{manager.rank === null ? "-" : `#${manager.rank}`}</strong>
               </span>
               <span>
                 <small>{t("managers.totalPoints")}</small>
                 <strong>
-                  {manager.totalPoints === null ? "—" : formatNumber(manager.totalPoints)}
+                  {manager.totalPoints === null ? "-" : formatNumber(manager.totalPoints)}
                 </strong>
               </span>
               <span>
                 <small>TotW</small>
-                <strong>{manager.totw ?? "—"}</strong>
+                <strong>{manager.totw ?? "-"}</strong>
               </span>
             </div>
             <footer>
               <span>
-                {t("managers.lastGameweek")} <strong>{manager.gameweekPoints ?? "—"}</strong>
+                {t("managers.lastGameweek")} <strong>{manager.gameweekPoints ?? "-"}</strong>
               </span>
               <span>
-                {t("managers.violations")} <strong>{manager.violations ?? "—"}</strong>
+                {t("managers.violations")} <strong>{manager.violations ?? "-"}</strong>
               </span>
             </footer>
           </article>

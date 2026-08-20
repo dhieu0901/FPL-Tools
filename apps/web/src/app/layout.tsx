@@ -10,7 +10,7 @@ import "./globals.css";
  *
  * Be Vietnam Pro is drawn for those diacritics, so a team called
  * "CHIẾN THẦN BẤT BẠI" sits on its baseline instead of colliding with the
- * line above. Archivo carries the headings and the scoreboard numerals — it
+ * line above. Archivo carries the headings and the scoreboard numerals - it
  * is wide, confident and has the tabular figures a table of scores needs.
  * Both are self-hosted by next/font, so no request leaves the page and
  * nothing reflows once they load.

@@ -49,9 +49,9 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
           <div className="match-score">
-            <strong>{match.home.score ?? "–"}</strong>
+            <strong>{match.home.score ?? "-"}</strong>
             <span>:</span>
-            <strong>{match.away.score ?? "–"}</strong>
+            <strong>{match.away.score ?? "-"}</strong>
           </div>
           <div className="match-side">
             <Avatar name={match.away.managerName} size="large" />
@@ -66,19 +66,19 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         <div className="live-context">
           <span>
             <small>{t("match.chip")}</small>
-            <strong>{match.homeDetail?.chipUsed ?? "—"}</strong>
+            <strong>{match.homeDetail?.chipUsed ?? "-"}</strong>
           </span>
           <span>
             <small>{t("match.playersLeft")}</small>
             <strong>
               {match.homeDetail && match.awayDetail
                 ? `${match.homeDetail.remaining.players} : ${match.awayDetail.remaining.players}`
-                : "—"}
+                : "-"}
             </strong>
           </span>
           <span>
             <small>{t("match.chip")}</small>
-            <strong>{match.awayDetail?.chipUsed ?? "—"}</strong>
+            <strong>{match.awayDetail?.chipUsed ?? "-"}</strong>
           </span>
         </div>
       </section>
@@ -108,7 +108,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
                 </span>
                 <span>
                   <small>{t("match.benchPoints")}</small>
-                  <strong>{detail.benchPoints ?? "—"}</strong>
+                  <strong>{detail.benchPoints ?? "-"}</strong>
                 </span>
               </footer>
             </article>

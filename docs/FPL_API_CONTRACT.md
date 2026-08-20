@@ -1,4 +1,4 @@
-# VMF Fantasy League 2026/27 — FPL API Contract
+# VMF Fantasy League 2026/27 - FPL API Contract
 
 **Document code:** `VMF-FPL-CONTRACT-2026-27`
 **Contract version:** `1.0.0-draft`
@@ -477,15 +477,15 @@ requests do not arrive in a burst.
 
 | Endpoint | Outside live | Near a deadline or transition | While fixtures are live | After fixtures until final |
 |---|---:|---:|---:|---:|
-| Bootstrap | 30 min | 5 min | 5 min | 5–15 min |
-| Fixtures for a Gameweek | 15 min | 5 min | 60 s | 2–5 min |
-| Event live | Do not poll a future Gameweek | 5 min readiness check | 60 s | 2–5 min, then 15 min |
+| Bootstrap | 30 min | 5 min | 5 min | 5-15 min |
+| Fixtures for a Gameweek | 15 min | 5 min | 60 s | 2-5 min |
+| Event live | Do not poll a future Gameweek | 5 min readiness check | 60 s | 2-5 min, then 15 min |
 | Entry profile | 6 h | Validate once | 6 h | Once a day |
-| Entry history | 6 h | After the deadline | 10–15 min | 5 min while reconciling |
-| Entry picks | Do not fetch a sealed Gameweek | Retry 30–120 s after the deadline | Not every tick; 10–15 min | 2–5 min until auto-subs settle |
-| Entry transfers | Do not poll pre-deadline | Once after picks open | 30–60 min | Once to reconcile |
+| Entry history | 6 h | After the deadline | 10-15 min | 5 min while reconciling |
+| Entry picks | Do not fetch a sealed Gameweek | Retry 30-120 s after the deadline | Not every tick; 10-15 min | 2-5 min until auto-subs settle |
+| Entry transfers | Do not poll pre-deadline | Once after picks open | 30-60 min | Once to reconcile |
 | Element summary | 6 h or on demand | On demand | Only to repair | Backfill or on demand |
-| League standings | 30–60 min | 5–15 min while checking a join | Not needed | On demand |
+| League standings | 30-60 min | 5-15 min while checking a join | Not needed | On demand |
 
 Mandatory optimizations:
 

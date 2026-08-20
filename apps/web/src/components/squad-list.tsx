@@ -11,7 +11,7 @@ const POSITION_KEY = {
 
 function position(slot: SquadSlot): string {
   const key = POSITION_KEY[slot.elementType as 1 | 2 | 3 | 4];
-  return key ? t(key) : "—";
+  return key ? t(key) : "-";
 }
 
 /**
