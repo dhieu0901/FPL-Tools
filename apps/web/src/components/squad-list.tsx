@@ -1,5 +1,5 @@
+import { t } from "@/lib/i18n";
 import type { SquadSlot } from "@/lib/types";
-import type { Translator } from "@/lib/i18n";
 
 /** FPL element types, used only to label a row. */
 const POSITION_KEY = {
@@ -9,18 +9,19 @@ const POSITION_KEY = {
   4: "squad.fwd"
 } as const;
 
-function positionLabel(slot: SquadSlot, t: Translator): string {
+function position(slot: SquadSlot): string {
   const key = POSITION_KEY[slot.elementType as 1 | 2 | 3 | 4];
   return key ? t(key) : "—";
 }
 
 /**
- * The bench is named rather than numbered by squad position, because a manager
- * thinks in "second keeper, first sub" and not in "position 12".
+ * How the row is labelled: the position for the eleven and for the substitute
+ * keeper, and the substitution order for the outfield bench. A reader scanning
+ * the bench wants to know who comes on first, not what they play.
  */
-function benchLabel(slot: SquadSlot, t: Translator): string {
-  if (slot.isSubstituteGoalkeeper) return t("squad.gkSub");
-  return t("squad.bench", { order: slot.benchOrder ?? 0 });
+function slotLabel(slot: SquadSlot): string {
+  if (slot.isStarter || slot.isSubstituteGoalkeeper) return position(slot);
+  return String(slot.benchOrder ?? 0);
 }
 
 function armband(slot: SquadSlot): string {
@@ -29,7 +30,7 @@ function armband(slot: SquadSlot): string {
   return "";
 }
 
-function SquadRow({ slot, t }: { slot: SquadSlot; t: Translator }) {
+function SquadRow({ slot }: { slot: SquadSlot }) {
   const badge = armband(slot);
   return (
     <li
@@ -38,9 +39,14 @@ function SquadRow({ slot, t }: { slot: SquadSlot; t: Translator }) {
       data-armband={slot.isCaptain ? "captain" : slot.isViceCaptain ? "vice" : undefined}
       data-benched={slot.multiplier === 0 ? "true" : undefined}
     >
-      <span className="squad-row__slot">
-        {slot.isStarter ? positionLabel(slot, t) : benchLabel(slot, t)}
-      </span>
+      {/* The state dot is what a reader actually scans for: who is still to
+          play, who is on the pitch now, and who is finished for the week. */}
+      <span
+        className="squad-row__state"
+        title={t(`squad.state.${slot.state}`)}
+        aria-hidden="true"
+      />
+      <span className="squad-row__slot">{slotLabel(slot)}</span>
       <span className="squad-row__name">
         {slot.name}
         {badge && <em className="squad-row__armband">{badge}</em>}
@@ -51,20 +57,12 @@ function SquadRow({ slot, t }: { slot: SquadSlot; t: Translator }) {
           </em>
         )}
       </span>
-      <span className="squad-row__points">{slot.contributionPoints}</span>
+      <span className="squad-row__points">: {slot.contributionPoints}</span>
     </li>
   );
 }
 
-export function SquadList({
-  squad,
-  t,
-  title
-}: {
-  squad: SquadSlot[];
-  t: Translator;
-  title: string;
-}) {
+export function SquadList({ squad, title }: { squad: SquadSlot[]; title: string }) {
   if (squad.length === 0) {
     return (
       <div className="squad-list squad-list--empty">
@@ -76,13 +74,17 @@ export function SquadList({
 
   const starters = squad.filter((slot) => slot.isStarter);
   const bench = squad.filter((slot) => !slot.isStarter);
+  const yetToPlay = squad.filter((slot) => slot.isStarter && slot.state === "upcoming").length;
 
   return (
     <div className="squad-list">
-      <h3>{title}</h3>
+      <div className="squad-list__head">
+        <h3>{title}</h3>
+        <span className="squad-list__count">{t("squad.yetToPlay", { count: yetToPlay })}</span>
+      </div>
       <ol className="squad-rows">
         {starters.map((slot) => (
-          <SquadRow key={slot.elementId} slot={slot} t={t} />
+          <SquadRow key={slot.elementId} slot={slot} />
         ))}
       </ol>
       {bench.length > 0 && (
@@ -90,7 +92,7 @@ export function SquadList({
           <p className="squad-list__divider">{t("squad.benchHeading")}</p>
           <ol className="squad-rows squad-rows--bench">
             {bench.map((slot) => (
-              <SquadRow key={slot.elementId} slot={slot} t={t} />
+              <SquadRow key={slot.elementId} slot={slot} />
             ))}
           </ol>
         </>

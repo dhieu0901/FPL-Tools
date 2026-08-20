@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { useTranslator } from "@/components/locale-provider";
 import { EmptyState } from "@/components/ui";
+import { t } from "@/lib/i18n";
 
 export default function ErrorPage({
   error,
@@ -11,8 +11,6 @@ export default function ErrorPage({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  const t = useTranslator();
-
   useEffect(() => {
     console.error(error);
   }, [error]);

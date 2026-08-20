@@ -1,8 +1,6 @@
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 
 export default async function Loading() {
-  const t = createTranslator(await getLocale());
   return (
     <div className="loading-page" role="status" aria-live="polite">
       <div className="loading-heading" />

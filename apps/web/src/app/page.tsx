@@ -5,18 +5,15 @@ import { Icon } from "@/components/icons";
 import { StandingsTable } from "@/components/standings-table";
 import { DataBadge, EmptyState, Pill, SectionHeader } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
-import { highlightCopy } from "@/lib/highlight-text";
 import { formatDateTime, gameweekStateLabel } from "@/lib/format";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { highlightCopy } from "@/lib/highlight-text";
+import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("dashboard.title") };
+  return { title: t("dashboard.title") };
 }
 
 export default async function DashboardPage() {
-  const locale = await getLocale();
-  const t = createTranslator(locale);
   const result = await vmfApi.dashboard();
   const { data } = result;
 
@@ -50,7 +47,7 @@ export default async function DashboardPage() {
           <div className="gameweek-card__topline">
             <span>{data.gameweek.name}</span>
             <Pill tone={data.gameweek.state === "live" ? "coral" : "blue"}>
-              {gameweekStateLabel(data.gameweek.state, locale)}
+              {gameweekStateLabel(data.gameweek.state)}
             </Pill>
           </div>
           <div className="gameweek-orbit" aria-hidden="true">
@@ -83,7 +80,7 @@ export default async function DashboardPage() {
               <small>{t("dashboard.deadline")}</small>
               <strong>
                 {data.gameweek.deadline
-                  ? formatDateTime(data.gameweek.deadline, locale)
+                  ? formatDateTime(data.gameweek.deadline)
                   : t("dashboard.deadlineUnknown")}
               </strong>
             </span>
@@ -132,7 +129,7 @@ export default async function DashboardPage() {
                   <div>
                     <strong>{notice.title}</strong>
                     <p>{notice.body}</p>
-                    <time>{formatDateTime(notice.publishedAt, locale)}</time>
+                    <time>{formatDateTime(notice.publishedAt)}</time>
                   </div>
                 </article>
               ))}

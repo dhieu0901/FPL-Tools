@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { Avatar, DataBadge, PageHeader, Pill, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("nav.managers") };
+  return { title: t("nav.managers") };
 }
 
 const statusTone = {
@@ -23,8 +22,6 @@ export default async function ManagersPage({
 }: {
   searchParams: Promise<{ division?: string }>;
 }) {
-  const locale = await getLocale();
-  const t = createTranslator(locale);
   const params = await searchParams;
   const selected =
     params.division === "high" || params.division === "low" ? params.division : "all";
@@ -83,7 +80,7 @@ export default async function ManagersPage({
               <span>
                 <small>{t("managers.totalPoints")}</small>
                 <strong>
-                  {manager.totalPoints === null ? "—" : formatNumber(manager.totalPoints, locale)}
+                  {manager.totalPoints === null ? "—" : formatNumber(manager.totalPoints)}
                 </strong>
               </span>
               <span>

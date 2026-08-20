@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { formatNumber, rankDelta } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import type { StandingEntry } from "@/lib/types";
-import { useLocale, useTranslator } from "./locale-provider";
 import { Avatar, FormDots, Pill } from "./ui";
 
 function QualificationMarker({ value }: { value: StandingEntry["qualification"] }) {
-  const t = useTranslator();
   if (!value) return null;
   return <span className="qualification-marker" data-zone={value} title={t(`zone.${value}`)} />;
 }
@@ -19,8 +18,6 @@ export function StandingsTable({
   entries: StandingEntry[];
   compact?: boolean;
 }) {
-  const locale = useLocale();
-  const t = useTranslator();
   const showForm = !compact && entries.some((entry) => entry.form.length > 0);
   const showGameweek = entries.some((entry) => entry.gameweekPoints !== null);
 
@@ -86,9 +83,7 @@ export function StandingsTable({
                   </td>
                 )}
                 {showGameweek && <td className="number-cell">{entry.gameweekPoints}</td>}
-                <td className="number-cell total-cell">
-                  {formatNumber(entry.totalPoints, locale)}
-                </td>
+                <td className="number-cell total-cell">{formatNumber(entry.totalPoints)}</td>
                 {!compact && <td className="number-cell">{entry.totw}</td>}
               </tr>
             );

@@ -39,12 +39,21 @@ class CupRound(TimestampMixin, Base):
 
 class CupMatch(TimestampMixin, Base):
     __tablename__ = "cup_matches"
+    __table_args__ = (UniqueConstraint("cup_round_id", "tie_id"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cup_round_id: Mapped[int] = mapped_column(
         ForeignKey("cup_rounds.id", ondelete="CASCADE"),
         nullable=False,
     )
+    #: Position in the published bracket, for example "Q1-7" or "SF-2". The
+    #: bracket is drawn before anyone has qualified, so a tie has an identity
+    #: of its own before it has managers.
+    tie_id: Mapped[str] = mapped_column(String(12), nullable=False)
+    #: What the bracket sheet prints in each side of the tie: a qualification
+    #: place such as "H11", or the winner of an earlier tie, "W(Q1-1)".
+    slot_a_label: Mapped[str] = mapped_column(String(16), nullable=False)
+    slot_b_label: Mapped[str] = mapped_column(String(16), nullable=False)
     manager_a_id: Mapped[int | None] = mapped_column(ForeignKey("managers.id"))
     manager_b_id: Mapped[int | None] = mapped_column(ForeignKey("managers.id"))
     manager_a_score: Mapped[int | None] = mapped_column(Integer)

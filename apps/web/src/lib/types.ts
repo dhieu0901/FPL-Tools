@@ -1,7 +1,7 @@
 import type { MessageKey } from "@/lib/i18n";
 
 export type Division = "HIGH" | "LOW";
-export type DataSource = "live" | "mock" | "unavailable";
+export type DataSource = "live" | "unavailable";
 export type MatchStatus = "scheduled" | "live" | "provisional" | "final" | "walkover";
 export type ViolationStatus = "pending" | "confirmed" | "waived";
 export type ViolationSeverity = 1 | 2 | 3;
@@ -24,8 +24,8 @@ export interface GameweekStatus {
 
 export interface LeagueMetric {
   /**
-   * Dictionary keys, not text: the same payload is rendered in Vietnamese and
-   * in English, so the API layer must not decide which one the reader sees.
+   * A dictionary key, not a sentence. Copy lives in one place so a metric
+   * cannot drift out of step with the rest of the interface.
    */
   labelKey: MessageKey;
   detailKey: MessageKey;
@@ -68,6 +68,8 @@ export interface FixtureSide {
   managerId: string;
   managerName: string;
   teamName: string;
+  /** FPL's own id, used to link a team through to its Gameweek page there. */
+  fplEntryId: number | null;
   score: number | null;
   liveScore?: number;
   captain?: string;
@@ -89,7 +91,7 @@ export interface H2HFixture {
 }
 
 export interface ScoreBreakdown {
-  /** Dictionary key, so the label follows the reader's language. */
+  /** Dictionary key rather than a finished label. */
   labelKey:
     | "match.squadPoints"
     | "match.transferCost"
@@ -99,7 +101,7 @@ export interface ScoreBreakdown {
   away: number;
 }
 
-/** Machine-readable result note, translated by the page that renders it. */
+/** Machine-readable result note; the page turns it into a sentence. */
 export type MatchRuleNote =
   | { kind: "walkover"; reason: string }
   | { kind: "settled" }
@@ -183,7 +185,11 @@ export interface MatchDetail extends H2HFixture {
 
 export interface CupMatch {
   id: string;
+  /** Position in the published bracket, for example "Q1-7" or "SF-2". */
   label: string;
+  /** What the bracket sheet prints in each side before anyone qualifies. */
+  slotALabel: string;
+  slotBLabel: string;
   status: MatchStatus;
   home: FixtureSide;
   away: FixtureSide;
@@ -193,7 +199,8 @@ export interface CupMatch {
 export interface CupRound {
   id: string;
   name: string;
-  gameweek: string;
+  roundOrder: number;
+  gameweek: number;
   matches: CupMatch[];
 }
 
@@ -201,8 +208,34 @@ export interface CupData {
   season: 1 | 2;
   title: string;
   qualificationWindow: string;
+  /** False until the qualification Gameweek is finalized and the Cup is drawn. */
+  isDrawn: boolean;
   rounds: CupRound[];
   thirdPlace: CupMatch | null;
+}
+
+export interface CupQualificationEntry {
+  rank: number;
+  managerId: string;
+  managerName: string;
+  teamName: string;
+  division: Division;
+  points: number;
+  gameweeksCounted: number;
+  /** Gameweeks a confirmed violation removed from the Cup total. */
+  gameweeksExcluded: number[];
+  totw: number;
+  /** 1 or 2 for a qualifying round, 3 for a bye to the round of 16. */
+  entersAtRound: number | null;
+}
+
+export interface CupQualification {
+  season: 1 | 2;
+  startGameweek: number;
+  endGameweek: number;
+  isSettled: boolean;
+  high: CupQualificationEntry[];
+  low: CupQualificationEntry[];
 }
 
 export type HighlightKind =

@@ -1,6 +1,6 @@
 """Import the confirmed roster from a CSV file.
 
-The roster is the one input the system cannot derive from FPL: which forty
+The roster is the one input the system cannot derive from FPL: which forty-six
 people are in this league, and which division each of them starts in. Getting
 an ``fpl_entry_id`` wrong is the expensive mistake, because the manager looks
 present in every listing while their squad silently never synchronises, so the
@@ -39,9 +39,11 @@ OPTIONAL_COLUMNS = ("phone_number", "facebook_url")
 
 MAXIMUM_NAME_LENGTH = 120
 
-#: The rulebook fixes the league at forty managers in two divisions of twenty.
-EXPECTED_TOTAL = 40
-EXPECTED_PER_DIVISION = 20
+#: 2026/27 runs 46 managers: HIGH 20, LOW 26. The two divisions are different
+#: sizes, so the roster is checked against each one rather than against a
+#: single "managers per division" figure.
+EXPECTED_PER_DIVISION: dict[Division, int] = {Division.HIGH: 20, Division.LOW: 26}
+EXPECTED_TOTAL = sum(EXPECTED_PER_DIVISION.values())
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,18 +158,16 @@ def parse_roster(rows: Iterable[dict[str, str]]) -> tuple[list[RosterEntry], lis
 
 
 def check_roster_shape(entries: Sequence[RosterEntry]) -> list[str]:
-    """Report departures from the forty-manager, two-division structure."""
+    """Report departures from the 46-manager, HIGH 20 / LOW 26 structure."""
 
     problems: list[str] = []
     if len(entries) != EXPECTED_TOTAL:
         problems.append(f"expected {EXPECTED_TOTAL} managers, found {len(entries)}")
     counts = Counter(entry.division for entry in entries)
-    for division in Division:
+    for division, expected in EXPECTED_PER_DIVISION.items():
         found = counts.get(division, 0)
-        if found != EXPECTED_PER_DIVISION:
-            problems.append(
-                f"division {division.value}: expected {EXPECTED_PER_DIVISION}, found {found}"
-            )
+        if found != expected:
+            problems.append(f"division {division.value}: expected {expected}, found {found}")
     return problems
 
 

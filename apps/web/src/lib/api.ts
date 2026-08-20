@@ -1,19 +1,10 @@
-import {
-  adminOverview,
-  cupData,
-  dashboardData,
-  fixtures,
-  h2hStandings,
-  highlights,
-  managers,
-  standings,
-  violations
-} from "./mock-data";
 import type {
   AdminOverview,
   ApiResult,
   CupData,
   CupMatch,
+  CupQualification,
+  CupQualificationEntry,
   DashboardData,
   Division,
   H2HFixture,
@@ -38,7 +29,6 @@ interface RuntimeConfiguration {
   apiUrl: string | undefined;
   adminApiKey: string | undefined;
   adminActor: string;
-  useMockData: boolean;
   seasonId: number;
   seasonLabel: string;
   h2hScheduleId: number;
@@ -143,8 +133,33 @@ interface SquadSlotResponse {
   is_vice_captain: boolean;
 }
 
+interface CupQualificationEntryResponse {
+  rank: number;
+  manager_id: number;
+  manager_name: string;
+  team_name: string;
+  division: Division;
+  qualification_points: number;
+  gameweeks_counted: number;
+  gameweeks_excluded: number[];
+  totw_count: number;
+  captain_points: number;
+  enters_at_round: number | null;
+}
+
+interface CupQualificationResponse {
+  season_id: number;
+  season_half: number;
+  start_gameweek: number;
+  end_gameweek: number;
+  is_settled: boolean;
+  high: CupQualificationEntryResponse[];
+  low: CupQualificationEntryResponse[];
+}
+
 interface MatchupSideResponse {
   manager_id: number;
+  fpl_entry_id: number;
   manager_name: string;
   team_name: string;
   score: number | null;
@@ -209,6 +224,9 @@ interface CupCompetitionResponse {
 interface CupMatchResponse {
   id: number;
   cup_round_id: number;
+  tie_id: string;
+  slot_a_label: string;
+  slot_b_label: string;
   manager_a_id: number | null;
   manager_b_id: number | null;
   manager_a_score: number | null;
@@ -218,6 +236,20 @@ interface CupMatchResponse {
   tie_break_step_used: string | null;
   random_draw_result: string | null;
   is_third_place_match: boolean;
+}
+
+interface CupRoundResponse {
+  id: number;
+  name: string;
+  round_order: number;
+  gameweek_number: number;
+  has_third_place_match: boolean;
+  matches: CupMatchResponse[];
+}
+
+interface CupBracketResponse {
+  competition: CupCompetitionResponse;
+  rounds: CupRoundResponse[];
 }
 
 interface ViolationResponse {
@@ -297,15 +329,12 @@ function runtimeConfiguration(): RuntimeConfiguration {
   const apiUrl = (process.env.VMF_API_URL ?? process.env.NEXT_PUBLIC_API_URL)
     ?.trim()
     .replace(/\/+$/, "");
-  const useMockData =
-    process.env.VMF_USE_MOCK_DATA === "true" || process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
-  const requireIds = process.env.NODE_ENV === "production" && !useMockData;
+  const requireIds = process.env.NODE_ENV === "production";
 
   return {
     apiUrl: apiUrl || undefined,
     adminApiKey: process.env.VMF_ADMIN_API_KEY?.trim() || undefined,
     adminActor: process.env.VMF_ADMIN_ACTOR?.trim() || "vmf-web",
-    useMockData,
     seasonId: positiveInteger(process.env.VMF_SEASON_ID, {
       name: "VMF_SEASON_ID",
       fallback: 1,
@@ -365,14 +394,14 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   }
 
   if (!response.ok) {
-    throw new ApiRequestError(`VMF API trả về HTTP ${response.status}.`, response.status);
+    throw new ApiRequestError(`The VMF API returned HTTP ${response.status}.`, response.status);
   }
 
   try {
     const data = (await response.json()) as T;
     return result(data, "live");
   } catch (error) {
-    throw new ApiRequestError("VMF API trả về JSON không hợp lệ.", response.status, {
+    throw new ApiRequestError("The VMF API returned invalid JSON.", response.status, {
       cause: error
     });
   }
@@ -426,6 +455,9 @@ function fixtureSide(
     managerId: managerId === null ? "tbd" : String(managerId),
     managerName: manager?.manager_name ?? (managerId === null ? "TBD" : `Manager #${managerId}`),
     teamName: manager?.team_name ?? (managerId === null ? "TBD" : `Team #${managerId}`),
+    // Carried through so the site can send a reader to this manager's own
+    // Gameweek page on FPL, which is the source every score here comes from.
+    fplEntryId: manager?.fpl_entry_id ?? null,
     score,
     isWinner: managerId !== null && managerId === winnerManagerId
   };
@@ -467,29 +499,27 @@ function toH2HStanding(
 }
 
 function tieBreakLabel(value: string | null, randomDrawResult: string | null): string | undefined {
-  if (randomDrawResult) return `Bốc thăm admin: ${randomDrawResult}`;
+  if (randomDrawResult) return `Administrator draw: ${randomDrawResult}`;
   if (!value) return undefined;
   const labels: Record<string, string> = {
-    match_score: "Điểm trận đấu",
-    walkover: "Thắng walkover",
-    totw_count: "Tổng số lần TotW",
-    captain_points: "Điểm đội trưởng",
-    goals: "Số bàn thắng",
-    fewer_cards: "Ít thẻ hơn",
-    classic_points: "Điểm Classic",
-    admin_draw: "Bốc thăm admin"
+    match_score: "Match score",
+    walkover: "Walkover",
+    totw_count: "Cumulative TotW",
+    captain_points: "Captain points",
+    goals: "Goals scored",
+    fewer_cards: "Fewer cards",
+    classic_points: "Classic points",
+    admin_draw: "Administrator draw"
   };
   return labels[value] ?? value.replaceAll("_", " ");
 }
 
-function toCupMatch(
-  raw: CupMatchResponse,
-  managersById: Map<number, ManagerResponse>,
-  label: string
-): CupMatch {
+function toCupMatch(raw: CupMatchResponse, managersById: Map<number, ManagerResponse>): CupMatch {
   return {
     id: String(raw.id),
-    label,
+    label: raw.tie_id,
+    slotALabel: raw.slot_a_label,
+    slotBLabel: raw.slot_b_label,
     status: raw.status,
     home: fixtureSide(raw.manager_a_id, raw.manager_a_score, managersById, raw.winner_manager_id),
     away: fixtureSide(raw.manager_b_id, raw.manager_b_score, managersById, raw.winner_manager_id),
@@ -497,36 +527,47 @@ function toCupMatch(
   };
 }
 
-function cupFromResponses(
+/** GW1-GW13 for the first Cup, GW20-GW32 for the second. */
+function qualificationWindow(half: 1 | 2): string {
+  return half === 1 ? "GW1-GW13" : "GW20-GW32";
+}
+
+function emptyCup(half: 1 | 2): CupData {
+  return {
+    season: half,
+    title: `VMF Cup · Season ${half}`,
+    qualificationWindow: qualificationWindow(half),
+    isDrawn: false,
+    rounds: [],
+    thirdPlace: null
+  };
+}
+
+function cupFromBracket(
   half: 1 | 2,
-  competition: CupCompetitionResponse | undefined,
-  matches: CupMatchResponse[],
+  bracket: CupBracketResponse,
   managersById: Map<number, ManagerResponse>
 ): CupData {
-  const grouped = new Map<number, CupMatchResponse[]>();
-  for (const match of matches.filter((item) => !item.is_third_place_match)) {
-    const roundMatches = grouped.get(match.cup_round_id) ?? [];
-    roundMatches.push(match);
-    grouped.set(match.cup_round_id, roundMatches);
-  }
-
-  const rounds = [...grouped.entries()].map(([roundId, roundMatches], roundIndex) => ({
-    id: String(roundId),
-    name: `Vòng ${roundIndex + 1}`,
-    gameweek: "Đang cập nhật",
-    matches: roundMatches.map((match, matchIndex) =>
-      toCupMatch(match, managersById, `Trận ${String(matchIndex + 1).padStart(2, "0")}`)
-    )
+  const rounds = bracket.rounds.map((round) => ({
+    id: String(round.id),
+    name: round.name,
+    roundOrder: round.round_order,
+    gameweek: round.gameweek_number,
+    matches: round.matches
+      .filter((match) => !match.is_third_place_match)
+      .map((match) => toCupMatch(match, managersById))
   }));
-  const thirdPlace = matches.find((match) => match.is_third_place_match);
+  const thirdPlace = bracket.rounds
+    .flatMap((round) => round.matches)
+    .find((match) => match.is_third_place_match);
 
   return {
     season: half,
-    title: competition?.name ?? `VMF Cup · Season ${half}`,
-    qualificationWindow:
-      half === 1 ? "Xét điểm hợp lệ từ GW1–GW14" : "Xét điểm hợp lệ từ GW20–GW33",
+    title: bracket.competition.name,
+    qualificationWindow: qualificationWindow(half),
+    isDrawn: rounds.length > 0,
     rounds,
-    thirdPlace: thirdPlace ? toCupMatch(thirdPlace, managersById, "Tranh hạng ba") : null
+    thirdPlace: thirdPlace ? toCupMatch(thirdPlace, managersById) : null
   };
 }
 
@@ -673,6 +714,7 @@ async function h2hMatchLive(id: string): Promise<ApiResult<MatchDetail>> {
         managerId: String(raw.home.manager_id),
         managerName: raw.home.manager_name,
         teamName: raw.home.team_name,
+        fplEntryId: raw.home.fpl_entry_id || null,
         score: raw.home.score,
         isWinner:
           raw.home.score !== null && raw.away.score !== null
@@ -684,6 +726,7 @@ async function h2hMatchLive(id: string): Promise<ApiResult<MatchDetail>> {
         managerId: String(raw.away.manager_id),
         managerName: raw.away.manager_name,
         teamName: raw.away.team_name,
+        fplEntryId: raw.away.fpl_entry_id || null,
         score: raw.away.score,
         isWinner:
           raw.home.score !== null && raw.away.score !== null
@@ -775,7 +818,7 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
       season: configuration.seasonLabel,
       gameweek: {
         number: gameweek,
-        name: fplStatus.gameweek_name ?? "Chưa bắt đầu",
+        name: fplStatus.gameweek_name ?? "Not started",
         state: fplStatus.state === "upcoming" ? "open" : fplStatus.state,
         deadline: fplStatus.deadline,
         progress:
@@ -832,18 +875,46 @@ async function cupLive(half: 1 | 2): Promise<ApiResult<CupData>> {
     requestJson<ManagerResponse[]>("/managers")
   ]);
   const competition = competitionsResponse.data.find((item) => item.season_half === half);
-  if (!competition) {
-    return result(
-      cupFromResponses(half, undefined, [], managerLookup(managersResponse.data)),
-      "live",
-      competitionsResponse.updatedAt
-    );
-  }
-  const matchesResponse = await requestJson<CupMatchResponse[]>(`/cups/${competition.id}/bracket`);
+  // A Cup that has not been drawn yet is a normal state for most of the
+  // season, not a failure: the page says so rather than showing an error.
+  if (!competition) return result(emptyCup(half), "live", competitionsResponse.updatedAt);
+
+  const bracketResponse = await requestJson<CupBracketResponse>(`/cups/${competition.id}`);
   return result(
-    cupFromResponses(half, competition, matchesResponse.data, managerLookup(managersResponse.data)),
+    cupFromBracket(half, bracketResponse.data, managerLookup(managersResponse.data)),
     "live",
-    matchesResponse.updatedAt
+    bracketResponse.updatedAt
+  );
+}
+
+async function cupQualificationLive(half: 1 | 2): Promise<ApiResult<CupQualification>> {
+  const { seasonId } = runtimeConfiguration();
+  const response = await requestJson<CupQualificationResponse>(
+    `/cups/qualification?season_id=${seasonId}&season_half=${half}`
+  );
+  const toEntry = (raw: CupQualificationEntryResponse): CupQualificationEntry => ({
+    rank: raw.rank,
+    managerId: String(raw.manager_id),
+    managerName: raw.manager_name,
+    teamName: raw.team_name,
+    division: raw.division,
+    points: raw.qualification_points,
+    gameweeksCounted: raw.gameweeks_counted,
+    gameweeksExcluded: raw.gameweeks_excluded,
+    totw: raw.totw_count,
+    entersAtRound: raw.enters_at_round
+  });
+  return result(
+    {
+      season: half,
+      startGameweek: response.data.start_gameweek,
+      endGameweek: response.data.end_gameweek,
+      isSettled: response.data.is_settled,
+      high: response.data.high.map(toEntry),
+      low: response.data.low.map(toEntry)
+    },
+    "live",
+    response.updatedAt
   );
 }
 
@@ -887,88 +958,29 @@ async function adminViolationsLive(): Promise<ApiResult<Violation[]>> {
 }
 
 export const vmfApi = {
-  dashboard: (): Promise<ApiResult<DashboardData>> =>
-    runtimeConfiguration().useMockData
-      ? Promise.resolve(result(dashboardData, "mock"))
-      : dashboardLive(),
+  dashboard: dashboardLive,
 
   classicStandings: (
     division: Division = "HIGH",
     period: ClassicPeriod = "season_1"
-  ): Promise<ApiResult<StandingEntry[]>> =>
-    runtimeConfiguration().useMockData
-      ? Promise.resolve(
-          result(
-            standings.filter((entry) => entry.division === division),
-            "mock"
-          )
-        )
-      : classicStandingsLive(division, period),
+  ): Promise<ApiResult<StandingEntry[]>> => classicStandingsLive(division, period),
 
-  h2hStandings: (): Promise<ApiResult<H2HStanding[]>> =>
-    runtimeConfiguration().useMockData
-      ? Promise.resolve(result(h2hStandings, "mock"))
-      : h2hStandingsLive(),
+  h2hStandings: h2hStandingsLive,
 
-  h2hFixtures: (gameweek?: number): Promise<ApiResult<H2HFixture[]>> =>
-    runtimeConfiguration().useMockData
-      ? Promise.resolve(
-          result(
-            gameweek === undefined
-              ? fixtures
-              : fixtures.filter((fixture) => fixture.gameweek === gameweek),
-            "mock"
-          )
-        )
-      : h2hFixturesLive(gameweek),
+  h2hFixtures: (gameweek?: number): Promise<ApiResult<H2HFixture[]>> => h2hFixturesLive(gameweek),
 
-  h2hMatch: async (id: string): Promise<ApiResult<MatchDetail>> => {
-    if (runtimeConfiguration().useMockData) {
-      const fixture = fixtures.find((item) => item.id === id);
-      if (!fixture) throw new ApiRequestError(`H2H match #${id} was not found.`, 404);
-      return result(
-        {
-          ...fixture,
-          id,
-          scoreBreakdown: [],
-          events: [],
-          shared: [],
-          differentials: [],
-          ruleNote: { kind: "provisional" }
-        },
-        "mock"
-      );
-    }
-    return h2hMatchLive(id);
-  },
+  h2hMatch: (id: string): Promise<ApiResult<MatchDetail>> => h2hMatchLive(id),
 
-  cup: (season = 1): Promise<ApiResult<CupData>> => {
-    const half: 1 | 2 = season === 2 ? 2 : 1;
-    if (!runtimeConfiguration().useMockData) return cupLive(half);
-    return Promise.resolve(
-      result(
-        {
-          ...cupData,
-          season: half,
-          title: `VMF Cup · Season ${half}`,
-          qualificationWindow:
-            half === 2 ? "Xét điểm hợp lệ từ GW20–GW33" : "Xét điểm hợp lệ từ GW1–GW14"
-        },
-        "mock"
-      )
-    );
-  },
+  cup: (season = 1): Promise<ApiResult<CupData>> => cupLive(season === 2 ? 2 : 1),
 
-  highlights: (): Promise<ApiResult<Highlight[]>> =>
-    runtimeConfiguration().useMockData
-      ? Promise.resolve(result(highlights, "mock"))
-      : highlightsLive(),
+  cupQualification: (season = 1): Promise<ApiResult<CupQualification>> =>
+    cupQualificationLive(season === 2 ? 2 : 1),
 
-  managers: (): Promise<ApiResult<Manager[]>> =>
-    runtimeConfiguration().useMockData ? Promise.resolve(result(managers, "mock")) : managersLive(),
+  highlights: highlightsLive,
+
+  managers: managersLive,
 
   adminOverview: async (): Promise<ApiResult<AdminOverview>> => {
-    if (runtimeConfiguration().useMockData) return result(adminOverview, "mock");
     const [managerResult, violationResult] = await Promise.all([
       managersLive(),
       adminViolationsLive()
@@ -991,10 +1003,7 @@ export const vmfApi = {
     );
   },
 
-  adminViolations: (): Promise<ApiResult<Violation[]>> =>
-    runtimeConfiguration().useMockData
-      ? Promise.resolve(result(violations, "mock"))
-      : adminViolationsLive(),
+  adminViolations: adminViolationsLive,
 
   reviewViolation: async (
     id: string,
@@ -1002,11 +1011,6 @@ export const vmfApi = {
     note: string,
     overriddenCount?: number
   ): Promise<void> => {
-    if (runtimeConfiguration().useMockData) {
-      throw new ApiConfigurationError(
-        "Decisions cannot be recorded while illustrative data is enabled."
-      );
-    }
     await requestJson(`/admin/violations/${encodeURIComponent(id)}/review`, {
       admin: true,
       method: "POST",
@@ -1025,8 +1029,5 @@ export const apiConfiguration = {
   },
   get baseUrl(): string | undefined {
     return runtimeConfiguration().apiUrl;
-  },
-  get mockEnabled(): boolean {
-    return runtimeConfiguration().useMockData;
   }
 };

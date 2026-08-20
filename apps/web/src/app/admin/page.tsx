@@ -4,16 +4,13 @@ import { Icon } from "@/components/icons";
 import { DataBadge, EmptyState, PageHeader, Pill } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("admin.title") };
+  return { title: t("admin.title") };
 }
 
 export default async function AdminPage() {
-  const locale = await getLocale();
-  const t = createTranslator(locale);
   const result = await vmfApi.adminOverview();
   const data = result.data;
   return (
@@ -35,7 +32,7 @@ export default async function AdminPage() {
           <p>
             {data.sync
               ? t("admin.syncDetail", {
-                  time: formatDateTime(data.sync.lastSuccessfulAt, locale),
+                  time: formatDateTime(data.sync.lastSuccessfulAt),
                   latency: data.sync.latencySeconds
                 })
               : t("admin.syncMissing")}
@@ -112,7 +109,7 @@ export default async function AdminPage() {
                   </span>
                   <div>
                     <strong>{job.name}</strong>
-                    <small>{formatDateTime(job.startedAt, locale)}</small>
+                    <small>{formatDateTime(job.startedAt)}</small>
                   </div>
                   <span>{job.duration}</span>
                 </article>

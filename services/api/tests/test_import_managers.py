@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
 import pytest
@@ -50,7 +51,9 @@ def _entries(count: int) -> list[RosterEntry]:
             fpl_entry_id=1000 + index,
             manager_name=f"Manager {1000 + index}",
             team_name=f"Team {1000 + index}",
-            division=Division.HIGH if index < EXPECTED_PER_DIVISION else Division.LOW,
+            division=(
+                Division.HIGH if index < EXPECTED_PER_DIVISION[Division.HIGH] else Division.LOW
+            ),
         )
         for index in range(count)
     ]
@@ -131,11 +134,19 @@ def test_a_name_longer_than_the_column_is_rejected() -> None:
 
 
 def test_the_roster_shape_is_checked_against_the_rulebook() -> None:
-    assert check_roster_shape(_entries(40)) == []
+    assert check_roster_shape(_entries(46)) == []
 
-    problems = check_roster_shape(_entries(39))
-    assert any("expected 40 managers, found 39" in problem for problem in problems)
-    assert any("division LOW" in problem for problem in problems)
+    problems = check_roster_shape(_entries(45))
+    assert any("expected 46 managers, found 45" in problem for problem in problems)
+    assert any("division LOW: expected 26, found 25" in problem for problem in problems)
+
+    # The two divisions are different sizes, so a roster that is the right
+    # total but the wrong shape has to be caught as well.
+    lopsided = _entries(46)
+    lopsided[-1] = replace(lopsided[-1], division=Division.HIGH)
+    problems = check_roster_shape(lopsided)
+    assert any("division HIGH: expected 20, found 21" in problem for problem in problems)
+    assert any("division LOW: expected 26, found 25" in problem for problem in problems)
 
 
 @pytest.mark.anyio
@@ -187,7 +198,7 @@ async def test_an_entry_fpl_cannot_confirm_aborts_the_whole_import() -> None:
         async with sessionmaker() as session:
             await _seed_season(session)
             entries = _entries(40)
-            # One mistyped entry id out of forty.
+            # One mistyped entry id out of forty-six.
             known = {entry.fpl_entry_id for entry in entries} - {entries[7].fpl_entry_id}
 
             with pytest.raises(RosterError) as error:

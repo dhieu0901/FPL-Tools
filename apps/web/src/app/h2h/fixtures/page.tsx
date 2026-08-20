@@ -2,11 +2,10 @@ import type { Metadata } from "next";
 import { FixtureCard } from "@/components/fixture-card";
 import { DataBadge, PageHeader, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("fixtures.title") };
+  return { title: t("fixtures.title") };
 }
 
 export default async function H2HFixturesPage({
@@ -14,7 +13,6 @@ export default async function H2HFixturesPage({
 }: {
   searchParams: Promise<{ gameweek?: string }>;
 }) {
-  const t = createTranslator(await getLocale());
   const params = await searchParams;
   const parsedGameweek = Number(params.gameweek);
   const gameweek =

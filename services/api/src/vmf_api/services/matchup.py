@@ -35,6 +35,7 @@ from vmf_api.models.scoring import ManagerGameweekScore
 @dataclass(frozen=True, slots=True)
 class SideView:
     manager_id: int
+    fpl_entry_id: int
     manager_name: str
     team_name: str
     score: int | None
@@ -141,6 +142,7 @@ class MatchupService:
         score = scores.get(manager_id)
         return SideView(
             manager_id=manager_id,
+            fpl_entry_id=manager.fpl_entry_id if manager is not None else 0,
             manager_name=manager.manager_name if manager is not None else "",
             team_name=manager.team_name if manager is not None else "",
             # A finalized match keeps the score it was settled with; otherwise

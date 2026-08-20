@@ -54,7 +54,7 @@ Build these reusable datasets:
 | SYNC-004 | I | FPL times out and then recovers | Retries with backoff; no duplicate snapshot or violation |
 | SYNC-005 | E | The live endpoint fails for three ticks | The last snapshot is kept, staleness and last update are shown, no score becomes `0` |
 | SYNC-006 | I | Two workers run the same Gameweek | The advisory lock or CAS publishes only one valid revision |
-| SYNC-007 | I | Fetch live shared data for 40 managers | Each shared player/fixture endpoint is called once per tick |
+| SYNC-007 | I | Fetch live shared data for 46 managers | Each shared player/fixture endpoint is called once per tick |
 | SYNC-008 | I | Deadline picks already captured, next live tick | The 40 picks are not refetched while the source is unchanged |
 | SYNC-009 | I | A new parser version reruns old raw data | Derived rows carry the new parser and algorithm version; raw is unchanged |
 | SYNC-010 | S | A failed request log contains a contact payload | Phone, Facebook URL, auth header and cookie are redacted |
@@ -128,7 +128,7 @@ Build these reusable datasets:
 
 | ID | Level | Scenario | Expected |
 |---|---|---|---|
-| H2H-001 | I | Generate 35 rounds for 40 managers | 20 matches per Gameweek, one per manager, no self-match |
+| H2H-001 | I | Generate 35 rounds for 46 managers | 23 matches per Gameweek, one per manager, no self-match |
 | H2H-002 | I | Edit a locked schedule directly | Rejected; only a new version or an administrative action is allowed |
 | H2H-003 | U | Net 68 against 67 | 68 receives 3 points, 67 receives 0 |
 | H2H-004 | U | Net 68 against 68 | Each receives 1 |
@@ -284,7 +284,7 @@ Build these reusable datasets:
 
 | ID | Scenario | Pass condition |
 |---|---|---|
-| ACC-001 | Import 40 managers by FPL entry ID | Uniqueness validated, 20 HIGH and 20 LOW, private contacts not public |
+| ACC-001 | Import 46 managers by FPL entry ID | Uniqueness validated, 20 HIGH and 26 LOW, private contacts not public |
 | ACC-002 | Replay an ordinary Gameweek | Gross, net, captain, auto-subs and standings match the expected fixture |
 | ACC-003 | Replay a live Double Gameweek | Scores and remaining counts update correctly per fixture |
 | ACC-004 | Simulate all of Classic Season 1 | Division ranks, boundary ties, top and bottom 6 and the GW20 membership are correct |

@@ -1,50 +1,73 @@
 import type { Metadata } from "next";
-import { DataBadge, PageHeader, Pill, SegmentedLinks } from "@/components/ui";
+import { CupBracket } from "@/components/bracket";
+import { DataBadge, EmptyState, PageHeader, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
-import { matchStatusLabel } from "@/lib/format";
-import { createTranslator, type Locale } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
-import type { CupMatch } from "@/lib/types";
+import { layoutBracket } from "@/lib/bracket";
+import { t } from "@/lib/i18n";
+import type { CupQualificationEntry } from "@/lib/types";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("cup.title") };
+  return { title: t("cup.title") };
 }
 
-function BracketMatch({ match, locale }: { match: CupMatch; locale: Locale }) {
+const ENTRY_ROUND_KEY = {
+  1: "cup.entersQualifying1",
+  2: "cup.entersQualifying2",
+  3: "cup.entersRoundOf16"
+} as const;
+
+function QualificationTable({
+  title,
+  entries
+}: {
+  title: string;
+  entries: CupQualificationEntry[];
+}) {
   return (
-    <article className="bracket-match">
-      <div className="bracket-match__head">
-        <span>{match.label}</span>
-        <Pill
-          tone={
-            match.status === "final"
-              ? "lime"
-              : match.status === "provisional"
-                ? "warning"
-                : "neutral"
-          }
-        >
-          {matchStatusLabel(match.status, locale)}
-        </Pill>
+    <div className="qualification-block">
+      <h3>{title}</h3>
+      <div className="table-scroll">
+        <table className="data-table qualification-table">
+          <thead>
+            <tr>
+              <th scope="col">{t("common.rank")}</th>
+              <th scope="col">{t("common.team")}</th>
+              <th scope="col">{t("cup.qualificationPoints")}</th>
+              <th scope="col">{t("cup.entryRound")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry) => (
+              <tr key={entry.managerId} data-eliminated={entry.entersAtRound === null}>
+                <td>{entry.rank}</td>
+                <td>
+                  <strong>{entry.teamName}</strong>
+                  <small>{entry.managerName}</small>
+                </td>
+                <td>
+                  {entry.points}
+                  {entry.gameweeksExcluded.length > 0 && (
+                    <em
+                      className="qualification-table__excluded"
+                      title={t("cup.excludedDetail", {
+                        gameweeks: entry.gameweeksExcluded.join(", ")
+                      })}
+                    >
+                      {t("cup.excludedCount", { count: entry.gameweeksExcluded.length })}
+                    </em>
+                  )}
+                </td>
+                <td>
+                  {entry.entersAtRound === null
+                    ? t("cup.notQualified")
+                    : t(ENTRY_ROUND_KEY[entry.entersAtRound as 1 | 2 | 3])}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
-      {[
-        { slot: "home", side: match.home },
-        { slot: "away", side: match.away }
-      ].map(({ slot, side }) => (
-        <div
-          className="bracket-side"
-          data-winner={side.isWinner}
-          key={`${match.id}-${slot}-${side.managerId}`}
-        >
-          <span>
-            <strong>{side.teamName}</strong>
-            <small>{side.managerName}</small>
-          </span>
-          <b>{side.score ?? "—"}</b>
-        </div>
-      ))}
-      {match.decidedBy && <div className="bracket-match__decision">{match.decidedBy}</div>}
-    </article>
+    </div>
   );
 }
 
@@ -53,22 +76,26 @@ export default async function CupPage({
 }: {
   searchParams: Promise<{ season?: string }>;
 }) {
-  const locale = await getLocale();
-  const t = createTranslator(locale);
   const params = await searchParams;
   const season = params.season === "2" ? 2 : 1;
-  const result = await vmfApi.cup(season);
-  const cup = result.data;
+
+  const [cupResult, qualificationResult] = await Promise.all([
+    vmfApi.cup(season),
+    // The table is the interesting half of the Cup until it is drawn, so a
+    // failure there empties one panel rather than the page.
+    vmfApi.cupQualification(season).catch(() => null)
+  ]);
+  const cup = cupResult.data;
+  const qualification = qualificationResult?.data ?? null;
+  const layout = layoutBracket(cup.rounds, cup.thirdPlace);
 
   return (
     <>
       <PageHeader
         eyebrow={t("cup.eyebrow")}
         title={cup.title}
-        description={t("cup.description", {
-          window: season === 2 ? t("cup.window2") : t("cup.window1")
-        })}
-        actions={<DataBadge source={result.source} updatedAt={result.updatedAt} />}
+        description={t("cup.description", { window: cup.qualificationWindow })}
+        actions={<DataBadge source={cupResult.source} updatedAt={cupResult.updatedAt} />}
       />
       <div className="toolbar-row">
         <SegmentedLinks
@@ -79,32 +106,34 @@ export default async function CupPage({
         />
         <span className="toolbar-note">{t("cup.netNote")}</span>
       </div>
-      <div className="bracket-shell">
-        <div className="bracket">
-          {cup.rounds.map((round) => (
-            <section className="bracket-round" key={round.id}>
-              <header>
-                <span>{round.gameweek}</span>
-                <h2>{round.name}</h2>
-              </header>
-              <div className="bracket-round__matches">
-                {round.matches.map((match) => (
-                  <BracketMatch match={match} locale={locale} key={match.id} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      </div>
-      {cup.thirdPlace && (
-        <section className="third-place">
-          <div>
-            <p className="eyebrow">{t("cup.honours")}</p>
-            <h2>{t("cup.thirdPlace")}</h2>
-            <p>{t("cup.thirdPlaceBody")}</p>
+
+      {cup.isDrawn ? (
+        <section className="section-space">
+          <p className="panel-note bracket-hint">{t("cup.bracketHint")}</p>
+          <CupBracket layout={layout} />
+        </section>
+      ) : (
+        <EmptyState
+          icon="cup"
+          title={t("cup.notDrawnTitle")}
+          description={t("cup.notDrawnBody", { window: cup.qualificationWindow })}
+        />
+      )}
+
+      {qualification && (
+        <section className="section-space">
+          <div className="section-heading">
+            <p className="eyebrow">{t("cup.qualificationEyebrow")}</p>
+            <h2>{t("cup.qualificationTitle")}</h2>
+            <p>
+              {qualification.isSettled
+                ? t("cup.qualificationSettled", { gameweek: qualification.endGameweek })
+                : t("cup.qualificationLive", { gameweek: qualification.endGameweek })}
+            </p>
           </div>
-          <div className="third-place__match">
-            <BracketMatch match={cup.thirdPlace} locale={locale} />
+          <div className="qualification-grid">
+            <QualificationTable title={t("classic.divisionHigh")} entries={qualification.high} />
+            <QualificationTable title={t("classic.divisionLow")} entries={qualification.low} />
           </div>
         </section>
       )}

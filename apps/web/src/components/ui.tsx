@@ -3,9 +3,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { formatDateTime, initials } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import type { DataSource, Division } from "@/lib/types";
 import { Icon, type IconName } from "./icons";
-import { useLocale, useTranslator } from "./locale-provider";
 
 export function PageHeader({
   eyebrow,
@@ -43,7 +43,6 @@ export function SectionHeader({
   href?: string;
   linkLabel?: string;
 }) {
-  const t = useTranslator();
   return (
     <div className="section-header">
       <div>
@@ -61,21 +60,13 @@ export function SectionHeader({
 }
 
 export function DataBadge({ source, updatedAt }: { source: DataSource; updatedAt: string }) {
-  const locale = useLocale();
-  const t = useTranslator();
-  const isMock = source === "mock";
-  const label =
-    source === "mock"
-      ? t("data.mock")
-      : source === "unavailable"
-        ? t("data.unavailable")
-        : t("data.live");
+  const isUnavailable = source === "unavailable";
   return (
-    <div className="data-badge" data-mock={isMock} data-unavailable={source === "unavailable"}>
+    <div className="data-badge" data-unavailable={isUnavailable}>
       <span className="data-badge__dot" />
-      <span>{label}</span>
+      <span>{isUnavailable ? t("data.unavailable") : t("data.live")}</span>
       <span className="data-badge__time">
-        {t("data.respondedAt", { time: formatDateTime(updatedAt, locale) })}
+        {t("data.respondedAt", { time: formatDateTime(updatedAt) })}
       </span>
     </div>
   );
@@ -117,7 +108,6 @@ export function Avatar({
 }
 
 export function FormDots({ form }: { form: Array<"W" | "D" | "L"> }) {
-  const t = useTranslator();
   return (
     <span
       className="form-dots"
@@ -184,7 +174,6 @@ export function SegmentedLinks({
 }: {
   items: Array<{ href: string; label: string; active?: boolean }>;
 }) {
-  const t = useTranslator();
   return (
     <nav className="segmented-links" aria-label={t("common.contentOptions")}>
       {items.map((item) => (

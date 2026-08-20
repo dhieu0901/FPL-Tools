@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import { StandingsTable } from "@/components/standings-table";
 import { Callout, DataBadge, PageHeader, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 import type { Division } from "@/lib/types";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("classic.title") };
+  return { title: t("classic.title") };
 }
 
 export default async function ClassicPage({
@@ -15,7 +14,6 @@ export default async function ClassicPage({
 }: {
   searchParams: Promise<{ division?: string; period?: string }>;
 }) {
-  const t = createTranslator(await getLocale());
   const params = await searchParams;
   const division: Division = params.division === "low" ? "LOW" : "HIGH";
   const period =

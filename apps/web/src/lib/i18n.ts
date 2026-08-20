@@ -1,514 +1,383 @@
-export const LOCALES = ["vi", "en"] as const;
-
-export type Locale = (typeof LOCALES)[number];
-
-/** Vietnamese is the default: the 40 managers of the league are Vietnamese. */
-export const DEFAULT_LOCALE: Locale = "vi";
-
-export const LOCALE_COOKIE = "vmf_locale";
-
-/** One year, so a manager picks a language once per season. */
-export const LOCALE_COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
-
-export function isLocale(value: unknown): value is Locale {
-  return typeof value === "string" && LOCALES.includes(value as Locale);
-}
-
+/**
+ * Every string the interface renders, in one place.
+ *
+ * The league is played in Vietnam but the vocabulary of Fantasy Premier League
+ * is English, so the site speaks English throughout rather than translating
+ * terms the managers already read on FPL itself.
+ */
 const messages = {
-  "locale.switch": { vi: "Ngôn ngữ", en: "Language" },
-  "locale.vi": { vi: "Tiếng Việt", en: "Vietnamese" },
-  "locale.en": { vi: "Tiếng Anh", en: "English" },
+  "common.viewAll": "View all",
+  "common.details": "Details",
+  "common.retry": "Try again",
+  "common.season": "Season",
+  "common.all": "All",
+  "common.rank": "Rank",
+  "common.team": "Team",
+  "common.form": "Form",
+  "common.total": "Total",
+  "common.points": "Points",
+  "common.profileCount": "{count} profiles",
+  "common.formAria": "Form: {form}",
+  "common.contentOptions": "Content options",
 
-  "common.viewAll": { vi: "Xem tất cả", en: "View all" },
-  "common.details": { vi: "Chi tiết", en: "Details" },
-  "common.retry": { vi: "Thử lại", en: "Try again" },
-  "common.season": { vi: "Mùa giải", en: "Season" },
-  "common.all": { vi: "Tất cả", en: "All" },
-  "common.rank": { vi: "Hạng", en: "Rank" },
-  "common.team": { vi: "Đội bóng", en: "Team" },
-  "common.form": { vi: "Phong độ", en: "Form" },
-  "common.total": { vi: "Tổng", en: "Total" },
-  "common.points": { vi: "Điểm", en: "Points" },
-  "common.profileCount": { vi: "{count} hồ sơ", en: "{count} profiles" },
-  "common.formAria": { vi: "Phong độ: {form}", en: "Form: {form}" },
-  "common.contentOptions": { vi: "Lựa chọn nội dung", en: "Content options" },
+  "skip.toContent": "Skip to main content",
+  "brand.tagline": "Văn Minh Fantasy",
+  "footer.season": "Season 2026/27",
+  "footer.note": "Scoring data is synchronized and audited against the league rulebook.",
+  "footer.status": "Transparent data provenance",
 
-  "skip.toContent": { vi: "Đi tới nội dung chính", en: "Skip to main content" },
-  "brand.tagline": { vi: "Văn Minh Fantasy", en: "Văn Minh Fantasy" },
-  "footer.season": { vi: "Mùa giải 2026/27", en: "Season 2026/27" },
-  "footer.note": {
-    vi: "Dữ liệu điểm số được đồng bộ và kiểm toán theo luật giải.",
-    en: "Scoring data is synchronized and audited against the league rulebook."
-  },
-  "footer.status": { vi: "Minh bạch nguồn dữ liệu", en: "Transparent data provenance" },
+  "nav.main": "Main navigation",
+  "nav.mobile": "Mobile navigation",
+  "nav.admin": "Admin navigation",
+  "nav.overview": "Overview",
+  "nav.classic": "Classic",
+  "nav.h2h": "H2H",
+  "nav.cup": "Cup",
+  "nav.highlights": "Highlights",
+  "nav.managers": "Managers",
+  "nav.control": "Admin",
+  "nav.violations": "Violations",
 
-  "nav.main": { vi: "Điều hướng chính", en: "Main navigation" },
-  "nav.mobile": { vi: "Điều hướng di động", en: "Mobile navigation" },
-  "nav.admin": { vi: "Điều hướng quản trị", en: "Admin navigation" },
-  "nav.overview": { vi: "Tổng quan", en: "Overview" },
-  "nav.classic": { vi: "Classic", en: "Classic" },
-  "nav.h2h": { vi: "H2H", en: "H2H" },
-  "nav.cup": { vi: "Cup", en: "Cup" },
-  "nav.highlights": { vi: "Highlights", en: "Highlights" },
-  "nav.managers": { vi: "Managers", en: "Managers" },
-  "nav.control": { vi: "Điều hành", en: "Admin" },
-  "nav.violations": { vi: "Vi phạm", en: "Violations" },
+  "data.unavailable": "No data source yet",
+  "data.live": "API connected",
+  "data.respondedAt": "· responded {time}",
 
-  "data.mock": { vi: "Dữ liệu minh hoạ", en: "Illustrative data" },
-  "data.unavailable": { vi: "Chưa có nguồn dữ liệu", en: "No data source yet" },
-  "data.live": { vi: "Đã kết nối API", en: "API connected" },
-  "data.respondedAt": { vi: "· phản hồi {time}", en: "· responded {time}" },
+  "state.preseason": "Not started",
+  "state.open": "Open",
+  "state.live": "In progress",
+  "state.provisional": "Provisional",
+  "state.final": "Final",
+  "match.scheduled": "Scheduled",
+  "match.live": "Live",
+  "match.provisional": "Provisional",
+  "match.final": "Final",
+  "match.walkover": "Walkover",
 
-  "state.preseason": { vi: "Chưa bắt đầu", en: "Not started" },
-  "state.open": { vi: "Đang mở", en: "Open" },
-  "state.live": { vi: "Đang diễn ra", en: "In progress" },
-  "state.provisional": { vi: "Tạm tính", en: "Provisional" },
-  "state.final": { vi: "Đã chốt", en: "Final" },
-  "match.scheduled": { vi: "Sắp diễn ra", en: "Scheduled" },
-  "match.live": { vi: "Trực tiếp", en: "Live" },
-  "match.provisional": { vi: "Tạm tính", en: "Provisional" },
-  "match.final": { vi: "Đã chốt", en: "Final" },
-  "match.walkover": { vi: "Xử thắng", en: "Walkover" },
+  "zone.title": "Title race",
+  "zone.championship": "Championship",
+  "zone.cup": "Cup place",
+  "zone.playoff": "Play-off",
+  "zone.safe": "Safe",
+  "zone.relegation": "Relegation",
 
-  "zone.title": { vi: "Đua vô địch", en: "Title race" },
-  "zone.championship": { vi: "Championship", en: "Championship" },
-  "zone.cup": { vi: "Suất Cup", en: "Cup place" },
-  "zone.playoff": { vi: "Play-off", en: "Play-off" },
-  "zone.safe": { vi: "An toàn", en: "Safe" },
-  "zone.relegation": { vi: "Xuống hạng", en: "Relegation" },
+  "dashboard.title": "Overview",
+  "dashboard.eyebrow": "Văn Minh Fantasy League",
+  "dashboard.headline1": "Every point.",
+  "dashboard.headline2": "Tells a story.",
+  "dashboard.lede":
+    "Follow the Classic race, head-to-head duels and the Cup run on one transparent dashboard, updated all season.",
+  "dashboard.viewStandings": "View standings",
+  "dashboard.fixtures": "Fixtures",
+  "dashboard.gameweekProgress": "Gameweek progress",
+  "dashboard.completed": "Completed",
+  "dashboard.matchesShort": "matches",
+  "dashboard.deadline": "Deadline",
+  "dashboard.deadlineUnknown": "Not published",
+  "dashboard.quickMetrics": "Key metrics",
+  // Position and bench labels are the terms FPL itself prints, so they are
+  // reproduced verbatim rather than expanded into words.
+  "squad.gk": "GK",
+  "squad.def": "DEF",
+  "squad.mid": "MID",
+  "squad.fwd": "FWD",
+  "squad.benchHeading": "Bench",
+  "squad.yetToPlay": "{count} still to play",
+  "squad.state.upcoming": "Yet to play",
+  "squad.state.playing": "Playing now",
+  "squad.state.finished": "Finished",
+  "squad.doubleGameweek": "Plays twice this Gameweek",
+  "squad.unavailable": "Squad not published yet. FPL opens it after the deadline.",
+  "match.squadOf": "Squad · {team}",
+  "match.remainingPlayers": "Players still to play",
+  "match.remainingDetail": "{players} players · {fixtures} fixtures · {effective} effective",
+  "match.sharedPlayers": "Shared players",
+  "match.sharedNote": "Fielded identically by both sides, so they cannot change the margin.",
+  "match.differentials": "Differentials",
+  "match.differentialsNote":
+    "A positive swing favours the home side, a negative one the away side.",
+  "match.noDifferentials": "No differentials yet.",
+  "highlight.team_of_the_week.eyebrow": "Team of the Week",
+  "highlight.team_of_the_week.title": "{team} tops the Gameweek",
+  "highlight.team_of_the_week.body":
+    "{manager} scored {value} net points, the highest of the forty in GW{gameweek}.",
+  "highlight.season_high.eyebrow": "Season record",
+  "highlight.season_high.title": "Season high: {value}",
+  "highlight.season_high.body": "{manager} set {value} points in GW{gameweek}, still unbeaten.",
+  "highlight.captain_haul.eyebrow": "The armband",
+  "highlight.captain_haul.title": "A captain haul for {team}",
+  "highlight.captain_haul.body": "The armband alone returned {value} points in GW{gameweek}.",
+  "highlight.totw_leader.eyebrow": "TotW leader",
+  "highlight.totw_leader.title": "{team} leads with {value} TotW awards",
+  "highlight.totw_leader.body":
+    "{manager} holds more Team of the Week awards than anyone this season.",
+  "highlight.bench_regret.eyebrow": "Bench regret",
+  "highlight.bench_regret.title": "{team} left {value} points on the bench",
+  "highlight.bench_regret.body":
+    "Those points belong to players who were not in the eleven in GW{gameweek}.",
+  "highlight.provisional": "Provisional",
+  "match.chip": "Chip",
+  "match.benchPoints": "Bench points",
+  "metric.managers": "Managers",
+  "metric.managersDetail": "Registered profiles",
+  "metric.divisionHigh": "Division HIGH",
+  "metric.divisionLow": "Division LOW",
+  "metric.divisionDetail": "Managers",
+  "metric.h2hMatches": "H2H matches",
+  "metric.h2hScheduled": "Scheduled for GW{gameweek}",
+  "metric.h2hBeforeStart": "Before GW1",
+  "dashboard.spotlightEyebrow": "Round spotlight",
+  "dashboard.spotlightTitle": "Featured matchup",
+  "dashboard.allMatches": "All matches",
+  "dashboard.noFixtureTitle": "No H2H schedule yet",
+  "dashboard.noFixtureBody": "Fixtures appear once an administrator generates the schedule.",
+  "dashboard.organiser": "Organisers",
+  "dashboard.notices": "Announcements",
+  "dashboard.noNoticeTitle": "No announcements",
+  "dashboard.noNoticeBody": "No administrator announcement has been published yet.",
+  "dashboard.classicEyebrow": "HIGH division",
+  "dashboard.classicTitle": "The Classic race",
+  "dashboard.classicBody": "Provisional standings after the fixtures played so far.",
+  "dashboard.momentsEyebrow": "VMF moments",
+  "dashboard.momentsTitle": "Latest highlights",
+  "dashboard.noHighlightTitle": "Highlights are still being built",
+  "dashboard.noHighlightBody": "The backend does not expose a highlights source yet.",
 
-  "dashboard.title": { vi: "Tổng quan", en: "Overview" },
-  "dashboard.eyebrow": { vi: "Văn Minh Fantasy League", en: "Văn Minh Fantasy League" },
-  "dashboard.headline1": { vi: "Mỗi điểm số.", en: "Every point." },
-  "dashboard.headline2": { vi: "Đều có câu chuyện.", en: "Tells a story." },
-  "dashboard.lede": {
-    vi: "Theo dõi Classic, đối đầu H2H và hành trình Cup trên một bảng điều hành minh bạch, cập nhật xuyên suốt mùa giải.",
-    en: "Follow the Classic race, head-to-head duels and the Cup run on one transparent dashboard, updated all season."
-  },
-  "dashboard.viewStandings": { vi: "Xem bảng xếp hạng", en: "View standings" },
-  "dashboard.fixtures": { vi: "Lịch đối đầu", en: "Fixtures" },
-  "dashboard.gameweekProgress": { vi: "Tiến độ Gameweek", en: "Gameweek progress" },
-  "dashboard.completed": { vi: "Hoàn thành", en: "Completed" },
-  "dashboard.matchesShort": { vi: "trận", en: "matches" },
-  "dashboard.deadline": { vi: "Deadline", en: "Deadline" },
-  "dashboard.deadlineUnknown": { vi: "Chưa công bố", en: "Not published" },
-  "dashboard.quickMetrics": { vi: "Chỉ số nhanh", en: "Key metrics" },
-  // Position and bench labels stay in English in both locales: these are the
-  // terms FPL itself uses, so a manager reads them faster than a translation.
-  "squad.gk": { vi: "GK", en: "GK" },
-  "squad.def": { vi: "DEF", en: "DEF" },
-  "squad.mid": { vi: "MID", en: "MID" },
-  "squad.fwd": { vi: "FWD", en: "FWD" },
-  "squad.gkSub": { vi: "GK Sub", en: "GK Sub" },
-  "squad.bench": { vi: "Bench {order}", en: "Bench {order}" },
-  "squad.benchHeading": { vi: "Bench", en: "Bench" },
-  "squad.doubleGameweek": {
-    vi: "Đá hai trận trong vòng này",
-    en: "Plays twice this Gameweek"
-  },
-  "squad.unavailable": {
-    vi: "Đội hình chưa công bố. FPL chỉ mở sau deadline.",
-    en: "Squad not published yet. FPL opens it after the deadline."
-  },
-  "match.squadOf": { vi: "Đội hình · {team}", en: "Squad · {team}" },
-  "match.remainingPlayers": { vi: "Cầu thủ chưa đá", en: "Players still to play" },
-  "match.remainingDetail": {
-    vi: "{players} người · {fixtures} trận · hệ số {effective}",
-    en: "{players} players · {fixtures} fixtures · {effective} effective"
-  },
-  "match.sharedPlayers": { vi: "Cầu thủ trùng nhau", en: "Shared players" },
-  "match.sharedNote": {
-    vi: "Hai bên dùng giống hệt nhau nên không làm thay đổi cách biệt.",
-    en: "Fielded identically by both sides, so they cannot change the margin."
-  },
-  "match.differentials": { vi: "Điểm khác biệt", en: "Differentials" },
-  "match.differentialsNote": {
-    vi: "Dấu cộng nghiêng về đội nhà, dấu trừ nghiêng về đội khách.",
-    en: "A positive swing favours the home side, a negative one the away side."
-  },
-  "match.noDifferentials": {
-    vi: "Chưa có cầu thủ khác biệt nào.",
-    en: "No differentials yet."
-  },
-  "highlight.team_of_the_week.eyebrow": { vi: "Đội hình tuần", en: "Team of the Week" },
-  "highlight.team_of_the_week.title": {
-    vi: "{team} dẫn đầu vòng này",
-    en: "{team} tops the Gameweek"
-  },
-  "highlight.team_of_the_week.body": {
-    vi: "{manager} đạt {value} điểm thuần, cao nhất trong 40 HLV ở GW{gameweek}.",
-    en: "{manager} scored {value} net points, the highest of the forty in GW{gameweek}."
-  },
-  "highlight.season_high.eyebrow": { vi: "Kỷ lục mùa giải", en: "Season record" },
-  "highlight.season_high.title": {
-    vi: "Điểm cao nhất mùa: {value}",
-    en: "Season high: {value}"
-  },
-  "highlight.season_high.body": {
-    vi: "{manager} lập mốc {value} điểm ở GW{gameweek}, chưa ai vượt qua.",
-    en: "{manager} set {value} points in GW{gameweek}, still unbeaten."
-  },
-  "highlight.captain_haul.eyebrow": { vi: "Băng đội trưởng", en: "The armband" },
-  "highlight.captain_haul.title": {
-    vi: "Đội trưởng của {team} bùng nổ",
-    en: "A captain haul for {team}"
-  },
-  "highlight.captain_haul.body": {
-    vi: "Riêng băng đội trưởng mang về {value} điểm ở GW{gameweek}.",
-    en: "The armband alone returned {value} points in GW{gameweek}."
-  },
-  "highlight.totw_leader.eyebrow": { vi: "Dẫn đầu TotW", en: "TotW leader" },
-  "highlight.totw_leader.title": {
-    vi: "{team} có {value} lần đội hình tuần",
-    en: "{team} leads with {value} TotW awards"
-  },
-  "highlight.totw_leader.body": {
-    vi: "{manager} đang giữ nhiều danh hiệu đội hình tuần nhất mùa này.",
-    en: "{manager} holds more Team of the Week awards than anyone this season."
-  },
-  "highlight.bench_regret.eyebrow": { vi: "Tiếc nuối", en: "Bench regret" },
-  "highlight.bench_regret.title": {
-    vi: "{team} bỏ phí {value} điểm trên băng ghế",
-    en: "{team} left {value} points on the bench"
-  },
-  "highlight.bench_regret.body": {
-    vi: "Số điểm này thuộc về những cầu thủ không được xếp đá chính ở GW{gameweek}.",
-    en: "Those points belong to players who were not in the eleven in GW{gameweek}."
-  },
-  "highlight.provisional": { vi: "Tạm tính", en: "Provisional" },
-  "match.chip": { vi: "Chip", en: "Chip" },
-  "match.benchPoints": { vi: "Điểm băng ghế", en: "Bench points" },
-  "metric.managers": { vi: "Quản lý", en: "Managers" },
-  "metric.managersDetail": { vi: "Hồ sơ đã đăng ký", en: "Registered profiles" },
-  "metric.divisionHigh": { vi: "Division HIGH", en: "Division HIGH" },
-  "metric.divisionLow": { vi: "Division LOW", en: "Division LOW" },
-  "metric.divisionDetail": { vi: "Quản lý", en: "Managers" },
-  "metric.h2hMatches": { vi: "Trận H2H", en: "H2H matches" },
-  "metric.h2hScheduled": {
-    vi: "Đã xếp cho GW{gameweek}",
-    en: "Scheduled for GW{gameweek}"
-  },
-  "metric.h2hBeforeStart": { vi: "Chưa đến GW1", en: "Before GW1" },
-  "dashboard.spotlightEyebrow": { vi: "Tâm điểm vòng đấu", en: "Round spotlight" },
-  "dashboard.spotlightTitle": { vi: "Đối đầu nổi bật", en: "Featured matchup" },
-  "dashboard.allMatches": { vi: "Mọi trận đấu", en: "All matches" },
-  "dashboard.noFixtureTitle": { vi: "Chưa có lịch H2H", en: "No H2H schedule yet" },
-  "dashboard.noFixtureBody": {
-    vi: "Lịch thi đấu sẽ xuất hiện sau khi admin tạo schedule.",
-    en: "Fixtures appear once an administrator generates the schedule."
-  },
-  "dashboard.organiser": { vi: "Ban tổ chức", en: "Organisers" },
-  "dashboard.notices": { vi: "Thông báo", en: "Announcements" },
-  "dashboard.noNoticeTitle": { vi: "Chưa có thông báo", en: "No announcements" },
-  "dashboard.noNoticeBody": {
-    vi: "Admin chưa đăng thông báo mới.",
-    en: "No administrator announcement has been published yet."
-  },
-  "dashboard.classicEyebrow": { vi: "Division HIGH", en: "HIGH division" },
-  "dashboard.classicTitle": { vi: "Cuộc đua Classic", en: "The Classic race" },
-  "dashboard.classicBody": {
-    vi: "Bảng điểm tạm tính sau các trận đã hoàn tất.",
-    en: "Provisional standings after the fixtures played so far."
-  },
-  "dashboard.momentsEyebrow": { vi: "Khoảnh khắc VMF", en: "VMF moments" },
-  "dashboard.momentsTitle": { vi: "Highlights mới nhất", en: "Latest highlights" },
-  "dashboard.noHighlightTitle": {
-    vi: "Highlights đang được hoàn thiện",
-    en: "Highlights are still being built"
-  },
-  "dashboard.noHighlightBody": {
-    vi: "Backend hiện chưa cung cấp nguồn highlights.",
-    en: "The backend does not expose a highlights source yet."
-  },
+  "classic.title": "Classic table",
+  "classic.heading": "Standings",
+  "classic.description": "Ranked by net FPL points within the selected period and division only.",
+  "classic.divisionHigh": "HIGH division",
+  "classic.divisionLow": "LOW division",
+  "classic.teamsShown": "{count} teams shown",
+  "classic.season1": "Season 1 · GW1–19",
+  "classic.season2": "Season 2 · GW20–38",
+  "classic.fullSeason": "Full season",
+  "classic.tieBreakTitle": "Ranking rules",
+  "classic.tieBreakBody":
+    "On equal points: cumulative TotW → highest single Gameweek score → an audited organiser decision.",
 
-  "classic.title": { vi: "Bảng Classic", en: "Classic table" },
-  "classic.heading": { vi: "Bảng xếp hạng", en: "Standings" },
-  "classic.description": {
-    vi: "Xếp hạng theo tổng điểm FPL net của đúng giai đoạn và division đã chọn.",
-    en: "Ranked by net FPL points within the selected period and division only."
-  },
-  "classic.divisionHigh": { vi: "Division HIGH", en: "HIGH division" },
-  "classic.divisionLow": { vi: "Division LOW", en: "LOW division" },
-  "classic.teamsShown": { vi: "{count} đội đang hiển thị", en: "{count} teams shown" },
-  "classic.season1": { vi: "Season 1 · GW1–19", en: "Season 1 · GW1–19" },
-  "classic.season2": { vi: "Season 2 · GW20–38", en: "Season 2 · GW20–38" },
-  "classic.fullSeason": { vi: "Cả mùa", en: "Full season" },
-  "classic.tieBreakTitle": { vi: "Nguyên tắc xếp hạng", en: "Ranking rules" },
-  "classic.tieBreakBody": {
-    vi: "Khi bằng tổng điểm: số lần TotW → điểm GW cao nhất → quyết định có audit log của ban tổ chức.",
-    en: "On equal points: cumulative TotW → highest single Gameweek score → an audited organiser decision."
-  },
+  "h2h.title": "H2H league",
+  "h2h.heading": "Head-to-head table",
+  "h2h.description":
+    "Every Gameweek is a duel. A win is 3 points, a draw 1; violations are deducted separately under the rulebook.",
+  "h2h.standings": "Standings",
+  "h2h.fixtures": "Fixtures & results",
+  "h2h.groupStage": "Group stage · GW1–GW35",
+  "h2h.playoffSlot": "Play-off places",
+  "h2h.top8": "Top 8",
+  "h2h.afterGw35": "After GW35",
+  "h2h.quarterFinal": "Quarter-finals",
+  "h2h.quarterFinalGw": "GW36",
+  "h2h.semiFinal": "Semi-finals",
+  "h2h.semiFinalGw": "GW37",
+  "h2h.final": "Final",
+  "h2h.finalGw": "GW38",
+  "h2h.noThirdPlace": "No third-place match",
+  "h2h.sharedThird": "Both losing semi-finalists share third",
+  "h2h.immutableTitle": "A final result is immutable",
+  "h2h.immutableBody":
+    "Only an administrator may reopen a finalized Gameweek, and every change requires a reason and an audit entry.",
+  "h2h.played": "P",
+  "h2h.won": "W",
+  "h2h.drawn": "D",
+  "h2h.lost": "L",
+  "h2h.pointsFor": "Points for",
+  "h2h.groupLabel": "Group stage",
 
-  "h2h.title": { vi: "H2H League", en: "H2H league" },
-  "h2h.heading": { vi: "Bảng đấu H2H", en: "Head-to-head table" },
-  "h2h.description": {
-    vi: "Mỗi gameweek là một cuộc đối đầu. Thắng 3 điểm, hoà 1 điểm; vi phạm được khấu trừ riêng theo luật giải.",
-    en: "Every Gameweek is a duel. A win is 3 points, a draw 1; violations are deducted separately under the rulebook."
-  },
-  "h2h.standings": { vi: "Bảng xếp hạng", en: "Standings" },
-  "h2h.fixtures": { vi: "Lịch & kết quả", en: "Fixtures & results" },
-  "h2h.groupStage": { vi: "Vòng bảng · GW1–GW35", en: "Group stage · GW1–GW35" },
-  "h2h.playoffSlot": { vi: "Suất play-off", en: "Play-off places" },
-  "h2h.top8": { vi: "Top 8", en: "Top 8" },
-  "h2h.afterGw35": { vi: "Sau GW35", en: "After GW35" },
-  "h2h.quarterFinal": { vi: "Tứ kết", en: "Quarter-finals" },
-  "h2h.quarterFinalGw": { vi: "GW36", en: "GW36" },
-  "h2h.semiFinal": { vi: "Bán kết", en: "Semi-finals" },
-  "h2h.semiFinalGw": { vi: "GW37", en: "GW37" },
-  "h2h.final": { vi: "Chung kết", en: "Final" },
-  "h2h.finalGw": { vi: "GW38", en: "GW38" },
-  "h2h.noThirdPlace": { vi: "Không tranh hạng ba", en: "No third-place match" },
-  "h2h.sharedThird": {
-    vi: "Hai đội thua bán kết đồng hạng ba",
-    en: "Both losing semi-finalists share third"
-  },
-  "h2h.immutableTitle": { vi: "Kết quả đã chốt là bất biến", en: "A final result is immutable" },
-  "h2h.immutableBody": {
-    vi: "Chỉ admin có thể mở lại gameweek đã finalize; mọi thay đổi bắt buộc có lý do và nhật ký kiểm toán.",
-    en: "Only an administrator may reopen a finalized Gameweek, and every change requires a reason and an audit entry."
-  },
-  "h2h.played": { vi: "Trận", en: "P" },
-  "h2h.won": { vi: "Thắng", en: "W" },
-  "h2h.drawn": { vi: "Hoà", en: "D" },
-  "h2h.lost": { vi: "Thua", en: "L" },
-  "h2h.pointsFor": { vi: "Điểm ghi", en: "Points for" },
-  "h2h.groupLabel": { vi: "Vòng bảng", en: "Group stage" },
+  "fixtures.title": "H2H fixtures",
+  "fixtures.heading": "Fixtures & results",
+  "fixtures.description": "Live scores can still change until the Gameweek is finalized.",
+  "fixtures.gameweek": "Gameweek",
+  "fixtures.apply": "Show",
+  "fixtures.empty": "No H2H match is scheduled for GW{gameweek} yet.",
+  "fixtures.kickoffUnknown": "Kick-off time to be confirmed",
+  "fixtures.showSquads": "Show both squads",
+  "fixtures.hideSquads": "Hide squads",
+  "fixtures.loadingSquads": "Loading squads…",
+  "fixtures.squadsUnavailable": "Squads could not be loaded. Try again shortly.",
+  "fpl.openOnFpl": "Open {team} on Fantasy Premier League",
 
-  "fixtures.title": { vi: "Lịch H2H", en: "H2H fixtures" },
-  "fixtures.heading": { vi: "Lịch & kết quả", en: "Fixtures & results" },
-  "fixtures.description": {
-    vi: "Điểm live có thể thay đổi cho tới khi gameweek được finalize.",
-    en: "Live scores can still change until the Gameweek is finalized."
-  },
-  "fixtures.gameweek": { vi: "Vòng đấu", en: "Gameweek" },
-  "fixtures.apply": { vi: "Xem", en: "Show" },
-  "fixtures.empty": {
-    vi: "Chưa có trận H2H nào được xếp cho GW{gameweek}.",
-    en: "No H2H match is scheduled for GW{gameweek} yet."
-  },
-  "fixtures.kickoffUnknown": { vi: "Chưa có giờ thi đấu", en: "Kick-off time to be confirmed" },
+  "match.title": "H2H match detail",
+  "match.back": "Back to fixtures",
+  "match.captain": "Captain",
+  "match.playersLeft": "Players remaining",
+  "match.breakdown": "Score breakdown",
+  "match.timeline": "Timeline",
+  "match.resultStatus": "Result status",
+  "match.squadPoints": "Squad points",
+  "match.transferCost": "Transfer cost",
+  "match.adminAdjustment": "Admin adjustment",
+  "match.netPoints": "Net points",
+  "match.walkoverNote": "Walkover result: {reason}",
+  "match.settledNote": "This result is final.",
+  "match.provisionalNote": "The result can change until the Gameweek is finalized.",
+  "match.notFound": "H2H match #{id} was not found.",
 
-  "match.title": { vi: "Chi tiết trận H2H", en: "H2H match detail" },
-  "match.back": { vi: "Quay lại lịch thi đấu", en: "Back to fixtures" },
-  "match.captain": { vi: "Captain", en: "Captain" },
-  "match.playersLeft": { vi: "Cầu thủ còn lại", en: "Players remaining" },
-  "match.breakdown": { vi: "Chi tiết điểm", en: "Score breakdown" },
-  "match.timeline": { vi: "Diễn biến", en: "Timeline" },
-  "match.resultStatus": { vi: "Trạng thái kết quả", en: "Result status" },
-  "match.squadPoints": { vi: "Điểm đội hình", en: "Squad points" },
-  "match.transferCost": { vi: "Điểm trừ chuyển nhượng", en: "Transfer cost" },
-  "match.adminAdjustment": { vi: "Điều chỉnh admin", en: "Admin adjustment" },
-  "match.netPoints": { vi: "Điểm net", en: "Net points" },
-  "match.walkoverNote": { vi: "Kết quả walkover: {reason}", en: "Walkover result: {reason}" },
-  "match.settledNote": { vi: "Kết quả đã được chốt.", en: "This result is final." },
-  "match.provisionalNote": {
-    vi: "Kết quả có thể thay đổi cho tới khi gameweek được finalize.",
-    en: "The result can change until the Gameweek is finalized."
-  },
-  "match.notFound": { vi: "Không tìm thấy trận H2H #{id}.", en: "H2H match #{id} was not found." },
+  "cup.title": "VMF Cup",
+  "cup.description":
+    "{window}. Every Gameweek with a confirmed violation contributes 0 to the Cup qualification table.",
+  "cup.eyebrow": "Knock-out",
+  "cup.season1": "Season 1",
+  "cup.season2": "Season 2",
+  "cup.netNote": "Updated from net points",
+  "cup.window1": "Qualification window GW1-GW13",
+  "cup.window2": "Qualification window GW20-GW32",
+  "cup.honours": "Honours",
+  "cup.final": "Final",
+  "cup.thirdPlace": "Third place",
+  "cup.thirdPlaceBody": "The Cup does play a separate third-place match in its final round.",
+  "cup.bracketHint":
+    "Both halves of the draw run inwards to the final. Scroll sideways to follow a run.",
+  "cup.notDrawnTitle": "The draw has not been made",
+  "cup.notDrawnBody":
+    "This Cup is drawn once {window} is finalized. The qualification table below shows who is in line.",
+  "cup.qualificationEyebrow": "Who is in line",
+  "cup.qualificationTitle": "Qualification table",
+  "cup.qualificationSettled":
+    "Final after GW{gameweek}. These are the places the bracket was drawn from.",
+  "cup.qualificationLive": "Provisional until GW{gameweek} is finalized. Places can still change.",
+  "cup.qualificationPoints": "Cup points",
+  "cup.entryRound": "Enters at",
+  "cup.entersQualifying1": "Qualifying 1",
+  "cup.entersQualifying2": "Qualifying 2",
+  "cup.entersRoundOf16": "Round of 16",
+  "cup.notQualified": "Not in the Cup",
+  "cup.excludedCount": "−{count} GW",
+  "cup.excludedDetail": "Excluded by a confirmed violation: GW{gameweeks}",
 
-  "cup.title": { vi: "VMF Cup", en: "VMF Cup" },
-  "cup.description": {
-    vi: "{window}. Mọi GW vi phạm đóng góp 0 điểm vào bảng xét suất Cup.",
-    en: "{window}. Every Gameweek with a confirmed violation contributes 0 to the Cup qualification table."
-  },
-  "cup.eyebrow": { vi: "Knock-out", en: "Knock-out" },
-  "cup.season1": { vi: "Season 1", en: "Season 1" },
-  "cup.season2": { vi: "Season 2", en: "Season 2" },
-  "cup.netNote": { vi: "Cập nhật theo điểm net", en: "Updated from net points" },
-  "cup.window1": { vi: "Xét điểm hợp lệ từ GW1–GW14", en: "Qualification window GW1–GW14" },
-  "cup.window2": { vi: "Xét điểm hợp lệ từ GW20–GW33", en: "Qualification window GW20–GW33" },
-  "cup.honours": { vi: "Vị trí danh dự", en: "Honours" },
-  "cup.thirdPlace": { vi: "Trận tranh hạng ba", en: "Third-place match" },
-  "cup.thirdPlaceBody": {
-    vi: "Cup có trận tranh hạng ba riêng ở vòng đấu cuối.",
-    en: "The Cup does play a separate third-place match in its final round."
-  },
+  "rules.eyebrow": "Competition",
+  "rules.title": "Rules and prizes",
+  "rules.description":
+    "The 2026/27 format, how ties are broken, what a violation costs, and where the prize fund goes.",
+  "rules.formatEyebrow": "How it is played",
+  "rules.formatTitle": "Competition format",
+  "rules.tieBreakEyebrow": "Level on points",
+  "rules.tieBreakTitle": "Tie-break order",
+  "rules.tieBreakBody":
+    "Applied in order. Every step records what it compared, so a result can be checked afterwards.",
+  "rules.disciplineEyebrow": "Discipline",
+  "rules.disciplineTitle": "Violations and sanctions",
+  "rules.obligations": "Every manager must",
+  "rules.counting": "How violations are counted",
+  "rules.gameweekTotal": "Gameweek deduction",
+  "rules.counts": "Counts as",
+  "rules.countingNote": "One Gameweek can raise more than one violation.",
+  "rules.offence": "{level} violation",
+  "rules.forgottenChip": "Forgetting a chip",
+  "rules.forgottenChipBody":
+    "A manager may put the case to the organisers, whose decision is final.",
+  "rules.prizeEyebrow": "Prize fund",
+  "rules.prizeTitle": "Where the money goes",
+  "rules.prizeBody": "{total} across Classic, head to head, the Cup and the special awards.",
+  "rules.perManager": "each",
+  "rules.minigameFund": "Minigame fund",
+  "rules.minigameFundBody":
+    "Held outside the prize fund. Each minigame pays 50,000-100,000₫, and forfeited entry fees are added to it.",
+  "nav.rules": "Rules",
 
-  "highlights.eyebrow": { vi: "Season stories", en: "Season stories" },
-  "highlights.description": {
-    vi: "Những đội hình xuất sắc, cuộc lội ngược dòng và cột mốc đáng nhớ của cộng đồng VMF.",
-    en: "Standout squads, comebacks and milestones from the VMF community."
-  },
-  "highlights.emptyTitle": { vi: "Chưa có highlights", en: "No highlights yet" },
-  "highlights.emptyBody": {
-    vi: "Backend hiện chưa có endpoint highlights; trang sẽ tự hiển thị khi nguồn dữ liệu được bổ sung.",
-    en: "The backend has no highlights endpoint yet; this page fills in once the source exists."
-  },
+  "highlights.eyebrow": "Season stories",
+  "highlights.description": "Standout squads, comebacks and milestones from the VMF community.",
+  "highlights.emptyTitle": "No highlights yet",
+  "highlights.emptyBody":
+    "The backend has no highlights endpoint yet; this page fills in once the source exists.",
 
-  "managers.eyebrow": { vi: "Cộng đồng", en: "Community" },
-  "managers.heading": {
-    vi: "{count} managers. Một mùa giải.",
-    en: "{count} managers. One season."
-  },
-  "managers.description": {
-    vi: "Hồ sơ thi đấu công khai chỉ hiển thị dữ liệu giải; thông tin cá nhân được giới hạn cho ban tổ chức.",
-    en: "Public profiles show competition data only; personal contact details stay with the organisers."
-  },
-  "managers.division": { vi: "Division {division}", en: "{division} division" },
-  "managers.totalPoints": { vi: "Tổng điểm", en: "Total points" },
-  "managers.lastGameweek": { vi: "GW gần nhất", en: "Latest GW" },
-  "managers.violations": { vi: "Violation", en: "Violations" },
-  "managers.status.active": { vi: "Active", en: "Active" },
-  "managers.status.locked": { vi: "Locked", en: "Locked" },
-  "managers.status.suspended": { vi: "Suspended", en: "Suspended" },
-  "managers.status.pending_review": { vi: "Pending", en: "Pending" },
-  "managers.status.removed": { vi: "Removed", en: "Removed" },
-  "managers.status.deleted": { vi: "Deleted", en: "Deleted" },
+  "managers.eyebrow": "Community",
+  "managers.heading": "{count} managers. One season.",
+  "managers.description":
+    "Public profiles show competition data only; personal contact details stay with the organisers.",
+  "managers.division": "{division} division",
+  "managers.totalPoints": "Total points",
+  "managers.lastGameweek": "Latest GW",
+  "managers.violations": "Violations",
+  "managers.status.active": "Active",
+  "managers.status.locked": "Locked",
+  "managers.status.suspended": "Suspended",
+  "managers.status.pending_review": "Pending",
+  "managers.status.removed": "Removed",
+  "managers.status.deleted": "Deleted",
 
-  "admin.title": { vi: "Điều hành", en: "Administration" },
-  "admin.eyebrow": { vi: "Khu vực điều hành", en: "Admin area" },
-  "admin.heading": { vi: "Trung tâm vận hành", en: "Operations centre" },
-  "admin.description": {
-    vi: "Theo dõi đồng bộ, trạng thái tính điểm và các ngoại lệ cần xử lý.",
-    en: "Monitor synchronization, scoring state and the exceptions waiting for a decision."
-  },
-  "admin.syncState": { vi: "Tình trạng đồng bộ", en: "Synchronization state" },
-  "admin.syncHealthy": {
-    vi: "Hệ thống hoạt động bình thường",
-    en: "The system is operating normally"
-  },
-  "admin.syncUnknown": { vi: "Chưa có telemetry worker", en: "No worker telemetry yet" },
-  "admin.syncDetail": {
-    vi: "Thành công lúc {time} · Độ trễ {latency} giây",
-    en: "Last success {time} · latency {latency}s"
-  },
-  "admin.syncMissing": {
-    vi: "Backend hiện chưa cung cấp endpoint trạng thái đồng bộ.",
-    en: "The backend does not expose a synchronization status endpoint yet."
-  },
-  "admin.healthy": { vi: "Healthy", en: "Healthy" },
-  "admin.unknown": { vi: "Unknown", en: "Unknown" },
-  "admin.managersConfirmed": { vi: "Đã xác nhận tham gia", en: "Confirmed entries" },
-  "admin.provisionalScores": { vi: "Điểm tạm tính", en: "Provisional scores" },
-  "admin.noEndpoint": { vi: "Chưa có endpoint", en: "No endpoint yet" },
-  "admin.awaitingFinalize": { vi: "Chờ finalize", en: "Awaiting finalization" },
-  "admin.pendingViolations": { vi: "Violation chờ xử lý", en: "Violations pending" },
-  "admin.needsDecision": { vi: "Cần quyết định admin", en: "Needs an admin decision" },
-  "admin.lockedTeams": { vi: "Team bị khóa", en: "Locked teams" },
-  "admin.lockedTeamsNote": {
-    vi: "Dùng điểm trung bình division",
-    en: "Using the division average"
-  },
-  "admin.byGameweek": { vi: "Theo gameweek", en: "By Gameweek" },
-  "admin.divisionAverage": { vi: "Điểm trung bình division", en: "Division average score" },
-  "admin.eligibleManagers": { vi: "{count} managers hợp lệ", en: "{count} eligible managers" },
-  "admin.noAverageTitle": { vi: "Chưa có dữ liệu trung bình", en: "No average data yet" },
-  "admin.noAverageBody": {
-    vi: "Backend chưa cung cấp endpoint division average.",
-    en: "The backend does not expose a division-average endpoint yet."
-  },
-  "admin.averageNote": {
-    vi: "Team locked/removed và điểm replacement không được đưa vào mẫu tính.",
-    en: "Locked or removed teams and replacement scores are excluded from the sample."
-  },
-  "admin.workerLog": { vi: "Worker log", en: "Worker log" },
-  "admin.recentJobs": { vi: "Tác vụ gần đây", en: "Recent jobs" },
-  "admin.syncCadence": { vi: "Đồng bộ 5 phút", en: "Sync every 5 minutes" },
-  "admin.noJobTitle": { vi: "Chưa có worker log", en: "No worker log yet" },
-  "admin.noJobBody": {
-    vi: "Backend chưa cung cấp endpoint lịch sử tác vụ.",
-    en: "The backend does not expose a job-history endpoint yet."
-  },
+  "admin.title": "Administration",
+  "admin.eyebrow": "Admin area",
+  "admin.heading": "Operations centre",
+  "admin.description":
+    "Monitor synchronization, scoring state and the exceptions waiting for a decision.",
+  "admin.syncState": "Synchronization state",
+  "admin.syncHealthy": "The system is operating normally",
+  "admin.syncUnknown": "No worker telemetry yet",
+  "admin.syncDetail": "Last success {time} · latency {latency}s",
+  "admin.syncMissing": "The backend does not expose a synchronization status endpoint yet.",
+  "admin.healthy": "Healthy",
+  "admin.unknown": "Unknown",
+  "admin.managersConfirmed": "Confirmed entries",
+  "admin.provisionalScores": "Provisional scores",
+  "admin.noEndpoint": "No endpoint yet",
+  "admin.awaitingFinalize": "Awaiting finalization",
+  "admin.pendingViolations": "Violations pending",
+  "admin.needsDecision": "Needs an admin decision",
+  "admin.lockedTeams": "Locked teams",
+  "admin.lockedTeamsNote": "Using the division average",
+  "admin.byGameweek": "By Gameweek",
+  "admin.divisionAverage": "Division average score",
+  "admin.eligibleManagers": "{count} eligible managers",
+  "admin.noAverageTitle": "No average data yet",
+  "admin.noAverageBody": "The backend does not expose a division-average endpoint yet.",
+  "admin.averageNote":
+    "Locked or removed teams and replacement scores are excluded from the sample.",
+  "admin.workerLog": "Worker log",
+  "admin.recentJobs": "Recent jobs",
+  "admin.syncCadence": "Sync every 5 minutes",
+  "admin.noJobTitle": "No worker log yet",
+  "admin.noJobBody": "The backend does not expose a job-history endpoint yet.",
 
-  "violations.title": { vi: "Quản lý vi phạm", en: "Violation management" },
-  "violations.heading": { vi: "Violation review", en: "Violation review" },
-  "violations.description": {
-    vi: "Xác minh vi phạm, phạm vi ảnh hưởng và lịch sử quyết định theo từng gameweek.",
-    en: "Verify each violation, its scope of impact and the decision history per Gameweek."
-  },
-  "violations.pending": { vi: "Chờ xử lý", en: "Pending" },
-  "violations.confirmed": { vi: "Đã xác nhận", en: "Confirmed" },
-  "violations.waived": { vi: "Được miễn", en: "Waived" },
-  "violations.viewAudit": { vi: "Xem audit log", en: "View audit log" },
-  "violations.auditUnavailable": {
-    vi: "Audit-log detail chưa có endpoint cho giao diện.",
-    en: "The audit-log detail has no endpoint for the UI yet."
-  },
-  "violations.requestChipReview": { vi: "Yêu cầu kiểm tra chip", en: "Request chip review" },
-  "violations.confirmViolation": { vi: "Xác nhận vi phạm", en: "Confirm violation" },
-  "violations.approveException": { vi: "Duyệt ngoại lệ", en: "Approve exception" },
-  "violations.rejectException": { vi: "Bác ngoại lệ", en: "Reject exception" },
-  "violations.mockNotice": {
-    vi: "Dữ liệu minh hoạ · không thể review",
-    en: "Illustrative data · review disabled"
-  },
-  "violations.notePlaceholder": { vi: "Ghi chú bắt buộc", en: "Reason (required)" },
-  "violations.noteAria": {
-    vi: "Ghi chú review violation {id}",
-    en: "Review note for violation {id}"
-  },
-  "violations.noneConfirmed": { vi: "Không xác nhận", en: "None confirmed" },
-  "violations.occurrences": {
-    vi: "{count} lần trong bản ghi",
-    en: "{count} recorded occurrences"
-  },
-  "violations.noTransferCost": {
-    vi: "Backend chưa trả transfer cost",
-    en: "The backend did not return a transfer cost"
-  },
-  "violations.transferCost": {
-    vi: "Transfer cost ghi nhận: −{cost}",
-    en: "Recorded transfer cost: −{cost}"
-  },
-  "violations.notReviewed": { vi: "Chưa review", en: "Not reviewed" },
-  "violations.impact.threshold": {
-    vi: "Áp dụng theo ngưỡng vi phạm tích lũy",
-    en: "Applied at the cumulative violation threshold"
-  },
-  "violations.impact.cupZero": {
-    vi: "Điểm GW không tính xét suất Cup",
-    en: "Gameweek excluded from Cup qualification"
-  },
-  "violations.impact.waived": { vi: "Không cộng violation", en: "No violation counted" },
-  "violations.impact.h2hDeduction": {
-    vi: "Trừ 6 điểm bảng H2H",
-    en: "6 points deducted from the H2H table"
-  },
-  "violations.impact.level2Warning": { vi: "Cảnh cáo cấp 2", en: "Level 2 sanction" },
-  "violations.impact.keepTransferHit": {
-    vi: "Giữ nguyên transfer hit FPL",
-    en: "The official FPL transfer hit still stands"
-  },
+  "violations.title": "Violation management",
+  "violations.heading": "Violation review",
+  "violations.description":
+    "Verify each violation, its scope of impact and the decision history per Gameweek.",
+  "violations.pending": "Pending",
+  "violations.confirmed": "Confirmed",
+  "violations.waived": "Waived",
+  "violations.viewAudit": "View audit log",
+  "violations.auditUnavailable": "The audit-log detail has no endpoint for the UI yet.",
+  "violations.requestChipReview": "Request chip review",
+  "violations.confirmViolation": "Confirm violation",
+  "violations.approveException": "Approve exception",
+  "violations.rejectException": "Reject exception",
+  "violations.notePlaceholder": "Reason (required)",
+  "violations.noteAria": "Review note for violation {id}",
+  "violations.noneConfirmed": "None confirmed",
+  "violations.occurrences": "{count} recorded occurrences",
+  "violations.noTransferCost": "The backend did not return a transfer cost",
+  "violations.transferCost": "Recorded transfer cost: −{cost}",
+  "violations.notReviewed": "Not reviewed",
+  "violations.impact.threshold": "Applied at the cumulative violation threshold",
+  "violations.impact.cupZero": "Gameweek excluded from Cup qualification",
+  "violations.impact.waived": "No violation counted",
+  "violations.impact.h2hDeduction": "6 points deducted from the H2H table",
+  "violations.impact.level2Warning": "Level 2 sanction",
+  "violations.impact.keepTransferHit": "The official FPL transfer hit still stands",
 
-  "error.title": { vi: "Không thể tải nội dung", en: "This content could not load" },
-  "error.body": {
-    vi: "Dữ liệu đang tạm thời gián đoạn. Bạn có thể thử tải lại mà không làm mất trạng thái.",
-    en: "The data source is temporarily unavailable. You can retry without losing your place."
-  },
-  "loading.label": { vi: "Đang tải dữ liệu…", en: "Loading data…" },
-  "notFound.title": { vi: "Không tìm thấy trang", en: "Page not found" },
-  "notFound.body": {
-    vi: "Đường dẫn này không tồn tại hoặc nội dung đã được di chuyển.",
-    en: "This address does not exist, or the content has moved."
-  },
-  "notFound.action": { vi: "Về tổng quan", en: "Back to overview" },
+  "error.title": "This content could not load",
+  "error.body":
+    "The data source is temporarily unavailable. You can retry without losing your place.",
+  "loading.label": "Loading data…",
+  "notFound.title": "Page not found",
+  "notFound.body": "This address does not exist, or the content has moved.",
+  "notFound.action": "Back to overview",
 
-  "api.missingUrl": {
-    vi: "Thiếu VMF_API_URL (hoặc NEXT_PUBLIC_API_URL). Không thể tải dữ liệu thật.",
-    en: "VMF_API_URL (or NEXT_PUBLIC_API_URL) is missing, so live data cannot be loaded."
-  },
-  "api.mockWriteBlocked": {
-    vi: "Không thể ghi quyết định khi đang dùng dữ liệu minh hoạ.",
-    en: "Decisions cannot be recorded while illustrative data is enabled."
-  }
+  "api.missingUrl":
+    "VMF_API_URL (or NEXT_PUBLIC_API_URL) is missing, so live data cannot be loaded."
 } as const;
 
 export type MessageKey = keyof typeof messages;
 
 type Variables = Record<string, string | number>;
 
-export function translate(locale: Locale, key: MessageKey, variables?: Variables): string {
-  const entry = messages[key];
-  const template = entry[locale] ?? entry[DEFAULT_LOCALE];
+export type Translator = (key: MessageKey, variables?: Variables) => string;
+
+/** Look a message up and fill in its `{placeholder}` slots. */
+export const t: Translator = (key, variables) => {
+  const template: string = messages[key];
   if (!variables) return template;
   return template.replace(/\{(\w+)\}/g, (match, name: string) =>
     name in variables ? String(variables[name]) : match
   );
-}
-
-export type Translator = (key: MessageKey, variables?: Variables) => string;
-
-export function createTranslator(locale: Locale): Translator {
-  return (key, variables) => translate(locale, key, variables);
-}
+};

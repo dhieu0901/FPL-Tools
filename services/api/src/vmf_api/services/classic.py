@@ -43,6 +43,9 @@ class ClassicService:
                 season_points=row.season_points,
                 totw_count=row.totw_count,
                 highest_gameweek_score=row.highest_gameweek_score,
+                captain_points=row.captain_points,
+                goals=row.goals,
+                cards=row.cards,
             )
             for row in aggregates
         )

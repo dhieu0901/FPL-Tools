@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { formatNumber } from "@/lib/format";
+import { t } from "@/lib/i18n";
 import type { H2HStanding } from "@/lib/types";
-import { useLocale, useTranslator } from "./locale-provider";
 import { Avatar, FormDots, Pill } from "./ui";
 
 export function H2HTable({ entries }: { entries: H2HStanding[] }) {
-  const locale = useLocale();
-  const t = useTranslator();
   return (
     <div className="table-shell">
       <table className="standings-table h2h-table">
@@ -46,7 +44,7 @@ export function H2HTable({ entries }: { entries: H2HStanding[] }) {
               <td>{entry.won}</td>
               <td>{entry.drawn}</td>
               <td>{entry.lost}</td>
-              <td>{formatNumber(entry.pointsFor, locale)}</td>
+              <td>{formatNumber(entry.pointsFor)}</td>
               <td>
                 <FormDots form={entry.form} />
               </td>

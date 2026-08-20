@@ -2,15 +2,13 @@ import type { Metadata } from "next";
 import { H2HTable } from "@/components/h2h-table";
 import { Callout, DataBadge, PageHeader, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("h2h.title") };
+  return { title: t("h2h.title") };
 }
 
 export default async function H2HPage() {
-  const t = createTranslator(await getLocale());
   const result = await vmfApi.h2hStandings();
   return (
     <>

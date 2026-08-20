@@ -1,9 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { LocaleProvider } from "@/components/locale-provider";
 import { SiteHeader } from "@/components/site-header";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +11,14 @@ export const metadata: Metadata = {
   },
   description: "Văn Minh Fantasy League 2026/27 standings, head-to-head and Cup dashboard.",
   applicationName: "VMF League",
-  robots: { index: true, follow: true }
+  robots: { index: true, follow: true },
+  icons: {
+    icon: [
+      { url: "/favicon.png", sizes: "32x32", type: "image/png" },
+      { url: "/vmf-192.png", sizes: "192x192", type: "image/png" }
+    ],
+    apple: "/apple-icon.png"
+  }
 };
 
 export const viewport: Viewport = {
@@ -24,34 +29,29 @@ export const viewport: Viewport = {
 // Fetch league data at request-time so Vercel builds never depend on a live API.
 export const dynamic = "force-dynamic";
 
-export default async function RootLayout({ children }: { children: ReactNode }) {
-  const locale = await getLocale();
-  const t = createTranslator(locale);
-
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang={locale}>
+    <html lang="en">
       <body>
-        <LocaleProvider locale={locale}>
-          <a className="skip-link" href="#main-content">
-            {t("skip.toContent")}
-          </a>
-          <SiteHeader />
-          <main id="main-content" className="main-shell">
-            {children}
-          </main>
-          <footer className="site-footer">
-            <div>
-              <p>
-                <strong>VMF League</strong> · {t("footer.season")}
-              </p>
-              <p>{t("footer.note")}</p>
-            </div>
-            <div className="footer-status">
-              <span />
-              {t("footer.status")}
-            </div>
-          </footer>
-        </LocaleProvider>
+        <a className="skip-link" href="#main-content">
+          {t("skip.toContent")}
+        </a>
+        <SiteHeader />
+        <main id="main-content" className="main-shell">
+          {children}
+        </main>
+        <footer className="site-footer">
+          <div>
+            <p>
+              <strong>VMF League</strong> · {t("footer.season")}
+            </p>
+            <p>{t("footer.note")}</p>
+          </div>
+          <div className="footer-status">
+            <span />
+            {t("footer.status")}
+          </div>
+        </footer>
       </body>
     </html>
   );

@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { MessageKey } from "@/lib/i18n";
+import { t } from "@/lib/i18n";
 import { BrandMark } from "./brand-mark";
 import { Icon, type IconName } from "./icons";
-import { LocaleSwitcher } from "./locale-switcher";
-import { useTranslator } from "./locale-provider";
 
 const primaryNav: Array<{ href: string; label: MessageKey; icon: IconName }> = [
   { href: "/", label: "nav.overview", icon: "dashboard" },
@@ -14,7 +13,8 @@ const primaryNav: Array<{ href: string; label: MessageKey; icon: IconName }> = [
   { href: "/h2h", label: "nav.h2h", icon: "fixture" },
   { href: "/cup", label: "nav.cup", icon: "cup" },
   { href: "/highlights", label: "nav.highlights", icon: "highlight" },
-  { href: "/managers", label: "nav.managers", icon: "manager" }
+  { href: "/managers", label: "nav.managers", icon: "manager" },
+  { href: "/rules", label: "nav.rules", icon: "info" }
 ];
 
 function isActive(pathname: string, href: string) {
@@ -23,7 +23,6 @@ function isActive(pathname: string, href: string) {
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const t = useTranslator();
 
   return (
     <header className="site-header">
@@ -45,7 +44,6 @@ export function SiteHeader() {
         </nav>
         <div className="header-actions">
           <span className="season-pill">2026/27</span>
-          <LocaleSwitcher />
           {/* Prefetching would fetch a protected route in the background, and
               the 401 it returns makes the browser raise a sign-in dialog over
               the public site. The admin area is reached by clicking. */}

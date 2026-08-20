@@ -1,18 +1,22 @@
-"use client";
+import Image from "next/image";
+import { t } from "@/lib/i18n";
 
-import { useTranslator } from "./locale-provider";
-
+/**
+ * The league crest. It is decorative next to the wordmark, so the image itself
+ * carries no alternative text and the lockup as a whole announces the league.
+ */
 export function BrandMark({ compact = false }: { compact?: boolean }) {
-  const t = useTranslator();
   return (
     <span className="brand-lockup" role="img" aria-label="Văn Minh Fantasy League">
-      <svg className="brand-mark" viewBox="0 0 44 44" aria-hidden="true">
-        <path
-          d="M4 6.5 12.5 37h6.4L22 25.8 25.1 37h6.4L40 6.5h-7.8l-4 17.1L24 9.2h-4l-4.2 14.4-4-17.1H4Z"
-          fill="currentColor"
-        />
-        <path d="M8 5h28" stroke="var(--coral)" strokeWidth="2.5" />
-      </svg>
+      <Image
+        src="/vmf.png"
+        alt=""
+        width={44}
+        height={44}
+        className="brand-mark"
+        priority
+        sizes="44px"
+      />
       {!compact && (
         <span className="brand-copy">
           <strong>VMF League</strong>

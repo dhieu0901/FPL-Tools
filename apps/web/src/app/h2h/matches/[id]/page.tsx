@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { TeamLink } from "@/components/fpl-link";
 import { SquadList } from "@/components/squad-list";
 import { Avatar, Callout, DataBadge, Pill } from "@/components/ui";
 import { ApiRequestError, vmfApi } from "@/lib/api";
 import { matchStatusLabel } from "@/lib/format";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("match.title") };
+  return { title: t("match.title") };
 }
 
 export default async function MatchPage({ params }: { params: Promise<{ id: string }> }) {
-  const locale = await getLocale();
-  const t = createTranslator(locale);
   const { id } = await params;
   const result = await vmfApi.h2hMatch(id).catch((error: unknown) => {
     if (error instanceof ApiRequestError && error.status === 404) notFound();
@@ -36,14 +34,16 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             GW{match.gameweek} · {match.bracketLabel ?? t("h2h.groupLabel")}
           </span>
           <Pill tone={match.status === "live" ? "coral" : "neutral"}>
-            {matchStatusLabel(match.status, locale)}
+            {matchStatusLabel(match.status)}
           </Pill>
         </div>
         <div className="match-scoreboard">
           <div className="match-side match-side--home">
             <Avatar name={match.home.managerName} size="large" />
             <div>
-              <h1>{match.home.teamName}</h1>
+              <h1>
+                <TeamLink side={match.home} gameweek={match.gameweek} />
+              </h1>
               <p>{match.home.managerName}</p>
             </div>
           </div>
@@ -55,7 +55,9 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           <div className="match-side">
             <Avatar name={match.away.managerName} size="large" />
             <div>
-              <h1>{match.away.teamName}</h1>
+              <h1>
+                <TeamLink side={match.away} gameweek={match.gameweek} />
+              </h1>
               <p>{match.away.managerName}</p>
             </div>
           </div>
@@ -89,7 +91,6 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
             <article className="panel-card" key={side}>
               <SquadList
                 squad={detail.squad}
-                t={t}
                 title={t("match.squadOf", { team: detail.teamName })}
               />
               <footer className="squad-footer">

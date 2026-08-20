@@ -22,6 +22,9 @@ class ClassicAggregate:
     full_season_points: int
     totw_count: int
     highest_gameweek_score: int
+    captain_points: int
+    goals: int
+    cards: int
 
 
 class ClassicRepository:
@@ -48,6 +51,17 @@ class ClassicRepository:
                 func.coalesce(func.max(ManagerGameweekScore.net_points), 0).label(
                     "highest_gameweek_score"
                 ),
+                func.coalesce(func.sum(ManagerGameweekScore.captain_points), 0).label(
+                    "captain_points"
+                ),
+                func.coalesce(func.sum(ManagerGameweekScore.goals_counted), 0).label("goals"),
+                func.coalesce(
+                    func.sum(
+                        ManagerGameweekScore.yellow_cards_counted
+                        + ManagerGameweekScore.red_cards_counted
+                    ),
+                    0,
+                ).label("cards"),
             )
             .join(Gameweek, Gameweek.id == ManagerGameweekScore.gameweek_id)
             .where(
@@ -80,6 +94,9 @@ class ClassicRepository:
                 func.coalesce(full.c.full_season_points, 0),
                 func.coalesce(period.c.totw_count, 0),
                 func.coalesce(period.c.highest_gameweek_score, 0),
+                func.coalesce(period.c.captain_points, 0),
+                func.coalesce(period.c.goals, 0),
+                func.coalesce(period.c.cards, 0),
             )
             .outerjoin(period, period.c.manager_id == Manager.id)
             .outerjoin(full, full.c.manager_id == Manager.id)
@@ -98,6 +115,9 @@ class ClassicRepository:
                 full_season_points=row[6],
                 totw_count=row[7],
                 highest_gameweek_score=row[8],
+                captain_points=row[9],
+                goals=row[10],
+                cards=row[11],
             )
             for row in rows
         ]

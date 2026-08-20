@@ -100,7 +100,7 @@ Both league endpoints are **optional adapters**:
 - if a league endpoint fails, changes schema or is not public, only import and
   reconciliation degrade; VMF scoring keeps working;
 - pagination must run until `has_next = false`; never assume the first page
-  contains all 40 managers;
+  contains all 46 managers;
 - `phase` must come from verified season data or configuration, never
   permanently defaulted to `1`.
 
@@ -489,7 +489,7 @@ requests do not arrive in a burst.
 
 Mandatory optimizations:
 
-- bootstrap, fixtures and event live are a shared cache for all 40 managers;
+- bootstrap, fixtures and event live are a shared cache for all 46 managers;
 - each shared URL is fetched once per tick;
 - the cache key covers endpoint, path and query;
 - the parser output cache key adds the raw payload hash and the parser version;

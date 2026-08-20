@@ -29,7 +29,7 @@ class _StandingAccumulator:
 
 
 class H2HService:
-    def __init__(self, session: AsyncSession, *, expected_manager_count: int = 40) -> None:
+    def __init__(self, session: AsyncSession, *, expected_manager_count: int = 46) -> None:
         self.session = session
         self.expected_manager_count = expected_manager_count
         self.repository = H2HRepository(session)

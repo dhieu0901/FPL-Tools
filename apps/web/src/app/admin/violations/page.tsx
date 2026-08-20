@@ -4,13 +4,12 @@ import { Icon } from "@/components/icons";
 import { Avatar, DataBadge, PageHeader, Pill, SegmentedLinks } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
 import { formatDateTime } from "@/lib/format";
-import { createTranslator, type Translator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { type Translator, t } from "@/lib/i18n";
 import type { Violation } from "@/lib/types";
 import { reviewViolation } from "./actions";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("violations.title") };
+  return { title: t("violations.title") };
 }
 
 function ReviewActions({ violation, t }: { violation: Violation; t: Translator }) {
@@ -58,15 +57,9 @@ function ReviewActions({ violation, t }: { violation: Violation; t: Translator }
           ]
         : [];
 
-  if (actions.length === 0) {
-    return (
-      <div className="violation-card__actions">
-        <button className="secondary-button" type="button" disabled>
-          {t("violations.mockNotice")}
-        </button>
-      </div>
-    );
-  }
+  // A violation that has already been decided offers nothing to press, so the
+  // card ends rather than showing a note field with no way to submit it.
+  if (actions.length === 0) return null;
 
   return (
     <form action={reviewViolation} className="violation-card__actions">
@@ -99,8 +92,6 @@ export default async function AdminViolationsPage({
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
-  const locale = await getLocale();
-  const t = createTranslator(locale);
   const params = await searchParams;
   const selected =
     params.status === "pending" || params.status === "confirmed" || params.status === "waived"
@@ -201,7 +192,7 @@ export default async function AdminViolationsPage({
               </Pill>
               <time>
                 {violation.createdAt
-                  ? formatDateTime(violation.createdAt, locale)
+                  ? formatDateTime(violation.createdAt)
                   : t("violations.notReviewed")}
               </time>
             </div>

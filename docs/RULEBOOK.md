@@ -34,7 +34,7 @@ Keywords:
 
 ## 2. Membership and registration data
 
-- The league has 40 managers, identified externally by `fpl_entry_id`.
+- The league has 46 managers, identified externally by `fpl_entry_id`.
 - Registered manager and team names must not change while the season runs.
 - If the FPL team name changes, the system only raises a warning; it never
   overwrites the registered VMF team name.
@@ -157,10 +157,15 @@ fixture attached to that Gameweek.
 
 ### 4.1 Structure
 
+The league is 46 managers, in two divisions of different sizes.
+
 | Phase | Gameweeks | HIGH | LOW |
 |---|---:|---:|---:|
-| Classic Season 1 | GW1–GW19 | 20 | 20 |
-| Classic Season 2 | GW20–GW38 | 20 | 20 |
+| Classic Season 1 | GW1–GW19 | 20 | 26 |
+| Classic Season 2 | GW20–GW38 | 20 | 26 |
+
+Promotion and relegation move six managers in each direction, so both
+divisions keep their size across the swap.
 
 Season 2 points reset to `0` at GW20. Full-season points are still kept for
 statistics.
@@ -188,12 +193,13 @@ division column, which would rewrite history, is not allowed.
 - FPL overall rank is never used.
 - Displayed tables use competition ranking, for example `1, 2, 2, 4`.
 
-When a decision must be made across a meaningful boundary, apply section 7.
+Managers level on Classic points are separated by the chain in section 7, which
+is the same chain the Cup and the H2H table use.
 
 ## 5. TotW
 
 TotW is the manager with the highest `effective_net_points` in a Gameweek among
-all 40 eligible managers.
+all 46 eligible managers, across both divisions.
 
 - Chips and transfer costs are already inside the score being compared.
 - If several managers tie for the highest score, they all receive a TotW.
@@ -209,7 +215,9 @@ relevant phase up to that cutoff; future Gameweeks are never used.
 
 ### 6.1 Group stage
 
-- All 40 managers play one common H2H competition from GW1 to GW35.
+- All 46 managers play one common H2H competition from GW1 to GW35.
+- 46 is even, so every manager is paired in every round: 23 matches a
+  Gameweek, 805 across the group stage.
 - Every manager plays exactly one match per Gameweek.
 - No manager faces themselves.
 - The schedule is generated before the season. Administrators may edit it
@@ -279,26 +287,32 @@ place. GW38 contains the final only.
 
 A tied play-off match uses the Cup tie-break chain in section 8.4.
 
-## 7. Boundary decision rule
+## 7. Tie-break chain
 
-This rule applies when a group of managers on equal points straddles:
+Every table in the competition sorts by its own primary measure first, then
+hands whatever is still level to the one chain below. Keeping a single chain is
+what stops Classic, H2H and the Cup from disagreeing about who finished ahead.
 
-- the top 6 promotion or relegation boundary;
-- the H2H top 8 boundary;
-- the rank 2/3 or rank 14/15 boundary of a Cup qualification table;
-- any other qualifying boundary that the league configuration refers here.
+The primary measure is:
 
-Apply in order:
+- Classic: Classic Season points;
+- H2H: `h2h_table_points`, then point difference, points for and wins;
+- Cup: the match score, or `cup_qualification_points` in a qualification table.
 
-1. **Points for the relevant phase**, higher first:
-   - Classic: Classic Season points;
-   - H2H: `h2h_table_points`;
-   - Cup: `cup_qualification_points`.
-2. **Cumulative TotW** up to the phase cutoff, more first.
-3. **Highest single Gameweek score** inside the relevant phase, higher first.
-   For a Cup, only scores eligible for that Cup's qualification table count; a
-   Gameweek zeroed by a violation stays at `0`.
-4. **An administrator draw** if still tied.
+Then, in order:
+
+1. **More cumulative TotW**, counted to the Gameweek being decided.
+2. **Higher captain points.**
+3. **More goals** by counted players.
+4. **Fewer cards** by counted players.
+5. **Higher Classic points** up to that Gameweek.
+6. **An administrator draw** if still tied.
+
+Steps 1–5 are automatic and every one of them records what it compared. Only
+step 6 needs a person.
+
+The highest single Gameweek score is still reported, and it decides a separate
+special award, but it is no longer a tie-break step.
 
 A draw must record the list of eligible managers, who performed it, when, by
 what method, and the result. Silent randomness inside a background job is not
@@ -310,48 +324,49 @@ required.
 
 ## 8. VMF Cup
 
-### 8.1 Cup Season 1
+### 8.1 Structure
 
-The qualification cutoff is the finalization of GW14. The qualification table
-covers GW1–GW14.
+Both Cups have the same structure. Classic places are read at the cutoff, the
+bottom of each division drops out, and the remaining 40 managers enter the
+bracket at one of three points.
 
-| Rank within each division | Outcome |
-|---|---|
-| 1–2 | Straight into the round of 16 |
-| 3–14 | Preliminary round |
-| Others | Not in the Cup |
+| Rank | HIGH | LOW | Enters at |
+|---|---|---|---|
+| Top | 1–3 | 1 | Round of 16 |
+| Middle | 4–10 | 2–6 | Qualifying Round 2 |
+| Lower | 11–18 | 7–22 | Qualifying Round 1 |
+| Out | 19–20 | 23–26 | Not in the Cup |
 
-Schedule:
+That is 24 managers in Qualifying Round 1 playing for 12 places, joined by 12
+more in Qualifying Round 2 playing for 12 places, joined by the last 4 in a
+round of 16.
 
-| GW | Round |
-|---:|---|
-| 15 | Preliminary round |
-| 16 | Round of 16 |
-| 17 | Quarter-finals |
-| 18 | Semi-finals |
-| 19 | Final and third-place match |
+| Round | Season 1 | Season 2 |
+|---|---:|---:|
+| Classic places read after | GW13 | GW32 |
+| Qualifying Round 1 | GW14 | GW33 |
+| Qualifying Round 2 | GW15 | GW34 |
+| Round of 16 | GW16 | GW35 |
+| Quarter-finals | GW17 | GW36 |
+| Semi-finals | GW18 | GW37 |
+| Final and third-place match | GW19 | GW38 |
 
-### 8.2 Cup Season 2
+Every round is a single head-to-head knockout tie.
 
-Cup Season 2 has the **same structure** as Cup Season 1. The qualification
-cutoff is the finalization of GW33, and the qualification table covers
-GW20–GW33.
+### 8.2 Seeding
 
-| Rank within each division | Outcome |
-|---|---|
-| 1–2 | Straight into the round of 16 |
-| 3–14 | Preliminary round |
-| Others | Not in the Cup |
+The two Cups are seeded differently: Season 1 gives HIGH the top places in the
+qualifying draw, Season 2 gives them to LOW. Neither bracket is derived from
+the other, and neither is generated at run time — both are transcribed from the
+bracket sheet the organisers published, in `domain/cup_bracket.py`, and checked
+against it by test.
 
-Schedule:
+A Cup is drawn once, after its cutoff Gameweek is finalized, and the whole
+bracket is written at that moment. Later rounds carry their position — "winner
+of Q1-7" — until the managers who fill them are known.
 
-| GW | Round |
-|---:|---|
-| 34 | Preliminary round |
-| 35 | Round of 16 |
-| 36 | Quarter-finals |
-| 37 | Semi-finals |
-| 38 | Final and third-place match |
+Two managers sharing a qualification rank stops the draw. The system does not
+choose between them; that is the administrator draw in section 7.
 
 ### 8.3 Cup qualification table
 
@@ -376,7 +391,7 @@ The `0` rule affects the Cup qualification table only:
 - it does not change raw FPL data;
 - it does not by itself change a played H2H group result.
 
-**Every Gameweek carrying a violation** inside GW1–GW14 or GW20–GW33 is removed
+**Every Gameweek carrying a violation** inside GW1–GW13 or GW20–GW32 is removed
 from the Cup total, not only the Gameweek in which a Cup tie is played.
 
 Qualification is computed separately inside HIGH and LOW according to the
@@ -388,17 +403,8 @@ A Cup match score is `effective_net_points`, except for a walkover or a score
 invalidated under section 9.
 
 If both sides are level and both hold a genuine score or a valid override,
-apply in order:
-
-1. more cumulative TotW, counted up to and including the Gameweek being played;
-2. higher captain contribution in that Gameweek;
-3. more goals by counted players in that Gameweek;
-4. fewer cards by counted players in that Gameweek;
-5. higher current Classic Season points up to that Gameweek;
-6. an administrator draw.
-
-Every step must record its inputs, the comparison result, and which step
-decided the winner.
+apply the chain in section 7. Every step must record its inputs, the comparison
+result, and which step decided the winner.
 
 Score-source precedence:
 
@@ -703,7 +709,45 @@ request_id
 The organisers hold the final decision, but the system must never turn that
 decision into an untraceable change.
 
-## 14. Invariants that must hold
+## 14. Prize fund
+
+The fund is 9,200,000₫. It is fixed before the season and never derived from
+play, so it lives beside the interface copy rather than in the database.
+
+| Competition | Total |
+|---|---:|
+| Classic | 5,600,000₫ |
+| Head to head | 1,200,000₫ |
+| VMF Cup | 1,700,000₫ |
+| Special awards | 700,000₫ |
+
+**Classic**, 2,800,000₫ per Season:
+
+| Place | HIGH | LOW |
+|---|---:|---:|
+| Champion | 600,000₫ | 550,000₫ |
+| Runner-up | 400,000₫ | 350,000₫ |
+| Third | 250,000₫ | 200,000₫ |
+| Fourth | 200,000₫ | 150,000₫ |
+| Fifth and sixth | — | 50,000₫ each |
+
+**Head to head**: champion 500,000₫, runner-up 300,000₫, 150,000₫ to each
+losing semi-finalist, 100,000₫ to the group-stage winner.
+
+**VMF Cup**, 850,000₫ per Season: champion 400,000₫, runner-up 200,000₫, third
+150,000₫, fourth 100,000₫.
+
+**Special awards**: 50,000₫ for each of ten monthly Classic winners, 100,000₫
+for the Classic number one across the full season, and 100,000₫ for the
+highest score in a single Gameweek.
+
+A manager past the second violation threshold receives 50% of anything they
+would otherwise be paid, per section 9.3.
+
+The **minigame fund** sits outside these figures. Each minigame pays
+50,000–100,000₫, and every forfeited entry fee is added to it.
+
+## 15. Invariants that must hold
 
 1. FPL overall rank is never used to rank VMF.
 2. A manager has exactly one effective division membership per Gameweek.
@@ -714,6 +758,6 @@ decision into an untraceable change.
    unchanged.
 7. A replacement average uses only same-division samples and contains no
    replacement score.
-8. H2H has no third-place match.
+8. H2H has no third-place match; the Cup does.
 9. A final revision is never edited in place.
 10. Personal data never appears in a public API, public cache, log or export.

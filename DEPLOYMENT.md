@@ -2,7 +2,7 @@
 
 Updated: 28 July 2026.
 
-The recommended production stack for 40 managers is:
+The recommended production stack for 46 managers is:
 
 ```text
 Browser
@@ -234,7 +234,7 @@ Migrations and the season bootstrap never invent a roster. Before going public:
 
 1. Take `season_id` from the **Bootstrap season metadata** step's log and put
    it in the web project's `VMF_SEASON_ID`.
-2. Import the 40 managers with `vmf-import-managers`, run locally against the
+2. Import the 46 managers with `vmf-import-managers`, run locally against the
    session pooler. Prepare a CSV with the columns `fpl_entry_id`,
    `manager_name`, `team_name`, `division`:
 
@@ -261,7 +261,7 @@ Migrations and the season bootstrap never invent a roster. Before going public:
    is the check that matters: a mistyped entry id produces a manager who looks
    present everywhere while their squad never synchronises.
 
-   The command refuses a roster that is not 40 managers split 20/20 unless
+   The command refuses a roster that is not 46 managers split HIGH 20 / LOW 26 unless
    `--allow-imbalance` is passed, and re-running it creates nothing. A row whose
    division disagrees with an already imported manager is reported instead of
    applied, so promotion and relegation stay an explicit decision.
@@ -389,7 +389,7 @@ Sources: [Vercel Hobby](https://vercel.com/docs/plans/hobby),
 [Supabase project pausing](https://supabase.com/docs/guides/platform/free-project-pausing)
 and [Supabase backups](https://supabase.com/docs/guides/platform/backups).
 
-With 40 managers the request quota is comfortable as long as the API serves
+With 46 managers the request quota is comfortable as long as the API serves
 data already aggregated in the database. Do not store the whole
 `bootstrap-static` payload again on every tick: shared payloads are recorded by
 hash only, while manager-scoped evidence is kept in full. Watch the database

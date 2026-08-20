@@ -89,6 +89,9 @@ class SquadSlot(BaseModel):
 
 class MatchupSide(BaseModel):
     manager_id: int
+    #: FPL's own entry id, so the site can link a team through to the same
+    #: Gameweek on FPL, where every number on this page originates.
+    fpl_entry_id: int
     manager_name: str
     team_name: str
     score: int | None

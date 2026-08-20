@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Generic, Iterable, TypeVar
 
+from vmf_api.domain.tie_breaks import TieBreakFacts
+
 T = TypeVar("T")
 
 
@@ -38,14 +40,30 @@ class ClassicStanding:
     season_points: int
     totw_count: int = 0
     highest_gameweek_score: int = 0
+    captain_points: int = 0
+    goals: int = 0
+    cards: int = 0
+
+    @property
+    def tie_break(self) -> TieBreakFacts:
+        # Inside one Classic table `classic_points` equals `season_points`, so
+        # the last automatic step never separates anyone here. It is kept so
+        # that a Classic tie and a Cup tie are decided by the same chain.
+        return TieBreakFacts(
+            totw_count=self.totw_count,
+            captain_points=self.captain_points,
+            goals=self.goals,
+            cards=self.cards,
+            classic_points=self.season_points,
+        )
 
 
 def rank_classic(values: Iterable[ClassicStanding]) -> list[Ranked[ClassicStanding]]:
-    """Rank by the agreed automatic boundary tie-break chain."""
+    """Rank by Classic points, then by the rulebook's shared tie-break chain."""
 
     return competition_rank(
         values,
-        key=lambda row: (row.season_points, row.totw_count, row.highest_gameweek_score),
+        key=lambda row: (row.season_points, *row.tie_break.sort_key()),
     )
 
 
@@ -57,6 +75,7 @@ class H2HStanding:
     points_against: int
     wins: int
     full_net_fpl_points: int
+    tie_break: TieBreakFacts = TieBreakFacts()
 
     @property
     def point_difference(self) -> int:
@@ -64,6 +83,12 @@ class H2HStanding:
 
 
 def rank_h2h(values: Iterable[H2HStanding]) -> list[Ranked[H2HStanding]]:
+    """Table points first, then the H2H-specific measures, then the shared chain.
+
+    The football-standard measures come first because they describe the H2H
+    competition itself; the rulebook chain only decides what they leave level.
+    """
+
     return competition_rank(
         values,
         key=lambda row: (
@@ -72,5 +97,6 @@ def rank_h2h(values: Iterable[H2HStanding]) -> list[Ranked[H2HStanding]]:
             row.points_for,
             row.wins,
             row.full_net_fpl_points,
+            *row.tie_break.sort_key(),
         ),
     )

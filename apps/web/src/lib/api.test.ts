@@ -11,8 +11,6 @@ function jsonResponse(data: unknown, status = 200): Response {
 beforeEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
-  vi.stubEnv("VMF_USE_MOCK_DATA", "false");
-  vi.stubEnv("NEXT_PUBLIC_USE_MOCK_DATA", "false");
   vi.stubEnv("VMF_API_URL", "");
   vi.stubEnv("NEXT_PUBLIC_API_URL", "");
 });
@@ -23,25 +21,14 @@ afterEach(() => {
 });
 
 describe("VMF API client", () => {
-  it("requires an API URL when mock mode is disabled", async () => {
+  it("refuses to load anything without an API URL", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch");
 
     await expect(vmfApi.managers()).rejects.toBeInstanceOf(ApiConfigurationError);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("uses mock data only when explicitly enabled", async () => {
-    vi.stubEnv("VMF_USE_MOCK_DATA", "true");
-    const fetchSpy = vi.spyOn(globalThis, "fetch");
-
-    const response = await vmfApi.managers();
-
-    expect(response.source).toBe("mock");
-    expect(response.data.length).toBeGreaterThan(0);
-    expect(fetchSpy).not.toHaveBeenCalled();
-  });
-
-  it("does not silently fall back to mock data after an API error", async () => {
+  it("surfaces an API failure rather than inventing a standing", async () => {
     vi.stubEnv("VMF_API_URL", "https://api.example.test/api/");
     vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ detail: "down" }, 503));
 
@@ -163,7 +150,7 @@ describe("VMF API client", () => {
       })
     );
 
-    await vmfApi.reviewViolation("17", "confirm", "Đã đối chiếu transfer FPL");
+    await vmfApi.reviewViolation("17", "confirm", "Checked against the FPL transfer log");
 
     const [url, options] = fetchSpy.mock.calls[0] ?? [];
     const headers = options?.headers as Headers | undefined;
@@ -173,7 +160,7 @@ describe("VMF API client", () => {
       cache: "no-store",
       body: JSON.stringify({
         action: "confirm",
-        note: "Đã đối chiếu transfer FPL"
+        note: "Checked against the FPL transfer log"
       })
     });
     expect(headers?.get("X-Admin-Key")).toBe("test-admin-key");
@@ -193,7 +180,7 @@ describe("VMF API client", () => {
             detected_count: 2,
             confirmed_count: 0,
             status: "overridden",
-            admin_note: "Sai dữ liệu nguồn",
+            admin_note: "The source data was wrong",
             reviewed_by: "admin",
             reviewed_at: "2026-08-20T00:00:00Z"
           }

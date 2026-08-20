@@ -72,6 +72,7 @@ def _side(
     remaining = comparison.home_remaining if home else comparison.away_remaining
     return MatchupSide(
         manager_id=side.manager_id,
+        fpl_entry_id=side.fpl_entry_id,
         manager_name=side.manager_name,
         team_name=side.team_name,
         score=side.score,

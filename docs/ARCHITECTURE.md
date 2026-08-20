@@ -9,7 +9,7 @@
 The system is a competition engine sitting on top of FPL data. The design must:
 
 - synchronize changing FPL data without losing the trail back to the source;
-- compute live results fast enough for 40 managers;
+- compute live results fast enough for 46 managers;
 - reproduce an old result exactly;
 - keep penalties, replacements and overrides separate from official points;
 - handle Double and Blank Gameweeks, postponements, automatic substitutions and
@@ -497,7 +497,7 @@ Before the season:
 After each Gameweek deadline:
 
 ```text
-- fetch picks, entry history, chips and transfers for all 40 managers
+- fetch picks, entry history, chips and transfers for all 46 managers
 - retry manager endpoints that are not open yet, with backoff
 - persist immutable deadline snapshots
 - detect transfer-cost candidates

@@ -45,8 +45,11 @@ class Settings(BaseSettings):
     #: headroom under the serverless execution limit of the free plan.
     sync_manager_batch_size: int = 10
 
-    number_of_managers: int = 40
-    division_size: int = 20
+    #: 2026/27 runs 46 managers, split HIGH 20 / LOW 26.
+    number_of_managers: int = 46
+    high_division_size: int = 20
+    low_division_size: int = 26
+    #: After each Season the bottom 6 of HIGH swap with the top 6 of LOW.
     promotion_count: int = 6
     relegation_count: int = 6
     maximum_allowed_transfer_cost: int = 8

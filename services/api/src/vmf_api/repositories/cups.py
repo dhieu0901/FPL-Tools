@@ -22,6 +22,38 @@ class CupRepository:
     async def get_competition(self, cup_id: int) -> CupCompetition | None:
         return await self.session.get(CupCompetition, cup_id)
 
+    async def rounds_with_matches(self, cup_id: int) -> list[tuple[CupRound, list[CupMatch]]]:
+        """Every round of a Cup with its ties, in the order the bracket is drawn."""
+
+        rounds = list(
+            (
+                await self.session.scalars(
+                    select(CupRound)
+                    .where(CupRound.cup_competition_id == cup_id)
+                    .order_by(CupRound.round_order)
+                )
+            )
+            .unique()
+            .all()
+        )
+        if not rounds:
+            return []
+        matches = list(
+            (
+                await self.session.scalars(
+                    select(CupMatch)
+                    .where(CupMatch.cup_round_id.in_([round_.id for round_ in rounds]))
+                    .order_by(CupMatch.is_third_place_match, CupMatch.id)
+                )
+            )
+            .unique()
+            .all()
+        )
+        grouped: dict[int, list[CupMatch]] = {round_.id: [] for round_ in rounds}
+        for match in matches:
+            grouped[match.cup_round_id].append(match)
+        return [(round_, grouped[round_.id]) for round_ in rounds]
+
     async def bracket(self, cup_id: int) -> list[CupMatch]:
         statement = (
             select(CupMatch)

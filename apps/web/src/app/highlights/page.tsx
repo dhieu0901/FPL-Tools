@@ -3,11 +3,10 @@ import { Icon } from "@/components/icons";
 import { DataBadge, EmptyState, PageHeader, Pill } from "@/components/ui";
 import { vmfApi } from "@/lib/api";
 import { highlightCopy } from "@/lib/highlight-text";
-import { createTranslator } from "@/lib/i18n";
-import { getLocale } from "@/lib/locale";
+import { t } from "@/lib/i18n";
 
 export async function generateMetadata(): Promise<Metadata> {
-  return { title: createTranslator(await getLocale())("nav.highlights") };
+  return { title: t("nav.highlights") };
 }
 
 const iconMap = {
@@ -18,7 +17,6 @@ const iconMap = {
 } as const;
 
 export default async function HighlightsPage() {
-  const t = createTranslator(await getLocale());
   const result = await vmfApi.highlights();
   return (
     <>

@@ -1,62 +1,40 @@
-import { DEFAULT_LOCALE, type Locale, translate } from "./i18n";
+import { t } from "./i18n";
 import type { MatchStatus } from "./types";
 
 // The league is played in Vietnam, so every timestamp is rendered in league
-// time regardless of the reader's language or device timezone.
+// time rather than in the reader's device timezone.
 const LEAGUE_TIME_ZONE = "Asia/Bangkok";
 
-const INTL_TAGS: Record<Locale, string> = { vi: "vi-VN", en: "en-GB" };
+const LOCALE_TAG = "en-GB";
 
-const numberFormats = new Map<Locale, Intl.NumberFormat>();
-const dateFormats = new Map<Locale, Intl.DateTimeFormat>();
-const dateTimeFormats = new Map<Locale, Intl.DateTimeFormat>();
+const numberFormat = new Intl.NumberFormat(LOCALE_TAG);
 
-function numberFormat(locale: Locale): Intl.NumberFormat {
-  const existing = numberFormats.get(locale);
-  if (existing) return existing;
-  const created = new Intl.NumberFormat(INTL_TAGS[locale]);
-  numberFormats.set(locale, created);
-  return created;
+const dateFormat = new Intl.DateTimeFormat(LOCALE_TAG, {
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  timeZone: LEAGUE_TIME_ZONE
+});
+
+const dateTimeFormat = new Intl.DateTimeFormat(LOCALE_TAG, {
+  day: "2-digit",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: LEAGUE_TIME_ZONE
+});
+
+export function formatNumber(value: number): string {
+  return numberFormat.format(value);
 }
 
-function dateFormat(locale: Locale): Intl.DateTimeFormat {
-  const existing = dateFormats.get(locale);
-  if (existing) return existing;
-  const created = new Intl.DateTimeFormat(INTL_TAGS[locale], {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: LEAGUE_TIME_ZONE
-  });
-  dateFormats.set(locale, created);
-  return created;
+export function formatDate(value: string): string {
+  return dateFormat.format(new Date(value));
 }
 
-function dateTimeFormat(locale: Locale): Intl.DateTimeFormat {
-  const existing = dateTimeFormats.get(locale);
-  if (existing) return existing;
-  const created = new Intl.DateTimeFormat(INTL_TAGS[locale], {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: LEAGUE_TIME_ZONE
-  });
-  dateTimeFormats.set(locale, created);
-  return created;
-}
-
-export function formatNumber(value: number, locale: Locale = DEFAULT_LOCALE): string {
-  return numberFormat(locale).format(value);
-}
-
-export function formatDate(value: string, locale: Locale = DEFAULT_LOCALE): string {
-  return dateFormat(locale).format(new Date(value));
-}
-
-export function formatDateTime(value: string, locale: Locale = DEFAULT_LOCALE): string {
-  return dateTimeFormat(locale).format(new Date(value));
+export function formatDateTime(value: string): string {
+  return dateTimeFormat.format(new Date(value));
 }
 
 export function rankDelta(
@@ -80,12 +58,11 @@ export function initials(name: string): string {
 }
 
 export function gameweekStateLabel(
-  state: "preseason" | "open" | "live" | "provisional" | "final",
-  locale: Locale = DEFAULT_LOCALE
+  state: "preseason" | "open" | "live" | "provisional" | "final"
 ): string {
-  return translate(locale, `state.${state}`);
+  return t(`state.${state}`);
 }
 
-export function matchStatusLabel(status: MatchStatus, locale: Locale = DEFAULT_LOCALE): string {
-  return translate(locale, `match.${status}`);
+export function matchStatusLabel(status: MatchStatus): string {
+  return t(`match.${status}`);
 }
