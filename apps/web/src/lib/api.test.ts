@@ -79,6 +79,80 @@ describe("VMF API client", () => {
     });
   });
 
+  it("carries both divisions in full, so any of the 46 can find their own row", async () => {
+    // The dashboard once looked a reader up in the top six of HIGH, which is
+    // the Classic preview. Six of forty-six could be found; every LOW manager
+    // and most of HIGH silently fell back to "no Gameweek scored yet".
+    vi.stubEnv("VMF_API_URL", "https://api.example.test/api");
+
+    const standing = (managerId: number, division: "HIGH" | "LOW", rank: number) => ({
+      rank,
+      manager_id: managerId,
+      manager_name: `Manager ${managerId}`,
+      team_name: `Team ${managerId}`,
+      division,
+      gameweeks_scored: 1,
+      season_points: 100 - rank,
+      full_season_points: 100 - rank,
+      totw_count: 0,
+      highest_gameweek_score: 50
+    });
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = String(input);
+      if (url.includes("/managers")) return jsonResponse([]);
+      if (url.includes("/fpl/status")) {
+        return jsonResponse({
+          // Null keeps the fixture call out of this test.
+          gameweek_number: null,
+          gameweek_name: null,
+          state: "preseason",
+          deadline: null,
+          completed_fixtures: 0,
+          total_fixtures: 0,
+          observed_at: "2026-08-21T00:00:00Z"
+        });
+      }
+      if (url.includes("division=HIGH")) {
+        return jsonResponse({
+          season_id: 1,
+          period: "season_1",
+          division: "HIGH",
+          start_gameweek: 1,
+          end_gameweek: 19,
+          standings: Array.from({ length: 20 }, (_, index) =>
+            standing(100 + index, "HIGH", index + 1)
+          )
+        });
+      }
+      if (url.includes("division=LOW")) {
+        return jsonResponse({
+          season_id: 1,
+          period: "season_1",
+          division: "LOW",
+          start_gameweek: 1,
+          end_gameweek: 19,
+          standings: Array.from({ length: 26 }, (_, index) =>
+            standing(200 + index, "LOW", index + 1)
+          )
+        });
+      }
+      // Highlights are allowed to fail; the dashboard degrades that panel.
+      return jsonResponse({ detail: "unavailable" }, 503);
+    });
+
+    const { data } = await vmfApi.dashboard();
+
+    expect(data.standings).toHaveLength(6);
+    expect(data.allStandings).toHaveLength(46);
+
+    const ids = data.allStandings.map((entry) => entry.managerId);
+    // The last of HIGH and the last of LOW are both findable.
+    expect(ids).toContain("119");
+    expect(ids).toContain("225");
+    expect(data.allStandings.filter((entry) => entry.division === "LOW")).toHaveLength(26);
+  });
+
   it("sends every required Classic query parameter and maps its envelope", async () => {
     vi.stubEnv("VMF_API_URL", "https://api.example.test/api");
     vi.stubEnv("VMF_SEASON_ID", "9");

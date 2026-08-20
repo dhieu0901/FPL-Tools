@@ -338,7 +338,10 @@ export interface DashboardData {
   fixtures: H2HFixture[];
   /** The roster, for the "which of these is you" picker. */
   managers: Manager[];
+  /** The Classic preview: the top six of HIGH. */
   standings: StandingEntry[];
+  /** Both divisions in full, for finding the reader's own row. */
+  allStandings: StandingEntry[];
   recentHighlights: Highlight[];
 }
 

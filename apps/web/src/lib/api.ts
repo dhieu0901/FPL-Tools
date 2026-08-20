@@ -902,6 +902,10 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
       fixtures: currentFixtures,
       managers: managerResult.data,
       standings: highResult.data.slice(0, 6),
+      // Both divisions in full, so a reader can be found wherever they sit.
+      // The preview above is the top six of HIGH; looking a manager up in
+      // that would only ever find six of the forty-six.
+      allStandings: [...highResult.data, ...lowResult.data],
       recentHighlights: highlightResult.data.slice(0, 3)
     },
     "live",

@@ -53,12 +53,12 @@ export default async function DashboardPage() {
 
   const myFixture = findMyFixture(data.fixtures, myManagerId);
   const myManager = data.managers.find((manager) => manager.id === myManagerId) ?? null;
-  const myStanding = data.standings.find((entry) => entry.managerId === myManagerId) ?? null;
+  const myStanding = data.allStandings.find((entry) => entry.managerId === myManagerId) ?? null;
   const hasStarted = data.gameweek.state !== "preseason" && data.gameweek.number > 0;
 
   // Before anyone has played, a table of zeros reads as a broken page rather
   // than as a season that has not begun, so the dashboard says so instead.
-  const anyPointsScored = data.standings.some((entry) => entry.totalPoints !== 0);
+  const anyPointsScored = data.allStandings.some((entry) => entry.totalPoints !== 0);
 
   return (
     <LiveRefresh live={data.gameweek.state === "live"}>
@@ -79,7 +79,11 @@ export default async function DashboardPage() {
             <>
               <p className="eyebrow">{t("dashboard.welcome")}</p>
               <h1>{myManager.teamName}</h1>
-              {myStanding ? (
+              {/* Before a ball is kicked every manager is level on zero and
+                  the table ranks all of them first. Telling forty-six people
+                  they lead the division is worse than telling them nothing,
+                  so the standing appears once there is a standing to show. */}
+              {myStanding && anyPointsScored ? (
                 <MyStanding entry={myStanding} />
               ) : (
                 <p>{t("dashboard.noStandingYet")}</p>
