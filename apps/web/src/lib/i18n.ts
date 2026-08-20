@@ -42,6 +42,9 @@ const messages = {
   "data.live": "API connected",
   "data.respondedAt": "· responded {time}",
 
+  "zone.promotion": "Promotion place",
+  "zone.relegation": "Relegation place",
+
   "state.preseason": "Not started",
   "state.open": "Open",
   "state.live": "In progress",
@@ -53,26 +56,15 @@ const messages = {
   "match.final": "Final",
   "match.walkover": "Walkover",
 
-  "zone.title": "Title race",
-  "zone.championship": "Championship",
-  "zone.cup": "Cup place",
-  "zone.playoff": "Play-off",
-  "zone.safe": "Safe",
-  "zone.relegation": "Relegation",
-
   "dashboard.title": "Overview",
   "dashboard.eyebrow": "Văn Minh Fantasy League",
   "dashboard.headline1": "Every point.",
   "dashboard.headline2": "Tells a story.",
-  "dashboard.lede":
-    "Follow the Classic race, head-to-head duels and the Cup run on one transparent dashboard, updated all season.",
   "dashboard.viewStandings": "View standings",
   "dashboard.fixtures": "Fixtures",
   "dashboard.gameweekProgress": "Gameweek progress",
   "dashboard.completed": "Completed",
   "dashboard.matchesShort": "matches",
-  "dashboard.deadline": "Deadline",
-  "dashboard.deadlineUnknown": "Not published",
   "dashboard.quickMetrics": "Key metrics",
   "dashboard.welcome": "Your season",
   "dashboard.totw": "TotW",
@@ -154,18 +146,11 @@ const messages = {
   "dashboard.allMatches": "All matches",
   "dashboard.noFixtureTitle": "No H2H schedule yet",
   "dashboard.noFixtureBody": "Fixtures appear once an administrator generates the schedule.",
-  "dashboard.organiser": "Organisers",
-  "dashboard.notices": "Announcements",
-  "dashboard.noNoticeTitle": "No announcements",
-  "dashboard.noNoticeBody": "No administrator announcement has been published yet.",
   "dashboard.classicEyebrow": "HIGH division",
   "dashboard.classicTitle": "The Classic race",
   "dashboard.classicBody": "Provisional standings after the fixtures played so far.",
   "dashboard.momentsEyebrow": "VMF moments",
   "dashboard.momentsTitle": "Latest highlights",
-  "dashboard.noHighlightTitle": "Highlights are still being built",
-  "dashboard.noHighlightBody":
-    "Records and Team of the Week appear once a Gameweek has been scored.",
 
   "classic.title": "Classic table",
   "classic.heading": "Standings",
@@ -198,7 +183,6 @@ const messages = {
   "h2h.final": "Final",
   "h2h.finalGw": "GW38",
   "h2h.noThirdPlace": "No third-place match",
-  "h2h.sharedThird": "Both losing semi-finalists share third",
   "h2h.immutableTitle": "A final result is immutable",
   "h2h.immutableBody":
     "Only an administrator may reopen a finalized Gameweek, and every change requires a reason and an audit entry.",
@@ -225,7 +209,6 @@ const messages = {
 
   "match.title": "H2H match detail",
   "match.back": "Back to fixtures",
-  "match.captain": "Captain",
   "match.playersLeft": "Players remaining",
   "match.breakdown": "Score breakdown",
   "match.timeline": "Timeline",
@@ -237,7 +220,6 @@ const messages = {
   "match.walkoverNote": "Walkover result: {reason}",
   "match.settledNote": "This result is final.",
   "match.provisionalNote": "The result can change until the Gameweek is finalized.",
-  "match.notFound": "H2H match #{id} was not found.",
 
   "cup.title": "VMF Cup",
   "cup.description":
@@ -246,12 +228,8 @@ const messages = {
   "cup.season1": "Season 1",
   "cup.season2": "Season 2",
   "cup.netNote": "Updated from net points",
-  "cup.window1": "Qualification window GW1-GW13",
-  "cup.window2": "Qualification window GW20-GW32",
-  "cup.honours": "Honours",
   "cup.final": "Final",
   "cup.thirdPlace": "Third place",
-  "cup.thirdPlaceBody": "The Cup does play a separate third-place match in its final round.",
   "cup.bracketHint":
     "Both halves of the draw run inwards to the final. Scroll sideways to follow a run.",
   "cup.notDrawnTitle": "The draw has not been made",
@@ -375,6 +353,7 @@ const messages = {
   "violations.noTransferCost": "The backend did not return a transfer cost",
   "violations.transferCost": "Recorded transfer cost: −{cost}",
   "violations.notReviewed": "Not reviewed",
+
   "violations.impact.threshold": "Applied at the cumulative violation threshold",
   "violations.impact.cupZero": "Gameweek excluded from Cup qualification",
   "violations.impact.waived": "No violation counted",
@@ -388,10 +367,7 @@ const messages = {
   "loading.label": "Loading data…",
   "notFound.title": "Page not found",
   "notFound.body": "This address does not exist, or the content has moved.",
-  "notFound.action": "Back to overview",
-
-  "api.missingUrl":
-    "VMF_API_URL (or NEXT_PUBLIC_API_URL) is missing, so live data cannot be loaded."
+  "notFound.action": "Back to overview"
 } as const;
 
 export type MessageKey = keyof typeof messages;

@@ -666,17 +666,9 @@ h1 {
   border-radius: 0 3px 3px 0;
 }
 
-.qualification-marker[data-zone="title"] {
+/* The only two boundaries that move a manager between divisions. */
+.qualification-marker[data-zone="promotion"] {
   background: var(--lime);
-}
-
-.qualification-marker[data-zone="championship"] {
-  background: var(--blue);
-}
-
-.qualification-marker[data-zone="cup"],
-.qualification-marker[data-zone="playoff"] {
-  background: var(--violet);
 }
 
 .qualification-marker[data-zone="relegation"] {

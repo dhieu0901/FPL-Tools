@@ -22,6 +22,7 @@ import type {
   StandingEntry,
   Violation
 } from "./types";
+import { withZones } from "./zones";
 
 export type ClassicPeriod = "season_1" | "season_2" | "full";
 
@@ -612,7 +613,10 @@ async function classicStandingsLive(
     `/classic/standings?${query.toString()}`
   );
   return result(
-    response.data.standings.map((entry) => toStanding(entry, response.data.period)),
+    withZones(
+      response.data.standings.map((entry) => toStanding(entry, response.data.period)),
+      division
+    ),
     "live",
     response.updatedAt
   );
@@ -874,8 +878,7 @@ async function dashboardLive(): Promise<ApiResult<DashboardData>> {
       fixtures: currentFixtures,
       managers: managerResult.data,
       standings: highResult.data.slice(0, 6),
-      recentHighlights: highlightResult.data.slice(0, 3),
-      notices: []
+      recentHighlights: highlightResult.data.slice(0, 3)
     },
     "live",
     [managerResult, fplStatusResult, highResult, lowResult, fixtureResult]

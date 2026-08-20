@@ -46,7 +46,8 @@ export interface StandingEntry {
   totw: number;
   violations: number | null;
   form: Array<"W" | "D" | "L">;
-  qualification?: "title" | "championship" | "cup" | "playoff" | "safe" | "relegation";
+  /** Set only where the boundary is unambiguous; see lib/zones. */
+  qualification?: "promotion" | "relegation";
 }
 
 export interface H2HStanding {
@@ -71,11 +72,9 @@ export interface FixtureSide {
   /** FPL's own id, used to link a team through to its Gameweek page there. */
   fplEntryId: number | null;
   score: number | null;
-  liveScore?: number;
   captain?: string;
   activePlayers?: number;
   isWinner?: boolean;
-  isReplacement?: boolean;
 }
 
 export interface H2HFixture {
@@ -335,13 +334,6 @@ export interface DashboardData {
   managers: Manager[];
   standings: StandingEntry[];
   recentHighlights: Highlight[];
-  notices: Array<{
-    id: string;
-    title: string;
-    body: string;
-    publishedAt: string;
-    priority: "normal" | "important";
-  }>;
 }
 
 export interface AdminOverview {
