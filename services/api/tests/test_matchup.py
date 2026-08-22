@@ -544,9 +544,7 @@ async def test_the_final_whistle_ends_a_player_gameweek_not_the_bonus_check() ->
             await session.flush()
 
             view = await MatchupService(session).h2h_match(match.id)
-            states = {
-                slot.element_id: slot.state for slot in (*view.home_squad, *view.away_squad)
-            }
+            states = {slot.element_id: slot.state for slot in (*view.home_squad, *view.away_squad)}
 
             assert all(state is PlayerState.FINISHED for state in states.values()), states
     finally:

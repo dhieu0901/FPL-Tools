@@ -231,9 +231,7 @@ async def test_the_generated_draw_is_replaced_by_the_one_fpl_made() -> None:
             assert len(result.changed_pairings) == 2
 
             rows = list(
-                await session.scalars(
-                    select(H2HMatch).where(H2HMatch.schedule_id == schedule.id)
-                )
+                await session.scalars(select(H2HMatch).where(H2HMatch.schedule_id == schedule.id))
             )
             pairs = {frozenset((row.home_manager_id, row.away_manager_id)) for row in rows}
             assert pairs == {
