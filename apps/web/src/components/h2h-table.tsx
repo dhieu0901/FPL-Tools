@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { formatNumber } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { H2HStanding } from "@/lib/types";
+import { fplSeasonUrl } from "./fpl-link";
 import { Avatar, FormDots, Pill } from "./ui";
 
 export function H2HTable({ entries }: { entries: H2HStanding[] }) {
@@ -32,13 +32,32 @@ export function H2HTable({ entries }: { entries: H2HStanding[] }) {
                 </span>
               </td>
               <td>
-                <Link href={`/managers#${entry.managerId}`} className="team-cell">
-                  <Avatar name={entry.managerName} size="small" />
-                  <span>
-                    <strong>{entry.teamName}</strong>
-                    <small>{entry.managerName}</small>
+                {/* Straight to their season on FPL, which is what a reader
+                    clicking a name is after. A side with no known entry id
+                    stays plain text rather than becoming a dead link. */}
+                {entry.fplEntryId === null ? (
+                  <span className="team-cell">
+                    <Avatar name={entry.managerName} size="small" />
+                    <span>
+                      <strong>{entry.teamName}</strong>
+                      <small>{entry.managerName}</small>
+                    </span>
                   </span>
-                </Link>
+                ) : (
+                  <a
+                    className="team-cell fpl-link"
+                    href={fplSeasonUrl(entry.fplEntryId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={t("fpl.openSeason", { team: entry.teamName })}
+                  >
+                    <Avatar name={entry.managerName} size="small" />
+                    <span>
+                      <strong>{entry.teamName}</strong>
+                      <small>{entry.managerName}</small>
+                    </span>
+                  </a>
+                )}
               </td>
               <td>{entry.played}</td>
               <td>{entry.won}</td>

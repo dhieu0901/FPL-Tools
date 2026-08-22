@@ -38,6 +38,25 @@ export function formatDateTime(value: string): string {
 }
 
 /**
+ * "Sat 21:00" - the day and time a match kicks off.
+ *
+ * Within a Gameweek the date is noise; every fixture is inside the same few
+ * days and the weekday alone places it. Rendered in league time, like every
+ * other timestamp on the site.
+ */
+const kickoffFormat = new Intl.DateTimeFormat(LOCALE_TAG, {
+  weekday: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+  timeZone: LEAGUE_TIME_ZONE
+});
+
+export function formatKickoff(value: string): string {
+  return kickoffFormat.format(new Date(value));
+}
+
+/**
  * How long ago something happened, in the coarsest unit that is still honest.
  *
  * A live score is only ever a few minutes old, and "2m ago" answers the

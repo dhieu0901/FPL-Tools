@@ -119,10 +119,20 @@ interface MatchupPlayerLineResponse {
   is_away_captain: boolean;
 }
 
+interface PlayerFixtureResponse {
+  opponent: string | null;
+  is_home: boolean;
+  kickoff_time: string | null;
+  minutes: number;
+  started: boolean;
+  played_out: boolean;
+}
+
 interface SquadSlotResponse {
   element_id: number;
   web_name: string | null;
   club: string | null;
+  fixtures?: PlayerFixtureResponse[] | null;
   squad_position: number;
   element_type: number;
   multiplier: number;
@@ -507,6 +517,7 @@ function toH2HStanding(
   return {
     rank: raw.rank,
     managerId: String(raw.manager_id),
+    fplEntryId: manager?.fpl_entry_id ?? null,
     managerName: manager?.manager_name ?? `Manager #${raw.manager_id}`,
     teamName: manager?.team_name ?? `Team #${raw.manager_id}`,
     played: raw.played,
@@ -682,7 +693,17 @@ function toSquadSlot(raw: SquadSlotResponse): SquadSlot {
     isSubstituteGoalkeeper: raw.is_substitute_goalkeeper,
     benchOrder: raw.bench_order,
     isCaptain: raw.is_captain,
-    isViceCaptain: raw.is_vice_captain
+    isViceCaptain: raw.is_vice_captain,
+    // An older API build sends no fixtures at all; a club with no match this
+    // Gameweek sends an empty list. Both mean "nothing to show here".
+    fixtures: (raw.fixtures ?? []).map((fixture) => ({
+      opponent: fixture.opponent ?? null,
+      isHome: fixture.is_home,
+      kickoff: fixture.kickoff_time ?? null,
+      minutes: fixture.minutes,
+      started: fixture.started,
+      playedOut: fixture.played_out
+    }))
   };
 }
 

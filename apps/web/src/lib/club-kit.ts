@@ -70,3 +70,15 @@ export function clubKit(code: string | null): ClubKit {
   if (!code) return NEUTRAL_KIT;
   return KITS[code.toUpperCase()] ?? { ...NEUTRAL_KIT, name: code };
 }
+
+/**
+ * Whether `public/kits` holds the real shirt for this club.
+ *
+ * The twenty of this season are shipped with the site rather than fetched,
+ * so a page works offline and costs nobody a request to another host. A club
+ * promoted later has no file until someone adds one, and falls back to the
+ * drawing above rather than to a broken image.
+ */
+export function hasKitImage(code: string | null): boolean {
+  return Boolean(code && code.toUpperCase() in KITS);
+}

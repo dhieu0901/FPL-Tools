@@ -1139,20 +1139,17 @@ h1 {
   font-size: 11px;
 }
 
-/* Player state, shared by the legend and every squad row. */
-.fixture-card__legend span[data-state="upcoming"],
-.squad-row[data-state="upcoming"] .squad-row__state {
+/* The legend's three dots, and the only place these colours are stated. */
+.fixture-card__legend span[data-state="upcoming"] {
   background: rgba(255, 255, 255, 0.28);
 }
 
-.fixture-card__legend span[data-state="playing"],
-.squad-row[data-state="playing"] .squad-row__state {
+.fixture-card__legend span[data-state="playing"] {
   background: var(--coral);
-  box-shadow: 0 0 0 3px rgba(255, 111, 97,0.18);
+  box-shadow: 0 0 0 3px rgba(255, 111, 97, 0.18);
 }
 
-.fixture-card__legend span[data-state="finished"],
-.squad-row[data-state="finished"] .squad-row__state {
+.fixture-card__legend span[data-state="finished"] {
   background: var(--lime);
 }
 
@@ -1794,6 +1791,13 @@ h1 {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 13px;
+}
+
+/* An open tie takes the row to itself. Half a column is enough for a score
+   but not for two squads beside each other, and the reader who opened it is
+   looking at that tie and nothing else. */
+.fixtures-grid .fixture-card[data-expanded="true"] {
+  grid-column: 1 / -1;
 }
 
 .match-topbar {
@@ -3781,47 +3785,40 @@ h1 {
   display: grid;
   margin-top: 26px;
   gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
 }
 
-.squad-list__head {
+/* Squad table --------------------------------------------------------- */
+
+.squad-table__head {
   display: flex;
-  margin-bottom: 12px;
-  align-items: baseline;
-  justify-content: space-between;
+  margin-bottom: 10px;
+  align-items: center;
   gap: 10px;
 }
 
-.squad-list h3 {
+.squad-table h3 {
   margin: 0;
   overflow: hidden;
+  flex: 1;
   font-size: 15px;
-  letter-spacing: 0.01em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.squad-list__count {
-  flex-shrink: 0;
-  color: var(--ink-3);
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
 /* How far through the eleven this side is. A bar rather than a second
-   number, so the two squads compare at a glance without being read. */
-.squad-list__progress {
+   number, so two squads compare at a glance without being read. */
+.squad-table__progress {
   display: block;
-  width: 76px;
+  width: 64px;
   height: 4px;
   overflow: hidden;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 999px;
 }
 
-.squad-list__progress > span {
+.squad-table__progress > span {
   display: block;
   height: 100%;
   background: var(--lime);
@@ -3829,138 +3826,89 @@ h1 {
   transition: width 400ms ease;
 }
 
-/* What is still to come, and in which positions. Four defenders left and
-   four forwards left are very different places to be with a tie in the
-   balance, and the count on its own cannot say which. */
-.squad-list__remaining {
-  display: flex;
-  margin: 14px 0 0;
-  padding-top: 11px;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  border-top: 1px solid var(--line);
+/* Four columns of names and fixtures do not fit a phone, so the card
+   scrolls its own contents rather than clipping the score off the end. */
+/* min-width:0 is what lets this shrink inside its grid column. Without it
+   the nowrap cells set a min-content width the column cannot go below, and
+   two squads side by side overrun each other. */
+.squad-table,
+.squad-table__shell {
+  min-width: 0;
+}
+
+.squad-table__shell {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  background: rgba(17, 26, 44, 0.6);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.squad-table__shell::-webkit-scrollbar {
+  height: 8px;
+}
+
+.squad-table__shell::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 999px;
+}
+
+.squad-table table {
+  width: 100%;
+  min-width: 340px;
+  border-collapse: collapse;
   font-size: 12px;
 }
 
-.squad-list__remaining strong {
-  color: var(--ink);
+.squad-table thead th {
+  padding: 7px 8px;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line);
+  font-size: 9px;
   font-weight: 800;
-}
-
-.squad-list__remaining span {
-  color: var(--ink-3);
-  font-variant-numeric: tabular-nums;
-}
-
-.squad-list__remaining[data-done="true"] {
-  color: var(--ink-3);
-}
-
-.squad-list__divider {
-  margin: 14px 0 8px;
-  color: var(--ink-3);
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.1em;
+  text-align: left;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.squad-rows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.squad-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
 }
 
-.squad-row {
-  display: grid;
-  align-items: center;
-  padding: 7px 9px;
-  gap: 10px;
-  /* Fixed kit and points columns, so two squads side by side line up and a
-     reader can run an eye straight down either one. */
-  grid-template-columns: 7px auto minmax(0, 1fr) 52px 26px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
+.squad-table tbody tr:last-child td {
+  border-bottom: 0;
 }
 
-.squad-row__state {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-}
-
-.squad-row + .squad-row {
-  margin-top: 2px;
-}
-/* A filled box, the way FPL prints a position: white on near-black so it
-   reads at a glance down a column of fourteen rows. */
+/* A filled box, the way FPL prints a position. */
 .squad-row__slot {
   display: grid;
-  min-width: 34px;
-  height: 20px;
+  min-width: 32px;
+  height: 19px;
   padding: 0 5px;
   place-items: center;
   color: #fff;
   background: #10151f;
   border: 1px solid var(--line);
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 9px;
   font-variant-numeric: tabular-nums;
   font-weight: 800;
   letter-spacing: 0.06em;
-  white-space: nowrap;
 }
 
-.squad-row__name {
+.squad-row__slot-cell {
+  width: 1%;
+}
+
+.squad-row__player-cell {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.squad-row__points {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  text-align: right;
-}
-
-/* A player who has not kicked a ball yet has a zero that means "not yet",
-   not "failed". Dimming it keeps the eye on the scores that are real. */
-.squad-row[data-state="upcoming"] .squad-row__points {
-  color: var(--ink-3);
-  font-weight: 600;
-}
-
-.squad-row[data-state="playing"] .squad-row__points {
-  color: var(--coral);
-}
-
-/* The armband is the one thing a reader looks for first, so it carries its
-   own colour rather than relying on the name being bold. */
-.squad-row[data-armband="captain"] {
-  background: var(--lime-soft);
-}
-
-.squad-row[data-armband="captain"] .squad-row__name,
-.squad-row[data-armband="captain"] .squad-row__points {
-  color: var(--lime);
-  font-weight: 700;
-}
-
-.squad-row[data-armband="vice"] .squad-row__armband {
-  color: var(--blue);
-}
-
-/* The kit and its code share a column: the shirt does the fast grouping,
-   the code settles the clubs a drawing cannot tell apart. */
-.squad-row__kit {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
 }
 
 .club-shirt {
@@ -3968,39 +3916,38 @@ h1 {
   flex-shrink: 0;
 }
 
-.squad-row__club {
-  color: var(--ink-3);
-  font-family: var(--font-mono-family), monospace;
-  font-size: 9px;
+.club-shirt--photo {
+  object-fit: contain;
+}
+
+.squad-row__name {
+  overflow: hidden;
+  color: var(--ink);
   font-weight: 700;
-  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* A bench player is already dimmed as a row; the shirt would still shout,
-   so it is muted to match. */
-.squad-row[data-benched="true"] .club-shirt {
-  opacity: 0.7;
-}
-
-.squad-row[data-armband="captain"] .squad-row__club {
-  color: inherit;
-  opacity: 0.75;
-}
-
+/* Violet for the armband, deliberately not the lime that marks a finished
+   match: an armband and a state are different facts and must not share a
+   colour. */
 .squad-row__armband,
-.squad-row__multiplier,
-.squad-row__double {
+.squad-row__multiplier {
+  flex-shrink: 0;
   padding: 1px 5px;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 9px;
   font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-weight: 800;
 }
 
 .squad-row__armband {
-  color: var(--lime);
-  background: rgba(0, 0, 0, 0.25);
+  color: #fff;
+  background: var(--violet);
+}
+
+.squad-row__armband[data-role="vice"] {
+  background: var(--blue);
 }
 
 .squad-row__multiplier {
@@ -4008,18 +3955,88 @@ h1 {
   background: var(--lime);
 }
 
-.squad-row__double {
-  color: var(--violet);
-  border: 1px solid currentColor;
+.squad-row__fixtures,
+.squad-row__status {
+  display: table-cell;
+  white-space: nowrap;
+}
+
+.squad-row__status span {
+  display: block;
+  color: var(--ink-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The opponent, tinted by where the match has got to: a reader scanning the
+   column sees at once which of their players are done and which have not
+   kicked off. */
+.squad-chip {
+  display: inline-block;
+  min-width: 62px;
+  margin: 1px 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono-family), monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.squad-chip[data-state="done"] {
+  color: var(--lime);
+  background: var(--lime-soft);
+}
+
+.squad-chip[data-state="live"] {
+  color: #fff;
+  background: var(--coral);
+}
+
+.squad-chip[data-state="upcoming"] {
+  color: var(--ink-2);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.squad-chip[data-state="idle"] {
+  color: var(--ink-3);
+  background: transparent;
+  border: 1px dashed var(--line);
+}
+
+.squad-row__points {
+  color: var(--ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  text-align: right;
+  width: 1%;
+}
+
+.squad-row[data-state="upcoming"] .squad-row__points {
+  color: var(--ink-3);
+  font-weight: 600;
 }
 
 /* A player nobody is counting should not read as loudly as one who scores. */
-.squad-row[data-benched="true"] {
-  opacity: 0.55;
+.squad-row[data-benched] {
+  opacity: 0.62;
 }
 
-.squad-row[data-state="playing"] .squad-row__slot {
-  color: var(--coral);
+.squad-table__divider td {
+  padding: 6px 8px 4px;
+  color: var(--ink-3);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.squad-table--empty p {
+  margin: 0;
+  color: var(--ink-3);
+  font-size: 13px;
 }
 
 .squad-footer {
@@ -4081,6 +4098,19 @@ h1 {
   white-space: nowrap;
 }
 
+/* Violet, matching the armband on the pitch, and deliberately not the lime
+   that means a player has finished. */
+.differential-rows__armband {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  color: var(--violet);
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 999px;
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+}
+
 .differential-rows__multiplier {
   color: var(--ink-3);
   font-size: 11px;
@@ -4115,19 +4145,16 @@ h1 {
 }
 
 @media (max-width: 640px) {
-  /* The same five columns, tightened. Naming fewer than the row has would
-     wrap the shirt and the score onto a line of their own. */
-  .squad-row {
-    padding: 6px 7px;
-    gap: 7px;
-    grid-template-columns: 6px auto minmax(0, 1fr) 46px 22px;
-    font-size: 12px;
+  /* The status column is the first thing worth dropping on a phone: the
+     opponent chip already carries the colour that says done, live or not
+     yet, and the time behind it is the least of the four facts. */
+  .squad-table th:nth-child(4),
+  .squad-table td.squad-row__status {
+    display: none;
   }
 
-  .squad-row__slot {
-    min-width: 30px;
-    height: 18px;
-    font-size: 9px;
+  .squad-table table {
+    min-width: 0;
   }
 }
 

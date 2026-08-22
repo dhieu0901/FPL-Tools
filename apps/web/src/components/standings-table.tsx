@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { formatNumber, rankDelta } from "@/lib/format";
 import { t } from "@/lib/i18n";
 import type { StandingEntry } from "@/lib/types";
@@ -67,26 +66,26 @@ export function StandingsTable({
                   </div>
                 </td>
                 <td>
-                  <Link href={`/managers#${entry.managerId}`} className="team-cell">
+                  {/* The whole cell opens their season on FPL. It used to be
+                      an FPL link nested inside a link to a roster page, which
+                      is invalid HTML and sent a reader somewhere they were
+                      not asking to go. */}
+                  <a
+                    className="team-cell fpl-link"
+                    href={fplSeasonUrl(entry.fplEntryId)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={t("fpl.openSeason", { team: entry.teamName })}
+                  >
                     <Avatar name={entry.managerName} division={entry.division} size="small" />
                     <span>
-                      <strong>
-                        <a
-                          className="fpl-link"
-                          href={fplSeasonUrl(entry.fplEntryId)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title={t("fpl.openSeason", { team: entry.teamName })}
-                        >
-                          {entry.teamName}
-                        </a>
-                      </strong>
+                      <strong>{entry.teamName}</strong>
                       <small>{entry.managerName}</small>
                     </span>
                     {entry.violations !== null && entry.violations > 0 && (
                       <Pill tone="danger">V{entry.violations}</Pill>
                     )}
-                  </Link>
+                  </a>
                 </td>
                 {showForm && (
                   <td>

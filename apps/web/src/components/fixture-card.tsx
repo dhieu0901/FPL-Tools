@@ -9,7 +9,7 @@ import { ChipLine } from "./chip-line";
 import { TeamLink } from "./fpl-link";
 import { Icon } from "./icons";
 import { useLive } from "./live-refresh";
-import { SquadList } from "./squad-list";
+import { SquadTable } from "./squad-table";
 import { Pill } from "./ui";
 
 type LoadState = "idle" | "loading" | "ready" | "failed";
@@ -157,7 +157,7 @@ export function FixtureCard({
                 ].map(({ side, fallback, key }) => (
                   <div className="fixture-card__side" key={key}>
                     {side && <ChipLine chips={side.chips} />}
-                    <SquadList squad={side?.squad ?? []} title={side?.teamName ?? fallback} />
+                    <SquadTable squad={side?.squad ?? []} title={side?.teamName ?? fallback} />
                   </div>
                 ))}
               </div>

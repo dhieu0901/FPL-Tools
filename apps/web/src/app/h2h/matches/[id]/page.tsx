@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { ChipLine } from "@/components/chip-line";
 import { TeamLink } from "@/components/fpl-link";
 import { LiveIndicator, LiveRefresh } from "@/components/live-refresh";
-import { SquadList } from "@/components/squad-list";
+import { SquadTable } from "@/components/squad-table";
 import { Avatar, Callout, DataBadge, Pill } from "@/components/ui";
 import { ApiRequestError, vmfApi } from "@/lib/api";
 import { matchStatusLabel } from "@/lib/format";
@@ -93,21 +93,15 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           ].map(({ detail, side }) => (
             <article className="panel-card" key={side}>
               <ChipLine chips={detail.chips} />
-              <SquadList
+              <SquadTable
                 squad={detail.squad}
                 title={t("match.squadOf", { team: detail.teamName })}
               />
+              {/* The players/fixtures/effective breakdown is gone: it asked a
+                  question nobody was asking, and read as a contradiction
+                  beside the squad's own count of who is yet to kick off. What
+                  the bench actually returned is worth keeping. */}
               <footer className="squad-footer">
-                <span>
-                  <small>{t("match.remainingPlayers")}</small>
-                  <strong>
-                    {t("match.remainingDetail", {
-                      players: detail.remaining.players,
-                      fixtures: detail.remaining.fixtures,
-                      effective: detail.remaining.effectivePlayers
-                    })}
-                  </strong>
-                </span>
                 <span>
                   <small>{t("match.benchPoints")}</small>
                   <strong>{detail.benchPoints ?? "-"}</strong>
@@ -132,7 +126,7 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
                     <span className="differential-rows__name">
                       {line.name}
                       {(line.isHomeCaptain || line.isAwayCaptain) && (
-                        <em className="squad-row__armband">(C)</em>
+                        <em className="differential-rows__armband">(C)</em>
                       )}
                     </span>
                     <span className="differential-rows__multiplier">

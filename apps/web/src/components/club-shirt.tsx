@@ -1,4 +1,4 @@
-import { clubKit } from "@/lib/club-kit";
+import { clubKit, hasKitImage } from "@/lib/club-kit";
 
 /** The silhouette, used only for the outline drawn over the finished shirt. */
 const OUTLINE =
@@ -25,6 +25,26 @@ const BODY = { x: 8, y: 5.5, width: 12, height: 20 };
  */
 export function ClubShirt({ club, size = 18 }: { club: string | null; size?: number }) {
   const kit = clubKit(club);
+
+  // The real shirt, where we hold one. It is the same artwork the game
+  // prints, so a manager recognises his own side without reading anything.
+  // The drawing below stays as the fallback: a club promoted mid-season has
+  // no file yet and must still render as something.
+  if (club && hasKitImage(club)) {
+    return (
+      // biome-ignore lint/performance/noImgElement: a 5KB shirt already sized in the markup gains nothing from the image pipeline.
+      <img
+        className="club-shirt club-shirt--photo"
+        src={`/kits/${club.toUpperCase()}.webp`}
+        width={size}
+        height={size}
+        alt={kit.name}
+        title={kit.name}
+        loading="lazy"
+        decoding="async"
+      />
+    );
+  }
 
   return (
     <svg

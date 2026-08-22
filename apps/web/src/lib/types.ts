@@ -55,6 +55,8 @@ export interface StandingEntry {
 export interface H2HStanding {
   rank: number;
   managerId: string;
+  /** FPL's own id, so a name links through to their season there. */
+  fplEntryId: number | null;
   managerName: string;
   teamName: string;
   played: number;
@@ -129,6 +131,18 @@ export interface MatchPlayerLine {
 }
 
 /** One squad member, in the order FPL lists them. */
+/** One match a player is in this Gameweek, and how far it has got. */
+export interface PlayerFixture {
+  /** The other club's three-letter code, as FPL prints it. */
+  opponent: string | null;
+  isHome: boolean;
+  kickoff: string | null;
+  minutes: number;
+  started: boolean;
+  /** The final whistle, not the bonus-point confirmation hours after it. */
+  playedOut: boolean;
+}
+
 export interface SquadSlot {
   elementId: number;
   name: string;
@@ -148,6 +162,8 @@ export interface SquadSlot {
   benchOrder: number | null;
   isCaptain: boolean;
   isViceCaptain: boolean;
+  /** Usually one; two in a Double Gameweek; empty if the club is idle. */
+  fixtures: PlayerFixture[];
 }
 
 export interface SideRemaining {
