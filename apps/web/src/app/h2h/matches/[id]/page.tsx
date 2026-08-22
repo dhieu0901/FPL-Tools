@@ -7,6 +7,7 @@ import { LiveIndicator, LiveRefresh } from "@/components/live-refresh";
 import { SquadTable } from "@/components/squad-table";
 import { Avatar, Callout, DataBadge, Pill } from "@/components/ui";
 import { ApiRequestError, vmfApi } from "@/lib/api";
+import { chipName } from "@/lib/chips";
 import { matchStatusLabel } from "@/lib/format";
 import { t } from "@/lib/i18n";
 
@@ -68,7 +69,9 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
         <div className="live-context">
           <span>
             <small>{t("match.chip")}</small>
-            <strong>{match.homeDetail?.chipUsed ?? "-"}</strong>
+            <strong>
+              {match.homeDetail?.chipUsed ? chipName(match.homeDetail.chipUsed) : t("chips.none")}
+            </strong>
           </span>
           <span>
             <small>{t("match.playersLeft")}</small>
@@ -80,7 +83,9 @@ export default async function MatchPage({ params }: { params: Promise<{ id: stri
           </span>
           <span>
             <small>{t("match.chip")}</small>
-            <strong>{match.awayDetail?.chipUsed ?? "-"}</strong>
+            <strong>
+              {match.awayDetail?.chipUsed ? chipName(match.awayDetail.chipUsed) : t("chips.none")}
+            </strong>
           </span>
         </div>
       </section>
