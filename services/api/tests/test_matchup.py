@@ -590,3 +590,46 @@ async def test_a_kick_off_leaves_here_saying_which_timezone_it_is_in() -> None:
             assert all(item.astimezone(UTC).hour == 19 for item in kickoffs)
     finally:
         await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_the_match_clock_comes_from_whichever_feed_has_run_further() -> None:
+    """FPL serves its fixture list from a cache and its live feed fresh.
+
+    The fixture list carries a minutes field, and it was measured five
+    minutes behind the football - once twenty. The live feed was never more
+    than a minute old, and a player who has been on since kick-off carries
+    the clock in his own minutes. A clock only runs forward, so the source
+    that has got further is the current one.
+    """
+
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            match = await _seed(session)
+            fixture = await session.scalar(
+                select(FplFixture).where(FplFixture.fixture_fpl_id == 102)
+            )
+            assert fixture is not None
+            fixture.team_h_fpl_id = 1
+            fixture.minutes = 84  # the cached figure
+            stat = await session.scalar(
+                select(FplPlayerFixtureStat).where(FplPlayerFixtureStat.fixture_fpl_id == 102)
+            )
+            assert stat is not None
+            stat.element_id = 1
+            stat.minutes = 90  # what the live feed already knows
+            await session.flush()
+
+            view = await MatchupService(session).h2h_match(match.id)
+            running = [
+                item.minutes
+                for slot in view.home_squad
+                for item in slot.fixtures
+                if item.opponent is None or not item.played_out
+            ]
+
+            assert 90 in running
+            assert 84 not in running
+    finally:
+        await engine.dispose()

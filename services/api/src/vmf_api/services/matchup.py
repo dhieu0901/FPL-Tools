@@ -389,6 +389,8 @@ class MatchupService:
             )
         }
 
+        clock = await self._match_clock(season_id, gameweek_number)
+
         schedule: dict[int, list[PlayerFixture]] = {}
         for fixture in await self.session.scalars(
             select(FplFixture).where(
@@ -406,7 +408,7 @@ class MatchupService:
                     opponent=clubs.get(other) if other is not None else None,
                     is_home=side == fixture.team_h_fpl_id,
                     kickoff_time=self._as_utc(fixture.kickoff_time),
-                    minutes=fixture.minutes,
+                    minutes=max(fixture.minutes, clock.get(fixture.fixture_fpl_id, 0)),
                     started=fixture.started,
                     played_out=fixture.is_played_out,
                 )
@@ -421,6 +423,32 @@ class MatchupService:
             )
             for element_id, items in schedule.items()
         }
+
+    async def _match_clock(self, season_id: int, gameweek_number: int) -> dict[int, int]:
+        """How far into each match we are, read from the live feed.
+
+        The fixture list carries a ``minutes`` field of its own, but FPL serves
+        that endpoint from a cache that has been observed five minutes behind
+        and, once, twenty. The live feed is served fresh - under a minute -
+        because it is what FPL's own pages are built from, and any player who
+        has been on since kick-off carries the match clock in his own minutes.
+        Taking the highest is therefore the clock, and it is only ever read
+        alongside the fixture's own figure, never instead of it: a clock runs
+        forward, so whichever source is further along is the current one.
+        """
+
+        rows = await self.session.execute(
+            select(
+                FplPlayerFixtureStat.fixture_fpl_id,
+                func.max(FplPlayerFixtureStat.minutes),
+            )
+            .where(
+                FplPlayerFixtureStat.season_id == season_id,
+                FplPlayerFixtureStat.gameweek_number == gameweek_number,
+            )
+            .group_by(FplPlayerFixtureStat.fixture_fpl_id)
+        )
+        return {fixture_id: minutes or 0 for fixture_id, minutes in rows}
 
     async def _player_catalog(
         self,
