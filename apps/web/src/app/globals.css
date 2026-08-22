@@ -1006,9 +1006,12 @@ h1 {
   }
 }
 
+/* Side by side is the point of a head to head, but only while both columns
+   are wide enough to hold a name. Below that the two squads stack and the
+   reader scrolls, which beats comparing "Calafio..." with "Szobos...". */
 .fixture-card__squads {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
   gap: 14px;
 }
 
@@ -3806,6 +3809,54 @@ h1 {
   text-transform: uppercase;
 }
 
+/* How far through the eleven this side is. A bar rather than a second
+   number, so the two squads compare at a glance without being read. */
+.squad-list__progress {
+  display: block;
+  width: 76px;
+  height: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.squad-list__progress > span {
+  display: block;
+  height: 100%;
+  background: var(--lime);
+  border-radius: 999px;
+  transition: width 400ms ease;
+}
+
+/* What is still to come, and in which positions. Four defenders left and
+   four forwards left are very different places to be with a tie in the
+   balance, and the count on its own cannot say which. */
+.squad-list__remaining {
+  display: flex;
+  margin: 14px 0 0;
+  padding-top: 11px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.squad-list__remaining strong {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.squad-list__remaining span {
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+.squad-list__remaining[data-done="true"] {
+  color: var(--ink-3);
+}
+
 .squad-list__divider {
   margin: 14px 0 8px;
   color: var(--ink-3);
@@ -3825,7 +3876,9 @@ h1 {
   align-items: center;
   padding: 7px 9px;
   gap: 10px;
-  grid-template-columns: 7px auto 1fr auto;
+  /* Fixed kit and points columns, so two squads side by side line up and a
+     reader can run an eye straight down either one. */
+  grid-template-columns: 7px auto minmax(0, 1fr) 52px 26px;
   border-radius: var(--radius-sm);
   font-size: 13px;
 }
@@ -3870,7 +3923,19 @@ h1 {
 
 .squad-row__points {
   font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+/* A player who has not kicked a ball yet has a zero that means "not yet",
+   not "failed". Dimming it keeps the eye on the scores that are real. */
+.squad-row[data-state="upcoming"] .squad-row__points {
+  color: var(--ink-3);
   font-weight: 600;
+}
+
+.squad-row[data-state="playing"] .squad-row__points {
+  color: var(--coral);
 }
 
 /* The armband is the one thing a reader looks for first, so it carries its
@@ -3889,15 +3954,32 @@ h1 {
   color: var(--blue);
 }
 
-/* The club sits quieter than the name: it is there to disambiguate two
-   players and to say who a manager is exposed to, not to compete for the
-   eye with the name itself. */
+/* The kit and its code share a column: the shirt does the fast grouping,
+   the code settles the clubs a drawing cannot tell apart. */
+.squad-row__kit {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.club-shirt {
+  display: block;
+  flex-shrink: 0;
+}
+
 .squad-row__club {
-  margin-left: 5px;
   color: var(--ink-3);
-  font-size: 11px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono-family), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* A bench player is already dimmed as a row; the shirt would still shout,
+   so it is muted to match. */
+.squad-row[data-benched="true"] .club-shirt {
+  opacity: 0.7;
 }
 
 .squad-row[data-armband="captain"] .squad-row__club {
@@ -4033,9 +4115,19 @@ h1 {
 }
 
 @media (max-width: 640px) {
+  /* The same five columns, tightened. Naming fewer than the row has would
+     wrap the shirt and the score onto a line of their own. */
   .squad-row {
-    grid-template-columns: 46px 1fr auto;
+    padding: 6px 7px;
+    gap: 7px;
+    grid-template-columns: 6px auto minmax(0, 1fr) 46px 22px;
     font-size: 12px;
+  }
+
+  .squad-row__slot {
+    min-width: 30px;
+    height: 18px;
+    font-size: 9px;
   }
 }
 

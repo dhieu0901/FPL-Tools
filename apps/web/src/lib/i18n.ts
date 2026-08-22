@@ -113,13 +113,21 @@ const messages = {
   "squad.fwd": "FWD",
   "squad.benchHeading": "Bench",
   "squad.yetToPlay": "{count} still to play",
+  "squad.stillToPlay": "{count} still to play",
+  "squad.benchNote": "Scored {points}, on the bench, so none of it counted.",
+  "squad.allPlayed": "All eleven have played",
+  "squad.played": "{played} of {total} played",
   "squad.state.upcoming": "Yet to play",
   "squad.state.playing": "Playing now",
   "squad.state.finished": "Finished",
   "squad.doubleGameweek": "Plays twice this Gameweek",
   "squad.unavailable": "Squad not published yet. FPL opens it after the deadline.",
   "match.squadOf": "Squad · {team}",
-  "match.remainingPlayers": "Players still to play",
+  // Deliberately not "still to play": this counts everyone whose fixture has
+  // not finished, including the players on the pitch right now, where the
+  // squad's own line counts only those yet to kick off. Two honest answers to
+  // two different questions, so they are labelled apart.
+  "match.remainingPlayers": "Points still to come from",
   "match.remainingDetail": "{players} players · {fixtures} fixtures · {effective} effective",
   "match.sharedPlayers": "Shared players",
   "match.sharedNote": "Fielded identically by both sides, so they cannot change the margin.",

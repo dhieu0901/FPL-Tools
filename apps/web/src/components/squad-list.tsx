@@ -1,3 +1,4 @@
+import { ClubShirt } from "@/components/club-shirt";
 import { t } from "@/lib/i18n";
 import type { SquadSlot } from "@/lib/types";
 
@@ -30,8 +31,35 @@ function armband(slot: SquadSlot): string {
   return "";
 }
 
+/**
+ * What is still to come, by position.
+ *
+ * The count alone does not say much: three defenders left and three forwards
+ * left are very different positions to be in with a tie in the balance. Only
+ * the eleven counts, because a bench player scores nothing unless a starter
+ * fails to appear.
+ */
+function stillToPlay(squad: SquadSlot[]): { total: number; parts: string[] } {
+  const waiting = squad.filter((slot) => slot.isStarter && slot.state === "upcoming");
+  const byPosition = new Map<number, number>();
+  for (const slot of waiting) {
+    byPosition.set(slot.elementType, (byPosition.get(slot.elementType) ?? 0) + 1);
+  }
+  // Back to front, the way a squad is read.
+  const parts = [1, 2, 3, 4]
+    .filter((type) => byPosition.has(type))
+    .map((type) => `${byPosition.get(type)} ${t(POSITION_KEY[type as 1 | 2 | 3 | 4])}`);
+  return { total: waiting.length, parts };
+}
+
 function SquadRow({ slot }: { slot: SquadSlot }) {
   const badge = armband(slot);
+  // Every row shows what the player actually scored, the way FPL prints it.
+  // Multiplying first would report a benched player as zero, hiding the one
+  // thing a manager most wants to see, and would double a captain's line so
+  // that it no longer matched the number on FPL's own page. The armband and
+  // the dimmed bench already say which of these count.
+  const benched = slot.multiplier === 0;
   return (
     <li
       className="squad-row"
@@ -48,8 +76,7 @@ function SquadRow({ slot }: { slot: SquadSlot }) {
       />
       <span className="squad-row__slot">{slotLabel(slot)}</span>
       <span className="squad-row__name">
-        {slot.name}
-        {slot.club && <span className="squad-row__club">({slot.club})</span>}
+        <span className="squad-row__player">{slot.name}</span>
         {badge && <em className="squad-row__armband">{badge}</em>}
         {slot.multiplier > 1 && <em className="squad-row__multiplier">×{slot.multiplier}</em>}
         {slot.fixturesTotal > 1 && (
@@ -58,7 +85,18 @@ function SquadRow({ slot }: { slot: SquadSlot }) {
           </em>
         )}
       </span>
-      <span className="squad-row__points">: {slot.contributionPoints}</span>
+      {/* The shirt groups a squad by club at a glance; the code beside it is
+          what separates the three clubs that play in plain red. */}
+      <span className="squad-row__kit">
+        <ClubShirt club={slot.club} size={17} />
+        <span className="squad-row__club">{slot.club}</span>
+      </span>
+      <span
+        className="squad-row__points"
+        title={benched ? t("squad.benchNote", { points: slot.points }) : undefined}
+      >
+        {slot.points}
+      </span>
     </li>
   );
 }
@@ -75,19 +113,30 @@ export function SquadList({ squad, title }: { squad: SquadSlot[]; title: string 
 
   const starters = squad.filter((slot) => slot.isStarter);
   const bench = squad.filter((slot) => !slot.isStarter);
-  const yetToPlay = squad.filter((slot) => slot.isStarter && slot.state === "upcoming").length;
+  const played = starters.filter((slot) => slot.state !== "upcoming").length;
+  const waiting = stillToPlay(squad);
 
   return (
     <div className="squad-list">
       <div className="squad-list__head">
         <h3>{title}</h3>
-        <span className="squad-list__count">{t("squad.yetToPlay", { count: yetToPlay })}</span>
+        {/* How far through the eleven this side is, as a bar rather than a
+            second number to read. */}
+        <span
+          className="squad-list__progress"
+          role="img"
+          aria-label={t("squad.played", { played, total: starters.length })}
+        >
+          <span style={{ width: `${(played / Math.max(starters.length, 1)) * 100}%` }} />
+        </span>
       </div>
+
       <ol className="squad-rows">
         {starters.map((slot) => (
           <SquadRow key={slot.elementId} slot={slot} />
         ))}
       </ol>
+
       {bench.length > 0 && (
         <>
           <p className="squad-list__divider">{t("squad.benchHeading")}</p>
@@ -98,6 +147,17 @@ export function SquadList({ squad, title }: { squad: SquadSlot[]; title: string 
           </ol>
         </>
       )}
+
+      <p className="squad-list__remaining" data-done={waiting.total === 0}>
+        {waiting.total === 0 ? (
+          t("squad.allPlayed")
+        ) : (
+          <>
+            <strong>{t("squad.stillToPlay", { count: waiting.total })}</strong>
+            <span>{waiting.parts.join(" + ")}</span>
+          </>
+        )}
+      </p>
     </div>
   );
 }
