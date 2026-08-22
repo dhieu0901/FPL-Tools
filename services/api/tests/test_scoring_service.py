@@ -203,6 +203,53 @@ async def test_a_live_gameweek_is_scored_from_picks_alone() -> None:
 
 
 @pytest.mark.anyio
+async def test_a_live_score_follows_the_football_not_the_published_total() -> None:
+    """FPL's published total trails its own live feed while a match is on.
+
+    The history row exists from the moment the Gameweek opens, so taking it as
+    the authority would freeze a manager's score at whatever FPL last
+    published - leaving the goal his captain just scored visible on the squad
+    list and missing from the score above it.
+    """
+
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            season, _, managers = await _seed(session)
+            session.add_all(_fixtures(season.id, started=True, finished=False))
+            session.add_all(_stats(season.id, {element: 3 for element in range(1, 16)}))
+            session.add(_snapshot(managers[0].id, transfer_cost=0))
+            session.add(
+                ManagerGameweekHistory(
+                    manager_id=managers[0].id,
+                    gameweek_number=1,
+                    # Published before the last goals landed.
+                    gross_points=30,
+                    transfer_cost=4,
+                    points_on_bench=12,
+                )
+            )
+            await session.flush()
+
+            outcome = await GameweekScoringService(session, season_id=season.id).score_gameweek(1)
+
+            assert outcome.state is ScoreState.LIVE
+            score = await session.scalar(select(ManagerGameweekScore))
+            assert score is not None
+            # 36 from the picks, not the 30 FPL had got round to publishing.
+            assert score.gross_points == 36
+            # The penalty is settled at the deadline, so it is still taken.
+            assert score.transfer_cost == 4
+            assert score.net_points == 32
+            # What FPL published is still recorded, just not presented.
+            assert score.official_points == 26
+            # Two figures that differ only by timing are not a disagreement.
+            assert outcome.unreconciled_manager_ids == ()
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
 async def test_the_published_history_becomes_the_authority_once_it_exists() -> None:
     sessionmaker, engine = await _database()
     try:

@@ -123,12 +123,20 @@ class GameweekScoringService:
                 if snapshot is not None
                 else []
             )
-            # FPL's entry history is the authority for gross points and the
-            # transfer penalty once it exists; the snapshot carries the same
-            # figures earlier, while the Gameweek is still live.
+            # FPL's entry history carries the published total and the
+            # transfer penalty. The penalty is fixed at the deadline, so it is
+            # taken whenever the row exists. The total is not: FPL opens an
+            # entry's history row when the Gameweek opens and lets it trail the
+            # live element feed, so a goal reaches a player's page minutes
+            # before it reaches the totals of the managers who own him. While
+            # the football is still going the derived total is the fresher of
+            # the two; the published figure becomes the authority - rulebook
+            # 3.1 - once the Gameweek has stopped moving.
             if entry is not None:
                 transfer_cost = entry.transfer_cost
-                official_gross: int | None = entry.gross_points
+                official_gross: int | None = (
+                    None if state is ScoreState.LIVE else entry.gross_points
+                )
             else:
                 transfer_cost = snapshot.transfer_cost if snapshot is not None else 0
                 official_gross = None

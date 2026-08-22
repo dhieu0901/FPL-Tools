@@ -137,8 +137,10 @@ def compute_gameweek_score(
     is supplied it wins, because rulebook section 3.1 makes the published total
     the authority; the total derived from picks is still computed so that a
     disagreement is visible in ``reconciled`` rather than silently absorbed.
-    Before FPL publishes an entry's history - during a live Gameweek - the
-    derived total is the only available figure and is used directly.
+    Pass ``None`` to score from the picks alone. A caller does that both before
+    FPL has published anything and while the Gameweek is still being played,
+    where the published total exists but trails the live element feed and would
+    hold the score behind the football.
     """
 
     if transfer_cost < 0:
