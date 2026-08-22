@@ -1011,7 +1011,7 @@ h1 {
    reader scrolls, which beats comparing "Calafio..." with "Szobos...". */
 .fixture-card__squads {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(272px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -2314,7 +2314,7 @@ h1 {
 
 .rule-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -2351,7 +2351,7 @@ h1 {
   display: grid;
   margin: 0;
   padding: 0;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
   gap: 10px;
   list-style: none;
 }
@@ -2391,7 +2391,7 @@ h1 {
 .discipline-grid {
   display: grid;
   margin-bottom: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -2402,7 +2402,7 @@ h1 {
 .sanction-grid {
   display: grid;
   margin-bottom: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -2463,7 +2463,7 @@ h1 {
 .prize-grid {
   display: grid;
   margin-bottom: 14px;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr));
   gap: 14px;
 }
 
@@ -3785,7 +3785,7 @@ h1 {
   display: grid;
   margin-top: 26px;
   gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
 }
 
 /* Squad table --------------------------------------------------------- */
@@ -4196,5 +4196,206 @@ h1 {
     display: inline-block;
     min-width: 44px;
     padding: 9px 0;
+  }
+}
+
+/* Stats ---------------------------------------------------------------- */
+
+.stats-grid {
+  display: grid;
+  margin-top: 18px;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
+}
+
+.captain-donut {
+  display: grid;
+  margin-top: 14px;
+  align-items: center;
+  gap: 18px;
+  grid-template-columns: minmax(0, 190px) minmax(0, 1fr);
+}
+
+.captain-donut__ring {
+  width: 100%;
+  height: auto;
+}
+
+.captain-donut__total {
+  fill: var(--ink);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  text-anchor: middle;
+}
+
+.captain-donut__slice-label {
+  font-size: 5.4px;
+  font-weight: 800;
+  text-anchor: middle;
+  dominant-baseline: central;
+  font-variant-numeric: tabular-nums;
+}
+
+.captain-donut__caption {
+  fill: var(--ink-3);
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-anchor: middle;
+  text-transform: uppercase;
+}
+
+.captain-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  gap: 2px;
+  list-style: none;
+}
+
+/* The list is the real reading of the ring, and the table view that keeps
+   the numbers available to anyone who cannot separate the shades. */
+.captain-list li {
+  display: grid;
+  align-items: center;
+  padding: 5px 6px;
+  gap: 8px;
+  grid-template-columns: 8px auto minmax(0, 1fr) auto 28px 38px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+
+.captain-list li:nth-child(odd) {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.captain-list__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.captain-list__name {
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.captain-list__club {
+  color: var(--ink-3);
+  font-family: var(--font-mono-family), monospace;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.captain-list__count,
+.captain-list__share {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.captain-list__count {
+  color: var(--ink-2);
+}
+
+.captain-list__share {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.chip-bars {
+  display: grid;
+  margin: 14px 0 0;
+  padding: 0;
+  gap: 10px;
+  list-style: none;
+}
+
+.chip-bars li {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  grid-template-columns: minmax(0, 132px) minmax(0, 1fr) 56px;
+}
+
+.chip-bars__name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-bars__name em {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-family: var(--font-mono-family), monospace;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+/* A track that is always drawn, so "nobody has played this" reads as an
+   empty bar rather than as a missing row. */
+.chip-bars__track {
+  display: block;
+  height: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+}
+
+.chip-bars__track > span {
+  display: block;
+  height: 100%;
+  background: hsl(212 60% 62%);
+  border-radius: 4px;
+}
+
+.chip-bars__value {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 5px;
+  color: var(--ink);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+
+.chip-bars__value small {
+  color: var(--ink-3);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  /* The ring goes above the list rather than beside it; side by side leaves
+     neither enough width to be read. */
+  .captain-donut {
+    justify-items: center;
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .captain-donut__ring {
+    max-width: 180px;
+  }
+
+  .captain-list {
+    width: 100%;
+  }
+
+  .chip-bars li {
+    grid-template-columns: minmax(0, 108px) minmax(0, 1fr) 50px;
   }
 }

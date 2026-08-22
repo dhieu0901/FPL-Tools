@@ -13,6 +13,7 @@ import type {
   Highlight,
   HighlightKind,
   HighlightPeriod,
+  LeagueStats,
   Manager,
   MatchDetail,
   MatchPlayerLine,
@@ -22,6 +23,7 @@ import type {
   ScoreBreakdown,
   SquadSlot,
   StandingEntry,
+  StatsScope,
   Violation
 } from "./types";
 import { withZones } from "./zones";
@@ -859,6 +861,49 @@ async function highlightsLive(): Promise<ApiResult<Highlight[]>> {
   );
 }
 
+interface LeagueStatsResponse {
+  gameweek_number: number;
+  division: StatsScope;
+  managers: number;
+  squads_known: number;
+  captains: Array<{
+    element_id: number;
+    web_name: string | null;
+    club: string | null;
+    count: number;
+  }>;
+  chips: Array<{ chip: string; this_gameweek: number; this_season: number }>;
+}
+
+async function statsLive(scope: StatsScope, gameweek?: number): Promise<ApiResult<LeagueStats>> {
+  const { seasonId } = runtimeConfiguration();
+  const query = new URLSearchParams({ season_id: String(seasonId), division: scope });
+  if (gameweek) query.set("gameweek", String(gameweek));
+  const response = await requestJson<LeagueStatsResponse>(`/stats?${query.toString()}`);
+  const raw = response.data;
+  return result(
+    {
+      gameweek: raw.gameweek_number,
+      division: raw.division,
+      managers: raw.managers,
+      squadsKnown: raw.squads_known,
+      captains: raw.captains.map((pick) => ({
+        elementId: pick.element_id,
+        name: pick.web_name ?? `#${pick.element_id}`,
+        club: pick.club ?? null,
+        count: pick.count
+      })),
+      chips: raw.chips.map((chip) => ({
+        chip: chip.chip,
+        thisGameweek: chip.this_gameweek,
+        thisSeason: chip.this_season
+      }))
+    },
+    "live",
+    response.updatedAt
+  );
+}
+
 async function h2hStandingsLive(): Promise<ApiResult<H2HStanding[]>> {
   const { h2hScheduleId } = runtimeConfiguration();
   const [standingsResponse, managersResponse] = await Promise.all([
@@ -1083,6 +1128,10 @@ export const vmfApi = {
     cupQualificationLive(season === 2 ? 2 : 1),
 
   highlights: highlightsLive,
+
+  /** What the league, or one division of it, did with a Gameweek. */
+  stats: (scope: StatsScope = "ALL", gameweek?: number): Promise<ApiResult<LeagueStats>> =>
+    statsLive(scope, gameweek),
 
   managers: managersLive,
 

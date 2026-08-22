@@ -34,6 +34,7 @@ const messages = {
   "nav.h2h": "H2H",
   "nav.cup": "Cup",
   "nav.highlights": "Highlights",
+  "nav.stats": "Stats",
   "nav.managers": "Managers",
   "nav.control": "Admin",
   "nav.violations": "Violations",
@@ -332,6 +333,21 @@ const messages = {
   "rules.minigameFundBody":
     "Held outside the prize fund. Each minigame pays 50,000-100,000₫, and forfeited entry fees are added to it.",
   "nav.rules": "Rules",
+
+  "stats.eyebrow": "League behaviour",
+  "stats.description": "What the forty-six did with GW{gameweek} - the decisions, not the scores.",
+  "stats.scopeAll": "Whole league",
+  "stats.scopeHigh": "HIGH only",
+  "stats.scopeLow": "LOW only",
+  "stats.pool": "{managers} managers · {squads} squads published",
+  "stats.captains": "The armband",
+  "stats.captainsNote":
+    "Who each manager chose before the deadline. If a captain does not appear the vice takes over for scoring, but the choice shown here is the one that was made.",
+  "stats.chips": "Chips spent",
+  "stats.chipsNote":
+    "How much of the league has burned each chip so far. There are four in a half of the season, and they do not come back until GW20.",
+  "stats.squads": "squads",
+  "stats.noCaptains": "No squad has been published for this Gameweek yet.",
 
   "highlights.thisGameweek": "This Gameweek",
   "highlights.seasonRecords": "Season records",

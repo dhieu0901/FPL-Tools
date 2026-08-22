@@ -131,6 +131,36 @@ export interface MatchPlayerLine {
 }
 
 /** One squad member, in the order FPL lists them. */
+/** Which slice of the league a stats page is reporting on. */
+export type StatsScope = "ALL" | "HIGH" | "LOW";
+
+export interface CaptainPick {
+  elementId: number;
+  name: string;
+  club: string | null;
+  count: number;
+}
+
+export interface ChipUse {
+  chip: string;
+  thisGameweek: number;
+  thisSeason: number;
+}
+
+export interface LeagueStats {
+  gameweek: number;
+  division: StatsScope;
+  managers: number;
+  /**
+   * Squads published so far. Every share is out of this rather than the
+   * roster, because a manager whose picks FPL has not opened has no armband
+   * to count and must not read as having chosen nobody.
+   */
+  squadsKnown: number;
+  captains: CaptainPick[];
+  chips: ChipUse[];
+}
+
 /** One match a player is in this Gameweek, and how far it has got. */
 export interface PlayerFixture {
   /** The other club's three-letter code, as FPL prints it. */

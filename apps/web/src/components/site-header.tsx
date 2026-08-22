@@ -13,6 +13,7 @@ const primaryNav: Array<{ href: string; label: MessageKey; icon: IconName }> = [
   { href: "/h2h", label: "nav.h2h", icon: "fixture" },
   { href: "/cup", label: "nav.cup", icon: "cup" },
   { href: "/highlights", label: "nav.highlights", icon: "highlight" },
+  { href: "/stats", label: "nav.stats", icon: "standings" },
   { href: "/rules", label: "nav.rules", icon: "info" }
 ];
 
