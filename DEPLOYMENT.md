@@ -311,8 +311,14 @@ and calls the API through `pg_net`.
      project.
 2. Open the SQL Editor and run
    [`supabase/cron_fpl_sync.sql`](supabase/cron_fpl_sync.sql).
-3. In **Integrations → Cron**, confirm two active jobs:
-   - `vmf-fpl-sync`: every five minutes, in UTC;
+3. In **Integrations → Cron**, confirm three active jobs:
+   - `vmf-fpl-live`: every minute, in UTC. Re-reads the fixture clock and the
+     live element feed and rescores from them - two upstream requests, and a
+     no-op outside a Gameweek in play. This is what makes a running match
+     readable; stop it with `select cron.unschedule('vmf-fpl-live');`
+     if upstream requests ever need cutting;
+   - `vmf-fpl-sync`: every five minutes, in UTC. Everything else, including
+     each manager's squad and entry history;
    - `vmf-cron-history-cleanup`: deletes run history older than seven days.
 4. Check the job history and the `vmf-api` runtime logs.
 

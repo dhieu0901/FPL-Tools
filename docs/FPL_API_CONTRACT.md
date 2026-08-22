@@ -500,10 +500,15 @@ Mandatory optimizations:
 
 Never poll element summary as "every player, every minute".
 
-Free-tier note: the schedule that ships in `supabase/cron_fpl_sync.sql` runs
-every five minutes rather than every 60 seconds, because each tick costs a
-serverless invocation. Raise the frequency for live Gameweeks only after
-checking the hosting quota.
+Free-tier note: the schedule that ships in `supabase/cron_fpl_sync.sql` is
+split by what a tick costs. The full sync reads a squad and an entry history
+per manager - forty-six of each - so it runs every five minutes. The live
+tick reads two endpoints and runs every minute, which is the fastest that
+buys anything: FPL publishes its live feed in bursts, not continuously.
+
+Each tick is also a serverless invocation. The minute job adds about 1,440 a
+day and does nothing outside a Gameweek in play; check the hosting quota
+before shortening it further.
 
 ## 8. Raw payloads, versions and schema drift
 

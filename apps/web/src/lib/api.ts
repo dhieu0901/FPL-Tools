@@ -305,7 +305,6 @@ interface ViolationResponse {
 
 interface RequestOptions {
   admin?: boolean;
-  revalidate?: number;
   method?: "GET" | "POST" | "PATCH";
   body?: unknown;
 }
@@ -412,13 +411,18 @@ async function requestJson<T>(path: string, options: RequestOptions = {}): Promi
   let response: Response;
   try {
     const method = options.method ?? "GET";
-    const bypassCache = options.admin || method !== "GET";
     response = await fetch(`${configuration.apiUrl}${path}`, {
       headers,
       method,
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
-      cache: bypassCache ? "no-store" : undefined,
-      next: bypassCache ? undefined : { revalidate: options.revalidate ?? 60 },
+      // Every view here is a scoreboard, so nothing may be served from a
+      // cache. A `revalidate` window is stale-while-revalidate: it hands the
+      // reader the previous copy and fetches the new one behind them, so a
+      // live page is always a cycle behind, and the copy is kept per region -
+      // which is how one match read 41 minutes in one place and 37 in
+      // another at the same moment. Reading through costs one query and is
+      // the only way the number on screen is the number we hold.
+      cache: "no-store",
       signal: AbortSignal.timeout(8_000)
     });
   } catch (error) {

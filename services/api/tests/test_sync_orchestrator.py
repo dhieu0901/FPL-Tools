@@ -8,7 +8,7 @@ from test_ingestion import FakeFPLClient, _database, _seed, bootstrap_payload, h
 from vmf_api.core.config import Settings
 from vmf_api.models.enums import SyncJobType, SyncStatus
 from vmf_api.models.ingestion import FplPlayer, ManagerPickSnapshot, SyncRun
-from vmf_api.services.sync_orchestrator import run_scheduled_sync
+from vmf_api.services.sync_orchestrator import SyncScope, run_scheduled_sync
 
 AFTER_DEADLINE = datetime(2026, 8, 21, 19, 0, tzinfo=UTC)
 BEFORE_DEADLINE = datetime(2026, 8, 20, 10, 0, tzinfo=UTC)
@@ -131,6 +131,74 @@ async def test_live_sync_starts_once_a_fixture_has_kicked_off() -> None:
 
     assert result.plan is not None and result.plan.run_live is True
     assert SyncJobType.LIVE in _job_types(result)
+    await engine.dispose()
+
+
+async def test_a_live_tick_reads_the_football_and_nothing_a_manager_owns() -> None:
+    """The minute tick has to stay cheap or it cannot run every minute.
+
+    Squads and entry history are a request per manager. Leaving them to the
+    full sync is what keeps this to two requests, which is the whole reason
+    it can run often enough to follow a match.
+    """
+
+    factory, engine = await _database()
+    async with factory() as session:
+        await _seed(session, manager_entry_ids=(111,))
+        client = FakeFPLClient(
+            bootstrap=bootstrap_payload(),
+            fixtures=[{"id": 100, "event": 1, "started": True}],
+            live={"elements": []},
+            picks={111: picks_payload()},
+            history={111: history_payload()},
+        )
+
+        result = await run_scheduled_sync(
+            session,
+            client,
+            _settings(),
+            scope=SyncScope.LIVE,
+            clock=lambda: AFTER_DEADLINE,
+        )
+        await session.commit()
+
+    jobs = _job_types(result)
+    assert SyncJobType.LIVE in jobs
+    assert SyncJobType.FIXTURES in jobs
+    assert SyncJobType.PICKS not in jobs
+    assert SyncJobType.ENTRY_HISTORY not in jobs
+    assert SyncJobType.BOOTSTRAP not in jobs
+    # It still rescores, which is the point of running it at all.
+    assert result.scoring is not None
+    assert result.settlement is not None
+    await engine.dispose()
+
+
+async def test_a_live_tick_does_nothing_while_no_match_is_being_played() -> None:
+    factory, engine = await _database()
+    async with factory() as session:
+        await _seed(session, manager_entry_ids=(111,))
+        client = FakeFPLClient(
+            bootstrap=bootstrap_payload(),
+            fixtures=[{"id": 100, "event": 1, "started": False}],
+            live={"elements": []},
+            picks={111: picks_payload()},
+            history={111: history_payload()},
+        )
+
+        result = await run_scheduled_sync(
+            session,
+            client,
+            _settings(),
+            scope=SyncScope.LIVE,
+            clock=lambda: AFTER_DEADLINE,
+        )
+        await session.commit()
+
+    assert result.skipped_reason == "nothing_in_play"
+    # The fixture list is still read: it is how kick-off is noticed.
+    assert _job_types(result) == [SyncJobType.FIXTURES]
+    assert result.scoring is None
     await engine.dispose()
 
 

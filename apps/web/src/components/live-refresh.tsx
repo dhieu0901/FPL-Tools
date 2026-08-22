@@ -16,12 +16,13 @@ import { t } from "@/lib/i18n";
 /**
  * How often a running Gameweek is re-read.
  *
- * The pipeline pulls FPL every five minutes and the server caches a response
- * for sixty seconds, so polling faster than this cannot surface a newer number
- * and only costs requests. Sixty seconds is the point where the page is never
- * more than one cache window behind what the database actually holds.
+ * Nothing sits between the page and the database any more, so a poll now
+ * shows whatever the pipeline last pulled rather than a cached copy of it.
+ * The pipeline is what bounds freshness, and thirty seconds is half its
+ * fastest tick - close enough that a new number is on screen almost as soon
+ * as it lands, without asking for one that cannot have changed.
  */
-const LIVE_INTERVAL_MS = 60_000;
+const LIVE_INTERVAL_MS = 30_000;
 
 interface LiveState {
   /** Increments on every refresh, for panels that hold their own fetched data. */

@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import StrEnum
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -25,6 +26,21 @@ from vmf_api.services.ingestion import FplIngestionService, SyncOutcome
 from vmf_api.services.raw_store import naive_utc
 from vmf_api.services.scoring import GameweekScoringService, ScoringOutcome
 from vmf_api.services.violations import DetectionResult, detect_transfer_violations
+
+
+class SyncScope(StrEnum):
+    """How much of the pipeline a tick is asking for.
+
+    ``FULL`` re-reads everything, including each manager's squad and entry
+    history: forty-six requests apiece, which is why it runs a few times an
+    hour. ``LIVE`` re-reads only what moves while the football is on - the
+    fixtures' own clock and the live element feed - and rescores from it. That
+    is two requests, cheap enough to run every minute, which is as often as
+    FPL itself publishes anything new.
+    """
+
+    FULL = "full"
+    LIVE = "live"
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +72,7 @@ async def run_scheduled_sync(
     client: FPLClient,
     settings: Settings,
     *,
+    scope: SyncScope = SyncScope.FULL,
     correlation_id: str | None = None,
     clock: Callable[[], datetime] = _utcnow,
 ) -> ScheduledSyncResult:
@@ -74,14 +91,25 @@ async def run_scheduled_sync(
         clock=clock,
     )
 
-    outcomes = [await service.sync_bootstrap(), await service.sync_fixtures()]
+    live_only = scope is SyncScope.LIVE
+
+    # The catalog of players and clubs cannot change during a match, so a live
+    # tick skips it. The fixture table can: it carries each match's own clock.
+    outcomes = [] if live_only else [await service.sync_bootstrap()]
+    outcomes.append(await service.sync_fixtures())
 
     plan = await _build_plan(session, season, clock=clock)
     scoring: ScoringOutcome | None = None
     detection: DetectionResult | None = None
     settlement: SettlementOutcome | None = None
+    if live_only and not plan.run_live:
+        # Nothing is being played, so there is nothing this tick can learn
+        # that the full sync will not pick up on its own schedule.
+        return ScheduledSyncResult(plan=plan, outcomes=outcomes, skipped_reason="nothing_in_play")
     if plan.gameweek_number is not None:
-        if plan.run_picks:
+        # Squads and entry history are a request per manager each. They belong
+        # to the full sync, which runs rarely enough to afford them.
+        if plan.run_picks and not live_only:
             outcomes.append(
                 await service.sync_picks(
                     plan.gameweek_number,
@@ -90,7 +118,7 @@ async def run_scheduled_sync(
             )
         if plan.run_live:
             outcomes.append(await service.sync_live(plan.gameweek_number))
-        if plan.run_entry_history:
+        if plan.run_entry_history and not live_only:
             outcomes.append(
                 await service.sync_entry_history(manager_limit=settings.sync_manager_batch_size)
             )
@@ -102,8 +130,11 @@ async def run_scheduled_sync(
             clock=clock,
         ).score_gameweek(plan.gameweek_number)
         # Detection only raises cases for review; no penalty follows from a
-        # synchronisation, so this is safe to repeat on every tick.
-        detection = await detect_transfer_violations(session)
+        # synchronisation, so this is safe to repeat on every tick. It reads
+        # squads, which a live tick has not refreshed, so it waits for one
+        # that has.
+        if not live_only:
+            detection = await detect_transfer_violations(session)
         # Results follow the scores that were just written, so a live Gameweek
         # shows a live H2H result rather than a fixture that never resolves.
         settlement = await H2HSettlementService(

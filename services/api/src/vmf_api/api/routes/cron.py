@@ -21,7 +21,7 @@ from vmf_api.schemas.cron import (
 )
 from vmf_api.services.cron import fpl_probe_lock, fpl_sync_lock, nightly_audit_lock
 from vmf_api.services.nightly_audit import NightlyAuditService
-from vmf_api.services.sync_orchestrator import run_scheduled_sync
+from vmf_api.services.sync_orchestrator import SyncScope, run_scheduled_sync
 
 router = APIRouter(prefix="/cron", tags=["cron"])
 
@@ -105,8 +105,13 @@ async def _run_sync(
     session: SessionDep,
     client: FPLClientDep,
     settings: SettingsDep,
+    *,
+    scope: SyncScope = SyncScope.FULL,
 ) -> CronSyncResponse:
     started_at = datetime.now(UTC)
+    # Both scopes take the same lock. A minute tick that lands on top of a
+    # full sync is dropped rather than queued: by the time the full one
+    # finishes, the tick would only be re-reading what it just wrote.
     async with fpl_sync_lock(session) as acquired:
         if not acquired:
             return CronSyncResponse(
@@ -116,7 +121,7 @@ async def _run_sync(
                 finished_at=datetime.now(UTC),
             )
 
-        result = await run_scheduled_sync(session, client, settings)
+        result = await run_scheduled_sync(session, client, settings, scope=scope)
         # The advisory lock is transaction-scoped, so committing both persists
         # the source facts and releases it for the next tick.
         await session.commit()
@@ -278,6 +283,35 @@ async def sync_fpl_from_vercel_cron(
     """GET variant for Vercel Cron; Supabase Cron should use POST."""
 
     return await _run_sync(session, client, settings)
+
+
+@router.post("/live-sync", response_model=CronSyncResponse)
+async def sync_live_fpl(
+    _: CronAuthorizationDep,
+    session: SessionDep,
+    client: FPLClientDep,
+    settings: SettingsDep,
+) -> CronSyncResponse:
+    """Re-read only what moves during a match, and rescore from it.
+
+    Two FPL requests, so this is the tick that can run every minute. It is a
+    no-op outside a Gameweek in play, and everything it does the full sync
+    also does - it just gets there sooner.
+    """
+
+    return await _run_sync(session, client, settings, scope=SyncScope.LIVE)
+
+
+@router.get("/live-sync", response_model=CronSyncResponse)
+async def sync_live_fpl_from_vercel_cron(
+    _: CronAuthorizationDep,
+    session: SessionDep,
+    client: FPLClientDep,
+    settings: SettingsDep,
+) -> CronSyncResponse:
+    """GET variant for Vercel Cron; Supabase Cron should use POST."""
+
+    return await _run_sync(session, client, settings, scope=SyncScope.LIVE)
 
 
 def _list_field(payload: dict[str, Any], field: str) -> list[Any]:

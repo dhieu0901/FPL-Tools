@@ -74,6 +74,45 @@ select cron.schedule(
   $job$
 );
 
+-- The five-minute job is as fast as it can be: it re-reads every manager's
+-- squad and entry history, a request each, so forty-six managers make it far
+-- too heavy to run often. What a spectator actually watches - the match clock
+-- and the points on it - costs two requests, so it gets its own schedule and
+-- runs every minute. It is a no-op outside a Gameweek in play, and it takes
+-- the same lock as the full sync, so the two never write over each other.
+--
+-- Every minute is as often as anything can usefully be read: FPL publishes
+-- its live feed in bursts, not continuously, so a faster schedule would ask
+-- for numbers that cannot have changed.
+select cron.schedule(
+  'vmf-fpl-live',
+  '* * * * *',
+  $job$
+    select net.http_post(
+      url := rtrim(
+        (
+          select decrypted_secret
+            from vault.decrypted_secrets
+           where name = 'vmf_api_base_url'
+        ),
+        '/'
+      ) || '/api/cron/live-sync',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'Authorization', 'Bearer ' || (
+          select decrypted_secret
+            from vault.decrypted_secrets
+           where name = 'vmf_cron_secret'
+        )
+      ),
+      body := '{}'::jsonb,
+      -- Two upstream reads and a rescore. It must finish well inside its own
+      -- minute, so it is given far less rope than the full sync.
+      timeout_milliseconds := 45000
+    ) as request_id;
+  $job$
+);
+
 -- The five-minute job compares player and team fields every tick, so a
 -- transfer or a new arrival is already picked up there. What it never
 -- revisits is each manager's own FPL entry, which the nightly audit reads so
@@ -109,7 +148,8 @@ select cron.schedule(
   $job$
 );
 
--- Keep pg_cron history small on the 500 MB Free database.
+-- Keep pg_cron history small on the 500 MB Free database. The minute job
+-- alone writes 1,440 rows a day, so this matters more than it used to.
 select cron.schedule(
   'vmf-cron-history-cleanup',
   '15 3 * * *',
@@ -121,6 +161,7 @@ select cron.schedule(
            from cron.job
           where jobname in (
             'vmf-fpl-sync',
+            'vmf-fpl-live',
             'vmf-fpl-probe',
             'vmf-nightly-audit',
             'vmf-cron-history-cleanup'
