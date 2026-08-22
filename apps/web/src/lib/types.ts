@@ -164,6 +164,9 @@ export interface SquadSlot {
   isViceCaptain: boolean;
   /** Usually one; two in a Double Gameweek; empty if the club is idle. */
   fixtures: PlayerFixture[];
+  /** False when the API did not report fixtures at all, which is not the
+   *  same as reporting that there are none. */
+  knowsFixtures: boolean;
 }
 
 export interface SideRemaining {

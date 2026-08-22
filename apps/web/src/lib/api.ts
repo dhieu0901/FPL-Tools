@@ -694,8 +694,10 @@ function toSquadSlot(raw: SquadSlotResponse): SquadSlot {
     benchOrder: raw.bench_order,
     isCaptain: raw.is_captain,
     isViceCaptain: raw.is_vice_captain,
-    // An older API build sends no fixtures at all; a club with no match this
-    // Gameweek sends an empty list. Both mean "nothing to show here".
+    // Absent and empty are different answers. An older API build sends no
+    // field at all and knows nothing; an empty list is the API saying this
+    // club has no match this Gameweek. Only the second is worth printing.
+    knowsFixtures: Array.isArray(raw.fixtures),
     fixtures: (raw.fixtures ?? []).map((fixture) => ({
       opponent: fixture.opponent ?? null,
       isHome: fixture.is_home,

@@ -61,7 +61,9 @@ function SquadRow({ slot, benched }: { slot: SquadSlot; benched: boolean }) {
         <span className="squad-row__slot">{label}</span>
       </td>
       <td className="squad-row__player-cell">
-        <ClubShirt club={slot.club} size={20} />
+        {/* A keeper's kit is a different shirt, and putting him in the
+            outfield one is the sort of thing a manager spots instantly. */}
+        <ClubShirt club={slot.club} size={20} keeper={slot.elementType === 1} />
         <span className="squad-row__name">{slot.name}</span>
         {badge && (
           <em className="squad-row__armband" data-role={slot.isCaptain ? "captain" : "vice"}>
@@ -74,9 +76,11 @@ function SquadRow({ slot, benched }: { slot: SquadSlot; benched: boolean }) {
         {/* A Double Gameweek is two matches, and hiding one of them would
             hide half the reason a player was picked. */}
         {slot.fixtures.length === 0 ? (
-          <span className="squad-chip" data-state="idle">
-            {t("squad.noFixture")}
-          </span>
+          slot.knowsFixtures ? (
+            <span className="squad-chip" data-state="idle">
+              {t("squad.noFixture")}
+            </span>
+          ) : null
         ) : (
           slot.fixtures.map((fixture) => (
             <span

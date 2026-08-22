@@ -23,7 +23,16 @@ const BODY = { x: 8, y: 5.5, width: 12, height: 20 };
  * component needs no element ids and can be repeated thirty times on a page
  * without two of them colliding.
  */
-export function ClubShirt({ club, size = 18 }: { club: string | null; size?: number }) {
+export function ClubShirt({
+  club,
+  size = 18,
+  keeper = false
+}: {
+  club: string | null;
+  size?: number;
+  /** Keepers wear a different kit, and FPL ships a separate image for it. */
+  keeper?: boolean;
+}) {
   const kit = clubKit(club);
 
   // The real shirt, where we hold one. It is the same artwork the game
@@ -35,11 +44,11 @@ export function ClubShirt({ club, size = 18 }: { club: string | null; size?: num
       // biome-ignore lint/performance/noImgElement: a 5KB shirt already sized in the markup gains nothing from the image pipeline.
       <img
         className="club-shirt club-shirt--photo"
-        src={`/kits/${club.toUpperCase()}.webp`}
+        src={`/kits/${club.toUpperCase()}${keeper ? "-GK" : ""}.webp`}
         width={size}
         height={size}
-        alt={kit.name}
-        title={kit.name}
+        alt={keeper ? `${kit.name} goalkeeper` : kit.name}
+        title={keeper ? `${kit.name} goalkeeper` : kit.name}
         loading="lazy"
         decoding="async"
       />

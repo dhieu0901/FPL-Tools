@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
@@ -41,7 +43,7 @@ from vmf_api.models.manager import Manager
 from vmf_api.models.scoring import ManagerGameweekScore
 from vmf_api.services.matchup import MatchupService
 
-CAPTURED_AT = __import__("datetime").datetime(2026, 8, 21, 19, 0)
+CAPTURED_AT = datetime(2026, 8, 21, 19, 0)
 
 
 # --------------------------------------------------------------------------
@@ -547,5 +549,44 @@ async def test_the_final_whistle_ends_a_player_gameweek_not_the_bonus_check() ->
             states = {slot.element_id: slot.state for slot in (*view.home_squad, *view.away_squad)}
 
             assert all(state is PlayerState.FINISHED for state in states.values()), states
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_a_kick_off_leaves_here_saying_which_timezone_it_is_in() -> None:
+    """A naive timestamp is read by a browser as local time.
+
+    Kick-offs arrive from FPL in UTC and land in a column without a timezone,
+    so the offset is lost on the way in. Serialised bare, every kick-off
+    showed seven hours out for a league played in Vietnam.
+    """
+
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            match = await _seed(session)
+            fixture = await session.scalar(
+                select(FplFixture).where(FplFixture.fixture_fpl_id == 101)
+            )
+            assert fixture is not None
+            # Stored the way the ingestion leaves it: UTC, but unlabelled.
+            fixture.kickoff_time = datetime(2026, 8, 21, 19, 0)
+            fixture.team_h_fpl_id = 1
+            fixture.team_a_fpl_id = 2
+            await session.flush()
+
+            view = await MatchupService(session).h2h_match(match.id)
+            kickoffs = [
+                item.kickoff_time
+                for slot in view.home_squad
+                for item in slot.fixtures
+                if item.kickoff_time is not None
+            ]
+
+            assert kickoffs, "expected the squad to carry its fixtures"
+            assert all(item.tzinfo is not None for item in kickoffs)
+            # The instant is unchanged; only the label was missing.
+            assert all(item.astimezone(UTC).hour == 19 for item in kickoffs)
     finally:
         await engine.dispose()

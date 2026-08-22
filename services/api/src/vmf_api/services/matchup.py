@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -347,6 +348,22 @@ class MatchupService:
         }
         return points, progress
 
+    @staticmethod
+    def _as_utc(value: datetime | None) -> datetime | None:
+        """Say out loud that a stored timestamp is UTC.
+
+        Kick-offs arrive from FPL with a ``Z`` and land in a column that has
+        no timezone, so the offset is dropped on the way in and the value
+        that comes back is a naive UTC datetime. Serialised as-is it reaches
+        a browser with nothing to anchor it, and JavaScript reads a naive
+        string as *local* time - which showed every kick-off seven hours out
+        for a league played in Vietnam.
+        """
+
+        if value is None or value.tzinfo is not None:
+            return value
+        return value.replace(tzinfo=UTC)
+
     async def _player_fixtures(
         self,
         season_id: int,
@@ -388,7 +405,7 @@ class MatchupService:
                 entry = PlayerFixture(
                     opponent=clubs.get(other) if other is not None else None,
                     is_home=side == fixture.team_h_fpl_id,
-                    kickoff_time=fixture.kickoff_time,
+                    kickoff_time=self._as_utc(fixture.kickoff_time),
                     minutes=fixture.minutes,
                     started=fixture.started,
                     played_out=fixture.is_played_out,
