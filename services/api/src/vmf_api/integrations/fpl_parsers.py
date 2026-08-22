@@ -136,6 +136,23 @@ class ParsedEntry:
     team_name: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class ParsedH2HMatch:
+    """One tie from the draw FPL made for a head-to-head league.
+
+    Only the pairing is taken. FPL also reports its own running scores, and
+    reading those would let a mid-week fetch overwrite results this league
+    computes to its own rulebook - transfer costs, penalties, walkovers and
+    all. The Gameweek and the two entries are the parts FPL alone can decide.
+    """
+
+    fpl_match_id: int
+    gameweek_number: int
+    home_entry_id: int
+    away_entry_id: int
+    is_knockout: bool
+
+
 def parse_bootstrap(payload: object) -> ParsedBootstrap:
     root = _object(payload, "bootstrap")
     events = tuple(_event(item) for item in _array(root, "events", "bootstrap"))
@@ -240,6 +257,39 @@ def parse_entry(payload: object) -> ParsedEntry:
         manager_name=manager_name,
         team_name=_optional_str(root.get("name")),
     )
+
+
+def parse_h2h_matches(payload: object) -> tuple[tuple[ParsedH2HMatch, ...], bool]:
+    """One page of a head-to-head draw, and whether another page follows.
+
+    A bye carries no opponent, so it is dropped rather than quarantined: an
+    odd-sized league is a legitimate thing for FPL to produce, and it is not
+    this parser's job to decide the league is malformed because of it.
+    """
+
+    root = _object(payload, "h2h matches")
+    matches: list[ParsedH2HMatch] = []
+    for item in _array(root, "results", "h2h matches"):
+        match = _object(item, "h2h match")
+        if _flag(match.get("is_bye")):
+            continue
+        home = _optional_int(match.get("entry_1_entry"))
+        away = _optional_int(match.get("entry_2_entry"))
+        if home is None or away is None:
+            # An empty seat in a knockout round that has not been filled yet.
+            continue
+        if home == away:
+            raise SchemaQuarantineError(f"h2h match {match.get('id')} pairs an entry with itself")
+        matches.append(
+            ParsedH2HMatch(
+                fpl_match_id=_required_int(match.get("id"), "h2h match id"),
+                gameweek_number=_gameweek(_required_int(match.get("event"), "h2h match event")),
+                home_entry_id=home,
+                away_entry_id=away,
+                is_knockout=_flag(match.get("is_knockout")),
+            )
+        )
+    return tuple(matches), _flag(root.get("has_next"))
 
 
 def _event(value: object) -> ParsedEvent:

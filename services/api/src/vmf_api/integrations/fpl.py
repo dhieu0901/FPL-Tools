@@ -48,6 +48,8 @@ class FPLClient(Protocol):
 
     async def live(self, gameweek: int) -> dict[str, Any]: ...
 
+    async def h2h_matches(self, league_id: int, *, page: int = 1) -> dict[str, Any]: ...
+
     async def close(self) -> None: ...
 
 
@@ -158,6 +160,19 @@ class HttpFPLClient:
 
     async def live(self, gameweek: int) -> dict[str, Any]:
         return await self._get(f"event/{_gameweek(gameweek)}/live/")
+
+    async def h2h_matches(self, league_id: int, *, page: int = 1) -> dict[str, Any]:
+        """One page of the fixture list FPL drew for a head-to-head league.
+
+        The draw does not exist until the league closes at the first deadline,
+        so before then this answers with an empty page rather than an error.
+        """
+
+        if page < 1:
+            raise ValueError("page must be positive")
+        return await self._get(
+            f"leagues-h2h-matches/league/{_positive_id(league_id, 'league_id')}/?page={page}"
+        )
 
     async def close(self) -> None:
         await self._client.aclose()
