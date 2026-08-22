@@ -17,6 +17,7 @@ from vmf_api.schemas.h2h import (
     MatchupPlayerLine,
     MatchupSide,
     MatchupSideRemaining,
+    PlayerFixtureLine,
     SquadSlot,
 )
 from vmf_api.services.h2h import H2HService
@@ -128,6 +129,17 @@ def _slot(entry: SquadEntry, names: dict[int, str], clubs: dict[int, str]) -> Sq
         bench_order=entry.bench_order,
         is_captain=entry.is_captain,
         is_vice_captain=entry.is_vice_captain,
+        fixtures=[
+            PlayerFixtureLine(
+                opponent=fixture.opponent,
+                is_home=fixture.is_home,
+                kickoff_time=fixture.kickoff_time,
+                minutes=fixture.minutes,
+                started=fixture.started,
+                played_out=fixture.played_out,
+            )
+            for fixture in entry.fixtures
+        ],
     )
 
 

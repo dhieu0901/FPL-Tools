@@ -13,8 +13,11 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    or_,
 )
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql.elements import ColumnElement
 
 from vmf_api.db.base import Base, TimestampMixin
 from vmf_api.models.enums import SyncJobType, SyncStatus
@@ -102,6 +105,28 @@ class FplFixture(TimestampMixin, Base):
     team_a_fpl_id: Mapped[int | None] = mapped_column(Integer)
     team_h_score: Mapped[int | None] = mapped_column(Integer)
     team_a_score: Mapped[int | None] = mapped_column(Integer)
+
+    @hybrid_property
+    def is_played_out(self) -> bool:
+        """Whether the football is over, whatever FPL has confirmed since.
+
+        FPL raises two flags and they mean different things. ``finished_
+        provisional`` goes up at the final whistle; ``finished`` waits until
+        bonus points are settled and the data is checked, which can be hours
+        later. Reading only ``finished`` leaves a match that ended at 90
+        minutes reporting as still in progress for the rest of the evening.
+
+        Anything asking "is this player still on the pitch" wants this. Only
+        something asking "can these points still change" wants ``finished``,
+        because bonus does still land between the two.
+        """
+
+        return bool(self.finished or self.finished_provisional)
+
+    @is_played_out.inplace.expression
+    @classmethod
+    def _is_played_out(cls) -> ColumnElement[bool]:
+        return or_(cls.finished.is_(True), cls.finished_provisional.is_(True))
 
 
 class FplPlayerFixtureStat(TimestampMixin, Base):

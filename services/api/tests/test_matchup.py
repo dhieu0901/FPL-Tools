@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -515,5 +516,38 @@ async def test_a_squad_carries_the_club_code_fpl_itself_shows() -> None:
             # Element 3's club has not been ingested. That is a player with no
             # club to show, not a missing player and not an error.
             assert 3 not in view.player_clubs
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_the_final_whistle_ends_a_player_gameweek_not_the_bonus_check() -> None:
+    """FPL raises two flags and only the second means "confirmed".
+
+    ``finished_provisional`` goes up when the match ends; ``finished`` waits
+    for bonus points to settle, which can be hours later. Reading only the
+    second left players who had finished at 90 minutes showing as still on
+    the pitch for the rest of the evening.
+    """
+
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            match = await _seed(session)
+            # Fixture 102 has ended, but FPL has not checked the data yet.
+            fixture = await session.scalar(
+                select(FplFixture).where(FplFixture.fixture_fpl_id == 102)
+            )
+            assert fixture is not None
+            fixture.finished = False
+            fixture.finished_provisional = True
+            await session.flush()
+
+            view = await MatchupService(session).h2h_match(match.id)
+            states = {
+                slot.element_id: slot.state for slot in (*view.home_squad, *view.away_squad)
+            }
+
+            assert all(state is PlayerState.FINISHED for state in states.values()), states
     finally:
         await engine.dispose()

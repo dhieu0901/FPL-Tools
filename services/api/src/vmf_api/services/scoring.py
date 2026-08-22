@@ -208,7 +208,7 @@ class GameweekScoringService:
 
         rows = list(
             await self.session.execute(
-                select(FplFixture.started, FplFixture.finished).where(
+                select(FplFixture.started, FplFixture.is_played_out.label("played_out")).where(
                     FplFixture.season_id == self.season_id,
                     FplFixture.gameweek_number == gameweek.number,
                 )
@@ -216,7 +216,11 @@ class GameweekScoringService:
         )
         if not rows or not any(row.started for row in rows):
             return ScoreState.UPCOMING
-        if all(row.finished for row in rows):
+        # Once the last whistle has gone nothing is live, even though bonus
+        # points can still land. That is exactly what "provisional" means, and
+        # waiting for FPL to confirm would leave the Gameweek reading as in
+        # progress for hours after the football stopped.
+        if all(row.played_out for row in rows):
             return ScoreState.PROVISIONAL
         return ScoreState.LIVE
 

@@ -14,6 +14,7 @@ differential, and its sign says whose.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import StrEnum
 
 from vmf_api.domain.gameweek_scoring import STARTING_XI_SIZE
@@ -100,6 +101,26 @@ class PlayerLine:
 
 
 @dataclass(frozen=True, slots=True)
+class PlayerFixture:
+    """One match a player is due in, or has already been in, this Gameweek.
+
+    A squad list that says only "yet to play" leaves the reader guessing at
+    the two things they actually want: who against, and when. A Double
+    Gameweek gives a player two of these, so it is a sequence rather than a
+    single opponent.
+    """
+
+    #: The other club's three-letter code, as FPL prints it.
+    opponent: str | None
+    is_home: bool
+    kickoff_time: datetime | None
+    minutes: int
+    started: bool
+    #: The final whistle has gone, whatever FPL has confirmed since.
+    played_out: bool
+
+
+@dataclass(frozen=True, slots=True)
 class SquadEntry:
     """One player in one manager's squad, in the order FPL lists them."""
 
@@ -113,6 +134,7 @@ class SquadEntry:
     fixtures_unresolved: int
     is_captain: bool
     is_vice_captain: bool
+    fixtures: tuple[PlayerFixture, ...] = ()
 
     @property
     def is_starter(self) -> bool:
@@ -139,9 +161,11 @@ def build_squad(
     picks: dict[int, SidePick],
     points: dict[int, int],
     progress: dict[int, FixtureProgress],
+    fixtures: dict[int, tuple[PlayerFixture, ...]] | None = None,
 ) -> tuple[SquadEntry, ...]:
     """Return one side's fifteen, ordered as FPL presents them."""
 
+    schedule = fixtures or {}
     entries = [
         SquadEntry(
             element_id=pick.element_id,
@@ -154,6 +178,7 @@ def build_squad(
             fixtures_unresolved=progress.get(pick.element_id, FixtureProgress()).unresolved,
             is_captain=pick.is_effective_captain,
             is_vice_captain=pick.is_vice_captain,
+            fixtures=schedule.get(pick.element_id, ()),
         )
         for pick in picks.values()
     ]

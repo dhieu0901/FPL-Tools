@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from vmf_api.domain.matchup import PlayerState
@@ -61,6 +63,19 @@ class MatchupSideRemaining(BaseModel):
     fixtures_remaining: int
 
 
+class PlayerFixtureLine(BaseModel):
+    """One match a player is in this Gameweek, and how far it has got."""
+
+    #: The other club's three-letter code, as FPL prints it.
+    opponent: str | None = None
+    is_home: bool
+    kickoff_time: datetime | None = None
+    minutes: int
+    started: bool
+    #: The final whistle, not the bonus-point confirmation hours after it.
+    played_out: bool
+
+
 class SquadSlot(BaseModel):
     """One squad member, in the order FPL lists them.
 
@@ -87,6 +102,8 @@ class SquadSlot(BaseModel):
     bench_order: int | None = None
     is_captain: bool
     is_vice_captain: bool
+    #: Usually one; two in a Double Gameweek; empty if the club is idle.
+    fixtures: list[PlayerFixtureLine] = Field(default_factory=list)
 
 
 class MatchupChipPlay(BaseModel):

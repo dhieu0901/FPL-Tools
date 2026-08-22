@@ -21,6 +21,7 @@ from vmf_api.domain.gameweek_scoring import effective_captain
 from vmf_api.domain.matchup import (
     FixtureProgress,
     MatchupComparison,
+    PlayerFixture,
     SidePick,
     SquadEntry,
     build_squad,
@@ -104,6 +105,7 @@ class MatchupService:
         chips = await self._chips(season_id, gameweek_number, list(managers))
         snapshots = await self._snapshots(gameweek_number, list(managers))
         points, progress = await self._player_state(season_id, gameweek_number)
+        player_fixtures = await self._player_fixtures(season_id, gameweek_number)
 
         squad_elements = {
             item.element_id for snapshot in snapshots.values() for item in snapshot.items
@@ -132,8 +134,8 @@ class MatchupService:
             comparison=comparison,
             player_names=names,
             player_clubs=clubs,
-            home_squad=build_squad(home_picks, points, progress),
-            away_squad=build_squad(away_picks, points, progress),
+            home_squad=build_squad(home_picks, points, progress, player_fixtures),
+            away_squad=build_squad(away_picks, points, progress, player_fixtures),
         )
 
     @staticmethod
@@ -334,7 +336,9 @@ class MatchupService:
             counters[element_id][0] += 1
             if fixture is not None and fixture.started:
                 counters[element_id][1] += 1
-            if fixture is not None and fixture.finished:
+            # The final whistle, not the bonus-point confirmation that comes
+            # hours after it. A player whose match has ended is not "playing".
+            if fixture is not None and fixture.is_played_out:
                 counters[element_id][2] += 1
 
         progress = {
@@ -342,6 +346,64 @@ class MatchupService:
             for element_id, (total, started, finished) in counters.items()
         }
         return points, progress
+
+    async def _player_fixtures(
+        self,
+        season_id: int,
+        gameweek_number: int,
+    ) -> dict[int, tuple[PlayerFixture, ...]]:
+        """Who each player faces this Gameweek, and where it has got to.
+
+        "Yet to play" on its own leaves a reader guessing at the two things
+        they came for: against whom, and when. A Double Gameweek gives a
+        player two entries here rather than a summary that hides one.
+        """
+
+        clubs = {
+            row.team_fpl_id: row.short_name
+            for row in await self.session.scalars(
+                select(FplTeam).where(FplTeam.season_id == season_id)
+            )
+        }
+        teams = {
+            row.element_id: row.team_fpl_id
+            for row in await self.session.scalars(
+                select(FplPlayer).where(FplPlayer.season_id == season_id)
+            )
+        }
+
+        schedule: dict[int, list[PlayerFixture]] = {}
+        for fixture in await self.session.scalars(
+            select(FplFixture).where(
+                FplFixture.season_id == season_id,
+                FplFixture.gameweek_number == gameweek_number,
+            )
+        ):
+            for side, other in (
+                (fixture.team_h_fpl_id, fixture.team_a_fpl_id),
+                (fixture.team_a_fpl_id, fixture.team_h_fpl_id),
+            ):
+                if side is None:
+                    continue
+                entry = PlayerFixture(
+                    opponent=clubs.get(other) if other is not None else None,
+                    is_home=side == fixture.team_h_fpl_id,
+                    kickoff_time=fixture.kickoff_time,
+                    minutes=fixture.minutes,
+                    started=fixture.started,
+                    played_out=fixture.is_played_out,
+                )
+                for element_id, team_id in teams.items():
+                    if team_id == side:
+                        schedule.setdefault(element_id, []).append(entry)
+
+        # Earliest first, so a Double reads in the order it will be played.
+        return {
+            element_id: tuple(
+                sorted(items, key=lambda item: (item.kickoff_time is None, item.kickoff_time))
+            )
+            for element_id, items in schedule.items()
+        }
 
     async def _player_catalog(
         self,
