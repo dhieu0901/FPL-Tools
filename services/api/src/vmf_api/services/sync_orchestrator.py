@@ -21,6 +21,7 @@ from vmf_api.models.competition import Gameweek, Season
 from vmf_api.models.enums import ManagerStatus, RegistrationStatus
 from vmf_api.models.ingestion import FplFixture, ManagerGameweekHistory
 from vmf_api.models.manager import Manager
+from vmf_api.services.finalization import FinalizationOutcome, finalize_if_settled
 from vmf_api.services.h2h_settlement import H2HSettlementService, SettlementOutcome
 from vmf_api.services.ingestion import FplIngestionService, SyncOutcome
 from vmf_api.services.raw_store import naive_utc
@@ -58,6 +59,7 @@ class ScheduledSyncResult:
     plan: SyncPlan | None
     outcomes: list[SyncOutcome] = field(default_factory=list)
     scoring: ScoringOutcome | None = None
+    finalization: FinalizationOutcome | None = None
     detection: DetectionResult | None = None
     settlement: SettlementOutcome | None = None
     skipped_reason: str | None = None
@@ -100,6 +102,7 @@ async def run_scheduled_sync(
 
     plan = await _build_plan(session, season, clock=clock)
     scoring: ScoringOutcome | None = None
+    finalization: FinalizationOutcome | None = None
     detection: DetectionResult | None = None
     settlement: SettlementOutcome | None = None
     if live_only and not plan.run_live:
@@ -129,6 +132,24 @@ async def run_scheduled_sync(
             season_id=season.id,
             clock=clock,
         ).score_gameweek(plan.gameweek_number)
+        # FPL closes a Gameweek on its own site; the league should not have to
+        # be asked to close it here too. The gate reads the flags FPL publishes
+        # and the state of what was just written, and nothing else decides it.
+        finalization = await finalize_if_settled(
+            session,
+            season_id=season.id,
+            gameweek_number=plan.gameweek_number,
+            unreconciled_manager_ids=scoring.unreconciled_manager_ids,
+        )
+        if finalization.finalized:
+            # Scoring read the Gameweek as provisional a moment ago. Re-running
+            # it now stamps the scores final in the same tick, so the H2H table
+            # moves with the Gameweek instead of a schedule later.
+            scoring = await GameweekScoringService(
+                session,
+                season_id=season.id,
+                clock=clock,
+            ).score_gameweek(plan.gameweek_number)
         # Detection only raises cases for review; no penalty follows from a
         # synchronisation, so this is safe to repeat on every tick. It reads
         # squads, which a live tick has not refreshed, so it waits for one
@@ -145,6 +166,7 @@ async def run_scheduled_sync(
         plan=plan,
         outcomes=outcomes,
         scoring=scoring,
+        finalization=finalization,
         detection=detection,
         settlement=settlement,
     )

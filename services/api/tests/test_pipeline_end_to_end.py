@@ -24,10 +24,18 @@ import vmf_api.models  # noqa: F401  (registers every table on the metadata)
 from vmf_api.core.config import Settings
 from vmf_api.db.base import Base
 from vmf_api.models.competition import Gameweek, Season
-from vmf_api.models.enums import Division, ManagerStatus, RegistrationStatus, ScoreState
+from vmf_api.models.enums import (
+    Division,
+    ManagerStatus,
+    MatchStatus,
+    RegistrationStatus,
+    ScoreState,
+)
+from vmf_api.models.h2h import H2HMatch, H2HSchedule
 from vmf_api.models.ingestion import FplPlayerFixtureStat
 from vmf_api.models.manager import Manager
 from vmf_api.models.scoring import ManagerGameweekScore
+from vmf_api.services.h2h import H2HService
 from vmf_api.services.sync_orchestrator import run_scheduled_sync
 
 BEFORE_DEADLINE = datetime(2026, 8, 20, 9, 0, tzinfo=UTC)
@@ -61,7 +69,7 @@ def _element_points(element_id: int) -> int:
     return total
 
 
-def _bootstrap() -> dict[str, Any]:
+def _bootstrap(data_checked: bool = False) -> dict[str, Any]:
     return {
         "events": [
             {
@@ -69,7 +77,7 @@ def _bootstrap() -> dict[str, Any]:
                 "name": f"Gameweek {number}",
                 "deadline_time": "2026-08-21T17:30:00Z" if number == 1 else None,
                 "finished": number == 1,
-                "data_checked": False,
+                "data_checked": data_checked and number == 1,
                 "is_current": number == 1,
                 "is_next": number == 2,
                 "is_previous": False,
@@ -233,12 +241,15 @@ def _history(entry_id: int) -> dict[str, Any]:
 class SimulatedFPL:
     """Serves a synthetic Gameweek over the real client interface."""
 
-    def __init__(self) -> None:
+    def __init__(self, *, data_checked: bool = False) -> None:
         self.calls: list[str] = []
+        # FPL raises this on its own site once bonus points are confirmed. It
+        # is the flag the finalization gate waits for.
+        self.data_checked = data_checked
 
     async def bootstrap(self) -> dict[str, Any]:
         self.calls.append("bootstrap")
-        return _bootstrap()
+        return _bootstrap(self.data_checked)
 
     async def fixtures(self) -> list[dict[str, Any]]:
         self.calls.append("fixtures")
@@ -471,5 +482,70 @@ async def test_a_repeated_tick_neither_duplicates_rows_nor_changes_the_score() -
             assert first.scoring.managers_scored == second.scoring.managers_scored
             # The payloads did not change, so no job wrote a second time.
             assert all(not outcome.payload_changed for outcome in second.outcomes)
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.anyio
+async def test_fpl_checking_the_data_closes_the_gameweek_and_fills_the_h2h_table() -> None:
+    """The whole chain, with nobody pressing anything.
+
+    FPL marks the Gameweek checked on its own site; the tick that reads that
+    must close the Gameweek here, stamp the scores final, settle the duel and
+    put a played match in the table. Left open, the H2H table counts nothing
+    and reads as all zeros however correct the scores behind it are.
+    """
+
+    sessionmaker, engine = await _database()
+    try:
+        async with sessionmaker() as session:
+            await _seed(session)
+            season_id = await session.scalar(select(Season.id))
+            schedule = H2HSchedule(season_id=season_id, name="Group stage")
+            session.add(schedule)
+            await session.flush()
+            managers = list(await session.scalars(select(Manager.id).order_by(Manager.id)))
+            session.add(
+                H2HMatch(
+                    schedule_id=schedule.id,
+                    gameweek_number=1,
+                    home_manager_id=managers[0],
+                    away_manager_id=managers[1],
+                )
+            )
+            await session.flush()
+
+            # The only thing that changes: FPL says it has checked Gameweek 1.
+            client = SimulatedFPL(data_checked=True)
+
+            result = await run_scheduled_sync(
+                session,
+                client,
+                _settings(),
+                clock=lambda: AFTER_GAMEWEEK,
+            )
+
+            assert result.finalization is not None
+            assert result.finalization.finalized is True
+            assert result.finalization.blocked_by is None
+
+            # Re-scored inside the same tick, so nothing waits for a later one.
+            assert result.scoring is not None
+            assert result.scoring.state is ScoreState.FINAL
+
+            match = await session.scalar(select(H2HMatch))
+            assert match is not None
+            assert match.status is MatchStatus.FINAL
+            assert match.winner_manager_id == managers[0]
+
+            standings = await H2HService(
+                session,
+                expected_manager_count=2,
+            ).standings(schedule.id)
+
+            # The table the league actually reads: played, not a row of zeros.
+            assert [row.played for row in standings] == [1, 1]
+            assert standings[0].h2h_table_points == 3
+            assert standings[0].points_for == 65
     finally:
         await engine.dispose()

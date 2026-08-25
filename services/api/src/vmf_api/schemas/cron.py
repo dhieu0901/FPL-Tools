@@ -94,6 +94,16 @@ class NightlyAuditResponse(BaseModel):
     renamed: list[RenamedTeamResponse] = []
 
 
+class FinalizationResult(BaseModel):
+    """Whether the Gameweek closed on this tick, and what stopped it if not."""
+
+    gameweek_number: int
+    finalized: bool
+    already_final: bool
+    blocked_by: str | None = None
+    detail: dict[str, int] | None = None
+
+
 class CronSyncResponse(BaseModel):
     status: Literal["executed", "skipped"]
     started_at: datetime
@@ -102,5 +112,6 @@ class CronSyncResponse(BaseModel):
     plan: SyncPlanResponse | None = None
     jobs: list[SyncJobResult] = []
     scoring: ScoringResult | None = None
+    finalization: FinalizationResult | None = None
     detection: DetectionResultResponse | None = None
     settlement: SettlementResultResponse | None = None
