@@ -38,6 +38,7 @@ from vmf_api.models.ingestion import (
     ManagerGameweekHistory,
     ManagerPickItem,
     ManagerPickSnapshot,
+    RawFplResponse,
     SyncRun,
 )
 from vmf_api.models.manager import Manager
@@ -631,42 +632,85 @@ class FplIngestionService:
                 written += 1
         return written
 
+    async def _last_read_at(self, endpoint_name: str) -> dict[int, datetime]:
+        """When each manager's own endpoint was last read from FPL.
+
+        ``last_seen_at`` is bumped on every observation, including one whose
+        payload was identical to the last, so it measures attention paid rather
+        than change recorded. That is what a rotation has to be ordered by: a
+        key that only moves when the answer changes leaves a manager whose
+        answer is stable permanently at the front of the queue.
+        """
+
+        rows = await self.session.execute(
+            select(
+                RawFplResponse.fpl_entry_id,
+                func.max(RawFplResponse.last_seen_at),
+            )
+            .where(
+                RawFplResponse.endpoint_name == endpoint_name,
+                RawFplResponse.fpl_entry_id.is_not(None),
+            )
+            .group_by(RawFplResponse.fpl_entry_id)
+        )
+        return {entry_id: last_seen for entry_id, last_seen in rows}
+
+    @staticmethod
+    def _round_robin_key(
+        last_read: dict[int, datetime],
+        manager: Manager,
+    ) -> tuple[bool, datetime, int]:
+        """Order a manager by how long it has been since FPL was asked about him.
+
+        The leading flag keeps a manager who has never been read ahead of every
+        manager who has, and stops a missing timestamp from being compared
+        against a real one.
+        """
+
+        seen = last_read.get(manager.fpl_entry_id)
+        return (seen is not None, seen or datetime.min, manager.id)
+
     async def _managers_for_picks(
         self,
         gameweek_number: int,
         manager_limit: int | None,
     ) -> list[Manager]:
         managers = await self._active_managers()
+        if manager_limit is None:
+            return managers
         captured = {
-            manager_id: revision
-            for manager_id, revision in await self.session.execute(
-                select(
-                    ManagerPickSnapshot.manager_id,
-                    ManagerPickSnapshot.revision,
-                ).where(ManagerPickSnapshot.gameweek_number == gameweek_number)
+            manager_id
+            for manager_id in await self.session.scalars(
+                select(ManagerPickSnapshot.manager_id).where(
+                    ManagerPickSnapshot.gameweek_number == gameweek_number
+                )
             )
         }
+        last_read = await self._last_read_at("entry_picks")
         # Managers without a snapshot come first: a missing squad blocks scoring,
-        # while a stale one only delays auto-sub reconciliation.
-        ordered = sorted(managers, key=lambda manager: (captured.get(manager.id, 0), manager.id))
-        return ordered if manager_limit is None else ordered[:manager_limit]
+        # while a stale one only delays auto-sub reconciliation. Behind them the
+        # batch rotates by least recently read, so every manager is revisited.
+        ordered = sorted(
+            managers,
+            key=lambda manager: (
+                manager.id in captured,
+                *self._round_robin_key(last_read, manager),
+            ),
+        )
+        return ordered[:manager_limit]
 
     async def _managers_for_history(self, manager_limit: int | None) -> list[Manager]:
         managers = await self._active_managers()
         if manager_limit is None:
             return managers
-        counts = {
-            manager_id: total
-            for manager_id, total in await self.session.execute(
-                select(
-                    ManagerGameweekHistory.manager_id,
-                    func.count(ManagerGameweekHistory.id),
-                ).group_by(ManagerGameweekHistory.manager_id)
-            )
-        }
-        # The manager with the least recorded history is the one most likely to
-        # be missing the Gameweek a calculation is waiting for.
-        ordered = sorted(managers, key=lambda manager: (counts.get(manager.id, 0), manager.id))
+        last_read = await self._last_read_at("entry_history")
+        # Least recently read goes first, so a batch smaller than the league
+        # still comes round to everyone. Ordering by how many rows a manager
+        # already has instead ties the whole league together the moment each
+        # has a row for the Gameweek, and the id tie-break then hands every
+        # tick to the same lowest ids - freezing everyone else at whatever FPL
+        # had published when they were last read.
+        ordered = sorted(managers, key=lambda manager: self._round_robin_key(last_read, manager))
         return ordered[:manager_limit]
 
     async def _active_managers(self) -> list[Manager]:

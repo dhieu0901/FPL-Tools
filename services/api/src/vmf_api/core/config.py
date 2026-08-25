@@ -37,13 +37,21 @@ class Settings(BaseSettings):
     fpl_user_agent: str = "VMF-Fantasy-League/0.1"
     fpl_max_attempts: int = 3
     fpl_retry_base_delay_seconds: float = 1.0
-    fpl_max_concurrency: int = 4
+    fpl_max_concurrency: int = 8
     fpl_response_max_bytes: int = 16 * 1024 * 1024
 
     active_season_code: str = "2026/27"
-    #: Managers processed per cron invocation. Keeping the batch small leaves
-    #: headroom under the serverless execution limit of the free plan.
-    sync_manager_batch_size: int = 10
+    #: Managers read per cron invocation, or ``None`` for the whole league.
+    #:
+    #: The whole league is the default because anything less leaves the
+    #: managers outside the batch holding whatever FPL had published when they
+    #: were last read - mid-Gameweek, that is a part-played score presented as
+    #: a real one. Reading all forty-six costs two requests each, which is
+    #: comfortably inside the serverless execution limit at the concurrency
+    #: above. Set a number only if that budget ever tightens: the batch then
+    #: rotates least-recently-read first, so nobody is starved, but a manager
+    #: can trail by as many ticks as the league takes to come round.
+    sync_manager_batch_size: int | None = None
 
     #: 2026/27 runs 46 managers, split HIGH 20 / LOW 26.
     number_of_managers: int = 46
@@ -60,6 +68,27 @@ class Settings(BaseSettings):
     @classmethod
     def blank_secret_as_none(cls, value: object) -> object:
         if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
+    @field_validator("sync_manager_batch_size", mode="before")
+    @classmethod
+    def blank_or_unbounded_batch(cls, value: object) -> object:
+        """Treat a blank or non-positive batch as no limit at all.
+
+        A zero would otherwise slice the batch down to nobody and freeze every
+        score in the league, which is the one outcome this setting must never
+        be able to produce by accident.
+        """
+
+        if value is None:
+            return None
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return None
+            value = int(stripped)
+        if isinstance(value, int) and value <= 0:
             return None
         return value
 

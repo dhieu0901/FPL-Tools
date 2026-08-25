@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import func, select
@@ -514,6 +514,152 @@ async def test_entry_history_upserts_official_points_and_transfer_cost() -> None
     assert corrected.records_written == 1
     assert len(rows) == 1
     assert (rows[0].gross_points, rows[0].transfer_cost) == (75, 4)
+    await engine.dispose()
+
+
+async def test_an_unbounded_sync_reads_every_manager_in_one_tick() -> None:
+    """The default: one tick leaves nobody holding a stale score."""
+
+    factory, engine = await _database()
+    async with factory() as session:
+        entries = (111, 222, 333, 444)
+        season = await _seed(session, manager_entry_ids=entries)
+        client = FakeFPLClient(
+            history={entry: history_payload() for entry in entries},
+            picks={entry: picks_payload() for entry in entries},
+        )
+        service = _service(session, client, season)
+
+        await service.sync_picks(1, manager_limit=None)
+        await service.sync_entry_history(manager_limit=None)
+        await session.commit()
+
+        scored = sorted(
+            entry_id
+            for entry_id in await session.scalars(
+                select(Manager.fpl_entry_id).join(
+                    ManagerGameweekHistory,
+                    ManagerGameweekHistory.manager_id == Manager.id,
+                )
+            )
+        )
+
+    assert sorted(client.calls) == sorted(
+        [f"history:{entry}" for entry in entries] + [f"picks:{entry}:1" for entry in entries]
+    )
+    assert scored == list(entries)
+    await engine.dispose()
+
+
+async def test_entry_history_batch_keeps_coming_round_after_the_first_pass() -> None:
+    """A batch smaller than the league must not settle on the same managers.
+
+    The first pass is the easy half: a manager with no history at all sorts
+    ahead of one who has some, so every manager is read once however the batch
+    is ordered. The bug only opens on the pass after that. Ordering by how many
+    rows a manager already has ties the whole league together the moment each
+    holds a row for the Gameweek, and the id tie-break then hands every
+    subsequent tick back to the same lowest ids - so the rest of the league
+    keeps whatever FPL had published when it was last read, which during a
+    Gameweek is a part-played score.
+    """
+
+    factory, engine = await _database()
+    async with factory() as session:
+        season = await _seed(session, manager_entry_ids=(111, 222, 333))
+        client = FakeFPLClient(history={entry: history_payload() for entry in (111, 222, 333)})
+
+        read_order: list[str] = []
+        for tick in range(6):
+            client.calls.clear()
+            await _service(
+                session,
+                client,
+                season,
+                now=AFTER_DEADLINE + timedelta(minutes=5 * tick),
+            ).sync_entry_history(manager_limit=1)
+            read_order.extend(client.calls)
+        await session.commit()
+
+    # The second pass has to repeat the first, not stall on its first entry.
+    assert read_order == [
+        "history:111",
+        "history:222",
+        "history:333",
+        "history:111",
+        "history:222",
+        "history:333",
+    ]
+    await engine.dispose()
+
+
+async def test_entry_history_rotation_survives_an_unchanged_payload() -> None:
+    """Rotation follows when FPL was last asked, not when the answer last moved.
+
+    A manager whose total has not changed since the previous tick still has to
+    give up his place. Were the order taken from the stored row's own timestamp
+    it would never move for him, and a settled score would hold the batch.
+    """
+
+    factory, engine = await _database()
+    async with factory() as session:
+        season = await _seed(session, manager_entry_ids=(111, 222))
+        client = FakeFPLClient(history={111: history_payload(), 222: history_payload()})
+
+        # Two ticks give each manager the row that ends the easy first pass.
+        for tick in range(2):
+            await _service(
+                session,
+                client,
+                season,
+                now=AFTER_DEADLINE + timedelta(minutes=5 * tick),
+            ).sync_entry_history(manager_limit=1)
+        client.calls.clear()
+        # Nothing has changed upstream since, so only the reading order can
+        # decide who goes next.
+        for tick in range(2, 4):
+            await _service(
+                session,
+                client,
+                season,
+                now=AFTER_DEADLINE + timedelta(minutes=5 * tick),
+            ).sync_entry_history(manager_limit=1)
+        await session.commit()
+
+    assert client.calls == ["history:111", "history:222"]
+    await engine.dispose()
+
+
+async def test_picks_batch_rotates_once_every_manager_has_a_snapshot() -> None:
+    """The same starvation guard for squads, which carry the auto-substitutions.
+
+    A squad nobody re-reads keeps the eleven that stood at the deadline, so a
+    starved manager is scored on players FPL has since substituted out.
+    """
+
+    factory, engine = await _database()
+    async with factory() as session:
+        season = await _seed(session, manager_entry_ids=(111, 222))
+        client = FakeFPLClient(picks={111: picks_payload(), 222: picks_payload()})
+
+        for tick in range(2):
+            await _service(
+                session,
+                client,
+                season,
+                now=AFTER_DEADLINE + timedelta(minutes=5 * tick),
+            ).sync_picks(1, manager_limit=1)
+        client.calls.clear()
+        for tick in range(2, 4):
+            await _service(
+                session,
+                client,
+                season,
+                now=AFTER_DEADLINE + timedelta(minutes=5 * tick),
+            ).sync_picks(1, manager_limit=1)
+        await session.commit()
+
+    assert client.calls == ["picks:111:1", "picks:222:1"]
     await engine.dispose()
 
 

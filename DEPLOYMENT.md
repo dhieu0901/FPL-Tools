@@ -180,7 +180,7 @@ project; never let Preview write to the production database.
 | `VMF_CORS_ORIGINS` | `["https://<web-project>.vercel.app"]` |
 | `VMF_FPL_BASE_URL` | `https://fantasy.premierleague.com/api` |
 | `VMF_ACTIVE_SEASON_CODE` | `2026/27` |
-| `VMF_SYNC_MANAGER_BATCH_SIZE` | `10`, raise only after measuring the run time |
+| `VMF_SYNC_MANAGER_BATCH_SIZE` | Leave unset. Unset reads the whole league every tick, which is the only setting that keeps every manager's score current |
 
 Do not set `VMF_MIGRATION_DATABASE_URL` on Vercel. After the first deployment,
 check:
@@ -332,11 +332,20 @@ PostgreSQL advisory lock so overlapping calls are skipped, and runs only the
 jobs whose preconditions currently hold:
 
 - bootstrap and fixtures on every tick;
-- picks once the Gameweek deadline has passed, in batches of
-  `VMF_SYNC_MANAGER_BATCH_SIZE` managers;
+- picks once the Gameweek deadline has passed, for every manager in the
+  league unless `VMF_SYNC_MANAGER_BATCH_SIZE` caps the batch;
 - live player statistics once a fixture of that Gameweek has started;
 - entry history once a fixture has settled, or while a manager still has no
   history row for the Gameweek.
+
+A batch smaller than the roster is a liability, not a saving. The managers it
+leaves out keep whatever FPL had published when they were last read, and
+mid-Gameweek that is a part-played score presented as a final one. Set
+`VMF_SYNC_MANAGER_BATCH_SIZE` only if the run time ever forces it, and measure
+first: forty-six managers are two requests each, which the function completes
+in a few seconds. When it is set the batch rotates least-recently-read first,
+so no manager is starved, but each one trails by as many ticks as the league
+takes to come round.
 
 The response lists each job with its status and the number of records written.
 `skipped` with `sealed_until_deadline` is correct behaviour before a deadline,

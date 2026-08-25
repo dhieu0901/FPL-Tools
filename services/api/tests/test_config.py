@@ -44,3 +44,34 @@ def test_blank_optional_secrets_are_treated_as_unconfigured() -> None:
 def test_configured_secrets_must_be_at_least_32_characters(field: str) -> None:
     with pytest.raises(ValidationError):
         Settings(_env_file=None, **{field: "too-short"})
+
+
+def test_manager_batch_reads_the_whole_league_by_default() -> None:
+    """Nobody may be left holding a part-played score because a batch ran out."""
+
+    settings = Settings(_env_file=None, database_url="sqlite+aiosqlite:///:memory:")
+
+    assert settings.sync_manager_batch_size is None
+
+
+@pytest.mark.parametrize("value", ["", "  ", 0, -5, "0"])
+def test_a_blank_or_non_positive_batch_means_no_limit_not_nobody(value: object) -> None:
+    """A zero would slice the batch down to nobody and freeze every score."""
+
+    settings = Settings(
+        _env_file=None,
+        database_url="sqlite+aiosqlite:///:memory:",
+        sync_manager_batch_size=value,
+    )
+
+    assert settings.sync_manager_batch_size is None
+
+
+def test_an_explicit_batch_is_still_honoured() -> None:
+    settings = Settings(
+        _env_file=None,
+        database_url="sqlite+aiosqlite:///:memory:",
+        sync_manager_batch_size=10,
+    )
+
+    assert settings.sync_manager_batch_size == 10
